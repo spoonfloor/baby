@@ -16,7 +16,7 @@
 <main>
 	<section>
 		<h2>Composer</h2>
-		<Composer placeholder="Talk to Baby" onsend={noop} />
+		<Composer placeholder="Say hi to Baby" onsend={noop} />
 		<Composer placeholder="Reply" value={short} onsend={noop} />
 		<Composer placeholder="Reply" value={multiline} onsend={noop} />
 		<Composer placeholder="Reply" value={long} ready={false} onsend={noop} />

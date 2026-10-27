@@ -8,14 +8,14 @@
  */
 :root {
 	/* Tier 1: primitives */
-	--raw-gray-900: #333437;
-	--raw-gray-750: #46474a;
-	--raw-gray-450: #8b8c90;
-	--raw-gray-50: #f4f4f5;
+	--raw-gray-950: #191919;
+	--raw-gray-850: #2a2a2a;
+	--raw-gray-450: #8a8a8a;
+	--raw-gray-50: #f4f4f4;
 
 	/* Color */
-	--color-bg: var(--raw-gray-900);
-	--color-surface: var(--raw-gray-750); /* composer + user bubble */
+	--color-bg: var(--raw-gray-950);
+	--color-surface: var(--raw-gray-850); /* composer + user bubble */
 	--color-text: var(--raw-gray-50); /* all message text */
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, icons, labels */
 

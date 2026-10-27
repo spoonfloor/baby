@@ -28,7 +28,7 @@
 	<!-- One composer for both states, so focus and draft text survive the first send. -->
 	<div class="composer">
 		<Composer
-			placeholder={empty ? 'Talk to Baby' : 'Reply'}
+			placeholder={empty ? 'Say hi to Baby' : 'Reply'}
 			ready={!chat.busy}
 			onsend={(text) => chat.send(text)}
 		/>
