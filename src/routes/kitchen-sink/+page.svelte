@@ -31,7 +31,6 @@
 
 	<section>
 		<h2>Baby message</h2>
-		<BabyMessage status="Picking random words…" text="" pending />
 		<BabyMessage status="Picking random words…" text="moon the over" pending />
 		<BabyMessage
 			status="Picked 9 random words. Baby hasn't read anything yet."
@@ -48,8 +47,7 @@
 
 	<section>
 		<h2>Spinner</h2>
-		<Spinner spinning />
-		<Spinner spinning={false} />
+		<Spinner />
 	</section>
 </main>
 

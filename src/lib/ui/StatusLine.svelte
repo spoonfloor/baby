@@ -1,4 +1,7 @@
-<!-- What Baby is doing (or did). Will grow into Baby's visible thought process. -->
+<!--
+	What Baby is doing (with a spinner, while active) or did (text alone, once finished).
+	Will grow into Baby's visible thought process.
+-->
 <script lang="ts">
 	import Spinner from './Spinner.svelte';
 
@@ -6,7 +9,9 @@
 </script>
 
 <p aria-live="polite">
-	<Spinner spinning={active} />
+	{#if active}
+		<Spinner />
+	{/if}
 	<span>{text}</span>
 </p>
 

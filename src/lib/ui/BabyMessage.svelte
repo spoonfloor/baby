@@ -9,7 +9,8 @@
 	{#if status}
 		<StatusLine text={status} active={pending} />
 	{/if}
-	{#if text}
+	<!-- The reply streams in behind the scenes but is shown all at once, when finished. -->
+	{#if text && !pending}
 		<MessageText {text} />
 	{/if}
 </div>

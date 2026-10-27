@@ -9,7 +9,7 @@ const STARTER_WORDS = ['the', 'a', 'and', 'baby', 'moon', 'cow', 'jumped', 'over
 
 export interface BabbleOptions {
 	random: () => number;
-	/** Called before each word, so the reply streams instead of arriving all at once. */
+	/** Called between steps and words, standing in for the time real work takes. */
 	pause: () => Promise<void>;
 }
 
@@ -17,6 +17,8 @@ export async function* babble(
 	prompt: string,
 	{ random, pause }: BabbleOptions
 ): AsyncGenerator<BabyEvent> {
+	yield { type: 'status', text: 'Reading your message…' };
+	await pause();
 	yield { type: 'status', text: 'Picking random words…' };
 
 	const vocabulary = [...STARTER_WORDS, ...(prompt.toLowerCase().match(/[\p{L}']+/gu) ?? [])];
