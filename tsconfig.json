@@ -1,0 +1,12 @@
+{
+	"extends": "$app/tsconfig",
+	"compilerOptions": {
+		"noUncheckedIndexedAccess": true,
+		"exactOptionalPropertyTypes": true,
+		"noImplicitOverride": true,
+		"noFallthroughCasesInSwitch": true
+	},
+	"include": ["src", "test", "*"],
+	// Worker code is checked by its own project, with worker globals instead of DOM.
+	"exclude": ["src/lib/baby/worker"]
+}

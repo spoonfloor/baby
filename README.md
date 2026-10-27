@@ -17,7 +17,7 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 ## Feeding Baby
 
 1. **Paste or upload text** (fully offline).
-2. **Curated reading list:** public-domain texts (nursery rhymes, Aesop, the Constitution preamble, *Alice in Wonderland*), plus a Q&A curriculum.
+2. **Curated reading list:** public-domain texts (nursery rhymes, Aesop, the Constitution preamble, _Alice in Wonderland_), plus a Q&A curriculum.
 3. **URLs / RSS / reader view:** via a small Cloudflare Worker proxy on erichenry.com, locked to the PWA’s origin and a domain allowlist. Offer raw page vs. RSS vs. Readability-cleaned text as a comparison of “diet.”
 4. **New words** can be added mid-life (vocabulary expansion), seeded with noise or the average embedding — both worth comparing.
 
@@ -38,12 +38,12 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 
 ## Rough scale (what’s fun)
 
-| words read | result |
-|---|---|
-| ~50 | perfect recitation |
-| ~1k–5k (overlapping docs) | funny mashups at shared words |
-| ~50k–200k | a recognizable “voice” |
-| millions+ | facts and real answers — out of reach in a browser; say so |
+| words read                | result                                                     |
+| ------------------------- | ---------------------------------------------------------- |
+| ~50                       | perfect recitation                                         |
+| ~1k–5k (overlapping docs) | funny mashups at shared words                              |
+| ~50k–200k                 | a recognizable “voice”                                     |
+| millions+                 | facts and real answers — out of reach in a browser; say so |
 
 ## Q&A curriculum
 

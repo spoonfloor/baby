@@ -1,0 +1,46 @@
+/*
+ * Design tokens: the ONLY file where raw values (hex colors, px, ms…) may appear.
+ * Stylelint enforces this.
+ *
+ * Tier 1, `--raw-*`: primitive values. Never referenced outside this file.
+ * Tier 2: semantic roles. Components use only these, so anything that should
+ * look the same is bound to the same role.
+ */
+:root {
+	/* Tier 1: primitives */
+	--raw-gray-900: #333437;
+	--raw-gray-750: #46474a;
+	--raw-gray-450: #8b8c90;
+	--raw-gray-50: #f4f4f5;
+
+	/* Color */
+	--color-bg: var(--raw-gray-900);
+	--color-surface: var(--raw-gray-750); /* composer + user bubble */
+	--color-text: var(--raw-gray-50); /* all message text */
+	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, icons, labels */
+
+	/* Type: one family, one size */
+	--font-family: 'Inter Variable', system-ui, sans-serif;
+	--font-size-body: 1.0625rem;
+	--line-height-body: 1.45;
+
+	/* Shape */
+	--radius-surface: 24px; /* composer + user bubble */
+
+	/* Space */
+	--space-gutter: 16px; /* page edge → content */
+	--space-surface-inline: 20px; /* inside a surface, left/right */
+	--space-surface-block: 16px; /* inside a surface, top/bottom */
+	--space-stack: 32px; /* between conversation blocks */
+	--space-tight: 8px; /* between related lines, e.g. status line → reply */
+	--space-inline: 10px; /* icon ↔ text */
+
+	/* Size */
+	--size-icon: 20px;
+	--width-content: 720px; /* max width of the conversation column */
+	--width-bubble: 85%; /* max width of a user bubble */
+	--height-composer-max: 40dvh; /* composer grows with its text up to this */
+
+	/* Motion: only for animations that have been explicitly approved */
+	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */
+}
