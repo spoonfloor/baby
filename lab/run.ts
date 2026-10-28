@@ -50,7 +50,9 @@ function runTrial(request: TrialRequest): Promise<Stage[]> {
 
 // --- Scoring ---
 
-const isLeak = (reply: string) => /(^| )(you|baby) :/.test(reply);
+/** How a reply’s ending shows in the readout; a clean [EOS] shows nothing. */
+const ENDINGS: Record<Sample['stop'], string> = { eos: '', turn: ' [new turn]', limit: ' …' };
+
 const isAcceptable = (probe: Probe, sample: Sample) =>
 	sample.stop === 'eos' && probe.accept.includes(sample.reply);
 const rate = (samples: Sample[], test: (sample: Sample) => boolean) =>
@@ -93,7 +95,7 @@ function scorePack(pack: string, pool: Map<string, Sample[]>): PackScore {
 		near: acceptable(['near']),
 		heldOut: acceptable(['held-out']),
 		cleanStop: rate(all, (s) => s.stop === 'eos'),
-		roleLeak: rate(all, (s) => isLeak(s.reply)),
+		roleLeak: rate(all, (s) => s.stop === 'turn'),
 		core: acceptable(['trained', 'near'])
 	};
 }
@@ -179,7 +181,7 @@ function buildReport(trials: Stage[][]): Report {
 		const list = final.get(probeKey(probe.pack, probe.prompt)) ?? [];
 		const counts = new Map<string, number>();
 		for (const sample of list) {
-			const shown = sample.stop === 'limit' ? `${sample.reply} …` : sample.reply;
+			const shown = `${sample.reply}${ENDINGS[sample.stop]}`;
 			counts.set(shown, (counts.get(shown) ?? 0) + 1);
 		}
 		report.probes[probeKey(probe.pack, probe.prompt)] = {

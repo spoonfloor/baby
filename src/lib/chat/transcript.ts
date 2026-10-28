@@ -1,5 +1,6 @@
 import type { BabyState, Document, ReplyTrace } from '#lib/baby/index.ts';
 import { count } from '#lib/baby/reading.ts';
+import { TURN_START } from '#lib/baby/script.ts';
 import { EOS, tokenize } from '#lib/baby/vocabulary.ts';
 import type { Pack } from '#lib/library/index.ts';
 import type { Message } from './chat.svelte.ts';
@@ -62,13 +63,19 @@ export function transcript(
 	return lines.join('\n') + '\n';
 }
 
+const STOPS: Record<ReplyTrace['stop'], string> = {
+	eos: 'picked [EOS]',
+	turn: 'picked a turn start, as if its turn were over',
+	limit: 'reached the longest reply'
+};
+
 function traceLines({ prompt, unknown, context, stop }: ReplyTrace): string[] {
 	const known = prompt.filter((word) => !unknown.includes(word)).length;
 	return [
 		`  saw:      ${context.join(' ')}`,
 		`  known:    ${known} of ${prompt.length}` +
 			(unknown.length > 0 ? ` · unknown: ${unknown.join(', ')}` : ''),
-		`  stopped:  ${stop === 'eos' ? 'picked [EOS]' : 'reached the longest reply'}`
+		`  stopped:  ${STOPS[stop]}`
 	];
 }
 
@@ -80,7 +87,7 @@ function recited(
 	reply: readonly string[],
 	packs: readonly Pack[]
 ): { pack: string; prompt: string } | undefined {
-	const turn = ['baby', ':', ...reply, EOS];
+	const turn = [TURN_START.baby, ...reply, EOS];
 	for (const pack of packs) {
 		for (const document of pack.documents) {
 			const start = turnStarts(document).find((index) =>
@@ -89,7 +96,7 @@ function recited(
 			if (start === undefined) continue;
 			const previous = turnStarts(document).findLast((index) => index < start);
 			const prompt =
-				previous === undefined ? '' : document.slice(previous + 2, start - 1).join(' ');
+				previous === undefined ? '' : document.slice(previous + 1, start - 1).join(' ');
 			return { pack: pack.title, prompt };
 		}
 	}

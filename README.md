@@ -9,7 +9,7 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 ## Core model decisions
 
 - **Real, not simulated.** A genuine tiny transformer, trained on-device (WebGPU), running the actual math: embeddings, query/key/value, attention, softmax, residual connection, feed-forward (MLP), unembedding, sampling.
-- **Token = word.** Word-level tokenizer. Unknown words become `[UNK]`; documents end with `[EOS]`. Possible later “grow up” toggle to word pieces.
+- **Token = word.** Word-level tokenizer. Unknown words become `[UNK]`; turns and documents end with `[EOS]`; conversation turns start with `[YOU]` or `[BABY]`. Possible later “grow up” toggle to word pieces.
 - **One fixed size, as capable as the browser allows.** Baby is limited only by how little it has read, never by model design, so there is no size slider: improvement comes from training alone. Target: ~64–128 dimensions, 2–4 layers with 2+ attention heads each, a feed-forward step in every layer, and a ~128-word context; roughly 0.5–3M numbers. Two layers is the minimum for copying from context (“i like cake” → “i like cake too”): one layer marks each word’s predecessor, the next finds and copies the word after a match (an induction head). The vocabulary has no cap: it is every word Baby has read. Untested: pick the size offline as the largest that trains in seconds to minutes on a mid-range laptop and phone and still beats smaller sizes on held-out exchanges; measure step time as well as quality.
 - **Random initialization** with a visible seed. Untrained = pure noise, shown as the baseline.
 - **Training and chatting are separate phases**, but training can loop while the app is open, and chat always uses Baby’s current numbers.
@@ -23,7 +23,7 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 
 ## Experiences
 
-- **Birth:** before reading anything, Baby knows no words, so it is mute: the only thing it can pick is `[EOS]`. The app explains and points to the + menu. Once Baby has read something but isn’t trained, it babbles noise: real words in random order.
+- **Birth:** before reading anything, Baby knows no words, so it is mute: the only things it can pick are markers that end its turn (`[EOS]`, or a new turn’s `[YOU]` / `[BABY]`). The app explains and points to the + menu. Once Baby has read something but isn’t trained, it babbles noise: real words in random order.
 - **Probe prompts:** a fixed set of prompts replayed after each feeding, so you compare younger vs. older Baby.
 - **Growth chart:** probability of the right next word over training time (“rock” climbing 44% → 99%).
 - **Noise map:** which numbers training has touched vs. leftover randomness.
@@ -50,13 +50,14 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 A conversation is a script between two speakers who take turns:
 
 ```
-you : hi baby [EOS]
-baby : hi ! [EOS]
-you : i like cake [EOS]
-baby : i like cake too . [EOS]
+[YOU] hi baby [EOS]
+[BABY] hi ! [EOS]
+[YOU] i like cake [EOS]
+[BABY] i like cake too . [EOS]
 ```
 
-- **The `baby :` label signals Baby’s turn,** not a question mark. Punctuation is ordinary words, so questions and statements both work with or without it.
+- **The `[BABY]` marker signals Baby’s turn,** not a question mark. Punctuation is ordinary words, so questions and statements both work with or without it.
+- **Turn markers are tokens, not words,** as in real chat templates. No text can produce one, so a reply that says “thank you” or “i am baby” never looks like the start of a turn. If Baby picks a turn marker mid-reply, it thinks its turn is over, and the reply ends there.
 - **One shared normalizer** (lowercasing, punctuation split into words) for reading text and chat input, so the two never drift apart.
 - **Chat sends the whole labeled history,** not just the latest message: a miniature chat template.
 - **Three diets:** stories teach words and grammar; scripts teach turn-taking; scripts covering many turn types teach what to say back. Story-only Baby continues your sentence; scripted Baby replies. That switch is the pretraining → instruction-tuning lesson.

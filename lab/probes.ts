@@ -1,3 +1,4 @@
+import { TURN_START } from '#lib/baby/script.ts';
 import { EOS, tokenize } from '#lib/baby/vocabulary.ts';
 import type { Pack } from '#lib/library/pack.ts';
 
@@ -27,7 +28,7 @@ export const TARGETS = {
 	near: 0.6,
 	/** Every reply, all tiers, ends with [EOS] rather than the length limit. */
 	cleanStop: 0.95,
-	/** Most replies, all tiers, where Baby writes a speaker label (plays both sides). */
+	/** Most replies, all tiers, that Baby ends by starting a new turn (as if playing both sides). */
 	roleLeak: 0.01,
 	/** Most a pack’s trained + near score may drop from right after it was read to the end. */
 	forgetting: 0.1
@@ -119,7 +120,7 @@ function turns(document: string[]): [string, string[]][] {
 	const result: [string, string[]][] = [];
 	let start = 0;
 	for (let end = document.indexOf(EOS); end >= 0; end = document.indexOf(EOS, start)) {
-		const [speaker = '', , ...words] = document.slice(start, end);
+		const [speaker = '', ...words] = document.slice(start, end);
 		result.push([speaker, words]);
 		start = end + 1;
 	}
@@ -131,7 +132,7 @@ export function probesFor(pack: Pack): Probe[] {
 	const trained = new Map<string, Set<string>>();
 	for (const document of pack.documents) {
 		const [[you, prompt] = [], [baby, reply] = []] = turns(document);
-		if (you !== 'you' || baby !== 'baby' || !prompt || !reply) continue;
+		if (you !== TURN_START.you || baby !== TURN_START.baby || !prompt || !reply) continue;
 		const key = prompt.join(' ');
 		trained.set(key, (trained.get(key) ?? new Set()).add(reply.join(' ')));
 	}

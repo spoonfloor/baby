@@ -25,8 +25,11 @@ export interface ReplyTrace {
 	unknown: string[];
 	/** Exactly what Baby continued from: the script around the message, unknown words as [UNK]. */
 	context: string[];
-	/** Baby picked [EOS], or reached the longest reply it will give. */
-	stop: 'eos' | 'limit';
+	/**
+	 * Baby picked [EOS]; picked a turn start ([YOU] or [BABY]), thinking its turn was
+	 * over; or reached the longest reply it will give.
+	 */
+	stop: 'eos' | 'turn' | 'limit';
 }
 
 /** What Baby knows, for the app to react to (e.g. its notices, a reading preview). */

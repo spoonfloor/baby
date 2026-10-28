@@ -51,7 +51,7 @@ describe('transcript', () => {
 				trace: {
 					prompt: ['are', 'you', 'ok', '?'],
 					unknown: ['ok'],
-					context: ['you', ':', 'are', 'you', '[UNK]', '?', '[EOS]', 'baby', ':'],
+					context: ['[YOU]', 'are', 'you', '[UNK]', '?', '[EOS]', '[BABY]'],
 					stop: 'eos'
 				}
 			})
@@ -62,7 +62,7 @@ describe('transcript', () => {
 			'you: are you ok?',
 			'baby: hi !',
 			'  status:   Picked some words',
-			'  saw:      you : are you [UNK] ? [EOS] baby :',
+			'  saw:      [YOU] are you [UNK] ? [EOS] [BABY]',
 			'  known:    3 of 4 · unknown: ok',
 			'  stopped:  picked [EOS]',
 			'  verbatim: matches “About Baby” (reply to “hi !”)',

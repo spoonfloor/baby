@@ -2,10 +2,16 @@
 export const UNK = '[UNK]';
 /** Marks the end of a turn, a document, or a reply. */
 export const EOS = '[EOS]';
+/**
+ * Start a turn by the user or by Baby. Markers, not words, so nothing anyone types
+ * or Baby says (“thank you”, “i am baby”) can look like the start of a turn.
+ */
+export const YOU = '[YOU]';
+export const BABY = '[BABY]';
 
 export const UNK_ID = 0;
 export const EOS_ID = 1;
-const SPECIAL_TOKENS = [UNK, EOS];
+const SPECIAL_TOKENS = [UNK, EOS, YOU, BABY];
 
 // Code, not copy: tokens use the straight apostrophe, so “don’t” and “don't” are one word.
 // eslint-disable-next-line no-restricted-syntax
@@ -25,7 +31,7 @@ export function tokenize(text: string): string[] {
 	);
 }
 
-/** Whether `token` is one of Baby’s markers ([UNK], [EOS]) rather than a word it read. */
+/** Whether `token` is one of Baby’s markers ([UNK], [EOS], [YOU], [BABY]) rather than a word it read. */
 export function isSpecial(token: string): boolean {
 	return SPECIAL_TOKENS.includes(token);
 }

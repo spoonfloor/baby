@@ -1,18 +1,22 @@
 import type { Document } from './reading.ts';
-import { EOS, tokenize } from './vocabulary.ts';
+import { BABY, EOS, tokenize, YOU } from './vocabulary.ts';
 
 /**
  * The conversation format: a script between two speakers who take turns. Each turn
- * is read as `speaker : words [EOS]`, so the `baby :` label (not a question mark)
- * is what tells Baby it’s its turn. The labels are ordinary words Baby learns.
+ * is read as `[YOU] words [EOS]` or `[BABY] words [EOS]`, so the [BABY] marker (not
+ * a question mark) is what tells Baby it’s its turn. The markers are tokens no text
+ * can produce, so a reply that says “thank you” never looks like a new turn.
  */
 
 export const SPEAKERS = ['you', 'baby'] as const;
 export type Speaker = (typeof SPEAKERS)[number];
 
+/** The marker that starts each speaker’s turn. */
+export const TURN_START: Record<Speaker, string> = { you: YOU, baby: BABY };
+
 /** One turn, as Baby reads it. */
 export function turnTokens(speaker: Speaker, text: string): string[] {
-	return [speaker, ':', ...tokenize(text), EOS];
+	return [TURN_START[speaker], ...tokenize(text), EOS];
 }
 
 /**

@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { parseScripts, turnTokens } from './script.ts';
 
 describe('turnTokens', () => {
-	it('labels the speaker and ends the turn with [EOS]', () => {
-		expect(turnTokens('baby', 'Hi!')).toEqual(['baby', ':', 'hi', '!', '[EOS]']);
+	it('starts the turn with the speaker’s marker and ends it with [EOS]', () => {
+		expect(turnTokens('baby', 'Hi!')).toEqual(['[BABY]', 'hi', '!', '[EOS]']);
+		expect(turnTokens('you', 'Thank you')).toEqual(['[YOU]', 'thank', 'you', '[EOS]']);
 	});
 });
 
@@ -18,8 +19,8 @@ describe('parseScripts', () => {
 		`);
 
 		expect(documents).toEqual([
-			['you', ':', 'hi', 'baby', '!', '[EOS]', 'baby', ':', 'hi', '!', '[EOS]'],
-			['you', ':', 'bye', '.', '[EOS]', 'baby', ':', 'bye', '!', '[EOS]']
+			['[YOU]', 'hi', 'baby', '!', '[EOS]', '[BABY]', 'hi', '!', '[EOS]'],
+			['[YOU]', 'bye', '.', '[EOS]', '[BABY]', 'bye', '!', '[EOS]']
 		]);
 	});
 

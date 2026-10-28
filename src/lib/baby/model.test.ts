@@ -94,10 +94,26 @@ describe('Model', () => {
 			trace: {
 				prompt: ['hi', 'shouls', 'baby', ',', 'shouls', '!'],
 				unknown: ['shouls', ','],
-				context: ['you', ':', 'hi', '[UNK]', 'baby', '[UNK]', '[UNK]', '!', '[EOS]', 'baby', ':'],
+				context: ['[YOU]', 'hi', '[UNK]', 'baby', '[UNK]', '[UNK]', '!', '[EOS]', '[BABY]'],
 				stop: 'eos'
 			}
 		});
+	});
+
+	it('ends a reply at a turn start, as if its turn were over', async () => {
+		const model = newModel();
+		// Hand-made, not a parsed script: Baby’s turn runs straight into the next one.
+		await collect(
+			model.read({
+				source: 'run-on',
+				title: 'Run-on',
+				documents: [['[YOU]', 'hi', '[EOS]', '[BABY]', 'hello', '[YOU]']]
+			})
+		);
+		const events = await collect(model.reply('hi'));
+
+		expect(tokens(events)).toEqual(['hello']);
+		expect(events.at(-2)).toMatchObject({ type: 'trace', trace: { stop: 'turn' } });
 	});
 
 	it('refuses to read two things at once', async () => {

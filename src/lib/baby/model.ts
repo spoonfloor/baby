@@ -1,7 +1,7 @@
 import { Plateau, sampleBatch } from './practice.ts';
-import type { BabyEvent, BabyState, Reading } from './protocol.ts';
+import type { BabyEvent, BabyState, Reading, ReplyTrace } from './protocol.ts';
 import { count, describeReading, readingStats } from './reading.ts';
-import { turnTokens } from './script.ts';
+import { TURN_START, turnTokens } from './script.ts';
 import {
 	BABY_CONFIG,
 	sameConfig,
@@ -9,13 +9,13 @@ import {
 	type TransformerConfig,
 	type TransformerSnapshot
 } from './transformer.ts';
-import { EOS_ID, tokenize, UNK_ID, Vocabulary } from './vocabulary.ts';
+import { EOS, EOS_ID, isSpecial, tokenize, UNK_ID, Vocabulary } from './vocabulary.ts';
 
 /**
  * Baby’s model: a vocabulary, everything it has read, and a transformer that
  * practices on it. Reading teaches new words and then practices until Baby’s
  * guesses stop improving; replying picks one word at a time from Baby’s guesses.
- * A brand-new Baby knows no words, so the only thing it can pick is [EOS]: it is mute.
+ * A brand-new Baby knows no words, so all it can pick is a marker that ends its turn: it is mute.
  */
 
 /** Longest reply Baby will give before stopping on its own. */
@@ -132,31 +132,32 @@ export class Model {
 			text: `Recognized ${words.length - unknown.length} of ${count(words.length, 'word')}`
 		};
 
-		// The script format: Baby sees `you : … [EOS] baby :` and continues from there.
-		const ids = [...turnTokens('you', prompt), 'baby', ':'].map((word) =>
+		// The script format: Baby sees `[YOU] … [EOS] [BABY]` and continues from there.
+		const ids = [...turnTokens('you', prompt), TURN_START.baby].map((word) =>
 			this.#vocabulary.id(word)
 		);
 		const context = ids.map((id) => this.#vocabulary.word(id));
 		let picked = 0;
+		let stop: ReplyTrace['stop'] = 'limit';
+		let marker: string | undefined;
 		while (picked < MAX_REPLY_TOKENS) {
 			await this.#idle();
-			const id = this.#pick(this.#transformer.predict(ids));
-			if (id === EOS_ID) break;
-			ids.push(id);
-			const word = this.#vocabulary.word(id);
+			const word = this.#vocabulary.word(this.#pick(this.#transformer.predict(ids)));
+			// A marker ends the reply: [EOS], or a turn start, where Baby thinks the turn is over.
+			if (isSpecial(word)) {
+				stop = word === EOS ? 'eos' : 'turn';
+				marker = word;
+				break;
+			}
+			ids.push(this.#vocabulary.id(word));
 			yield { type: 'token', text: picked === 0 ? word : ` ${word}` };
 			picked++;
 		}
 
-		yield { type: 'status', text: this.#replySummary(picked) };
+		yield { type: 'status', text: this.#replySummary(picked, marker) };
 		yield {
 			type: 'trace',
-			trace: {
-				prompt: words,
-				unknown: [...new Set(unknown)],
-				context,
-				stop: picked < MAX_REPLY_TOKENS ? 'eos' : 'limit'
-			}
+			trace: { prompt: words, unknown: [...new Set(unknown)], context, stop }
 		};
 		yield { type: 'done' };
 	}
@@ -180,9 +181,9 @@ export class Model {
 		return picked;
 	}
 
-	#replySummary(picked: number): string {
+	#replySummary(picked: number, marker: string | undefined): string {
 		if (this.#vocabulary.size === 0) return 'Looked for words to say but found none';
-		if (picked === 0) return 'Picked [EOS] first, so said nothing';
+		if (picked === 0) return `Picked ${marker ?? EOS} first, so said nothing`;
 		return `Picked ${count(picked, 'word')}, each a guess at what comes next`;
 	}
 }

@@ -12,8 +12,8 @@ describe('shelves', () => {
 		for (const document of packs.flatMap((pack) => pack.documents)) {
 			// Each turn begins right after the previous one’s [EOS].
 			const lastTurn = document.lastIndexOf('[EOS]', -2) + 1;
-			expect(document.slice(0, 2)).toEqual(['you', ':']);
-			expect(document.slice(lastTurn, lastTurn + 2)).toEqual(['baby', ':']);
+			expect(document[0]).toBe('[YOU]');
+			expect(document[lastTurn]).toBe('[BABY]');
 		}
 	});
 });

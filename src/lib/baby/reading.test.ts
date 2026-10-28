@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { describeReading, readingStats } from './reading.ts';
 
 describe('readingStats', () => {
-	it('counts every word but [EOS], and each new word once', () => {
+	it('counts every word but the markers, and each new word once', () => {
 		const documents = [
-			['you', ':', 'hi', '[EOS]'],
-			['you', ':', 'bye', '[EOS]']
+			['[YOU]', 'hi', 'you', '[EOS]'],
+			['[YOU]', 'bye', 'you', '[EOS]']
 		];
-		const known = new Set(['you', ':']);
+		const known = new Set(['you']);
 
-		expect(readingStats(documents, (word) => known.has(word))).toEqual({ words: 6, newWords: 2 });
+		expect(readingStats(documents, (word) => known.has(word))).toEqual({ words: 4, newWords: 2 });
 	});
 });
 

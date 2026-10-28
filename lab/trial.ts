@@ -1,4 +1,5 @@
 import { parentPort, workerData } from 'node:worker_threads';
+import type { ReplyTrace } from '#lib/baby/index.ts';
 import { Model } from '#lib/baby/model.ts';
 import { seededRandom } from '#lib/baby/random.ts';
 import { chatbot101 } from '#lib/library/chatbot-101.ts';
@@ -17,10 +18,10 @@ export interface TrialRequest {
 	samples: number;
 }
 
-/** A reply as Baby gave it, and whether it stopped on [EOS] or hit the length limit. */
+/** A reply as Baby gave it, and how it ended. */
 export interface Sample {
 	reply: string;
-	stop: 'eos' | 'limit';
+	stop: ReplyTrace['stop'];
 }
 
 export interface Stage {
