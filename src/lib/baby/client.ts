@@ -1,11 +1,10 @@
-import type { BabyEvent, BabyRequest, BabyResponse, BabyState } from './protocol.ts';
-import type { Document } from './reading.ts';
+import type { BabyEvent, BabyRequest, BabyResponse, BabyState, Reading } from './protocol.ts';
 
 /** The app's view of Baby. */
 export interface Baby {
 	reply(prompt: string): AsyncIterable<BabyEvent>;
-	/** Reads `documents`, the exact tokens to train on, named `title` in status lines. */
-	read(title: string, documents: Document[]): AsyncIterable<BabyEvent>;
+	/** Reads, then practices on everything read so far. */
+	read(reading: Reading): AsyncIterable<BabyEvent>;
 	/** Calls `listener` with Baby's state now (once known) and on every change. Returns an unsubscribe. */
 	subscribe(listener: (state: BabyState) => void): () => void;
 }
@@ -65,7 +64,7 @@ export function createBaby(endpoint: Endpoint): Baby {
 
 	return {
 		reply: (prompt) => stream((id) => ({ type: 'reply', id, prompt })),
-		read: (title, documents) => stream((id) => ({ type: 'read', id, title, documents })),
+		read: (reading) => stream((id) => ({ type: 'read', id, reading })),
 		subscribe(listener) {
 			listeners.add(listener);
 			if (state) listener(state);

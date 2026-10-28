@@ -20,7 +20,7 @@ const echo = (request: BabyRequest): BabyResponse[] => [
 	{
 		id: request.id,
 		type: 'token',
-		text: request.type === 'reply' ? request.prompt : request.title
+		text: request.type === 'reply' ? request.prompt : request.reading.title
 	},
 	{ id: request.id, type: 'done' }
 ];
@@ -39,7 +39,7 @@ describe('createBaby', () => {
 			{ type: 'token', text: 'hi' },
 			{ type: 'done' }
 		]);
-		expect(await collect(baby.read('moon', []))).toEqual([
+		expect(await collect(baby.read({ source: 'moon', title: 'moon', documents: [] }))).toEqual([
 			{ type: 'token', text: 'moon' },
 			{ type: 'done' }
 		]);
@@ -57,19 +57,19 @@ describe('createBaby', () => {
 	it('passes state updates to subscribers, including late ones', async () => {
 		const baby = createBaby(
 			fakeWorker((request) => [
-				{ type: 'state', state: { words: ['a', 'b', 'c'] } },
+				{ type: 'state', state: { words: ['a', 'b', 'c'], sources: [] } },
 				{ id: request.id, type: 'done' }
 			])
 		);
 		const early: BabyState[] = [];
 		baby.subscribe((state) => early.push(state));
 
-		await collect(baby.read('x', []));
+		await collect(baby.read({ source: 'x', title: 'x', documents: [] }));
 		const late: BabyState[] = [];
 		baby.subscribe((state) => late.push(state));
 
-		expect(early).toEqual([{ words: ['a', 'b', 'c'] }]);
-		expect(late).toEqual([{ words: ['a', 'b', 'c'] }]);
+		expect(early).toEqual([{ words: ['a', 'b', 'c'], sources: [] }]);
+		expect(late).toEqual([{ words: ['a', 'b', 'c'], sources: [] }]);
 	});
 
 	it('fails the stream when Baby reports an error', async () => {
@@ -83,7 +83,8 @@ describe('createBaby', () => {
 
 		await expect(
 			(async () => {
-				for await (const event of baby.read('x', [])) events.push(event);
+				for await (const event of baby.read({ source: 'x', title: 'x', documents: [] }))
+					events.push(event);
 			})()
 		).rejects.toThrow('Baby broke');
 		expect(events).toEqual([{ type: 'status', text: 'Reading' }]);

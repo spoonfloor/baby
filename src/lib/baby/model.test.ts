@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Model } from './model.ts';
-import type { BabyEvent } from './protocol.ts';
+import type { BabyEvent, Reading } from './protocol.ts';
 import { seededRandom } from './random.ts';
 import { parseScripts } from './script.ts';
 import type { TransformerConfig } from './transformer.ts';
@@ -11,6 +11,22 @@ const SMALL: TransformerConfig = { dim: 16, layers: 2, heads: 2, hidden: 32, con
 
 const newModel = (seed = 1) =>
 	new Model({ random: seededRandom(seed), idle: async () => {}, config: SMALL });
+
+const rhyme: Reading = {
+	source: 'rhyme',
+	title: 'Rhyme',
+	documents: [tokenize('the cow jumped over the moon')]
+};
+const hi: Reading = {
+	source: 'hi',
+	title: 'Hi',
+	documents: parseScripts('you: Hi Baby!\nbaby: Hello there!')
+};
+const words = (text: string): Reading => ({
+	source: text,
+	title: text,
+	documents: [tokenize(text)]
+});
 
 async function collect(events: AsyncIterable<BabyEvent>) {
 	const collected: BabyEvent[] = [];
@@ -32,9 +48,12 @@ describe('Model', () => {
 
 	it('learns words by reading, practices, and reports both', async () => {
 		const model = newModel();
-		const events = await collect(model.read('Rhyme', [tokenize('the cow jumped over the moon')]));
+		const events = await collect(model.read(rhyme));
 
-		expect(model.state).toEqual({ words: ['the', 'cow', 'jumped', 'over', 'moon'] });
+		expect(model.state).toEqual({
+			words: ['the', 'cow', 'jumped', 'over', 'moon'],
+			sources: ['rhyme']
+		});
 		expect(
 			events.some((event) => event.type === 'status' && /^Practicing “Rhyme”/.test(event.text))
 		).toBe(true);
@@ -49,7 +68,7 @@ describe('Model', () => {
 
 	it('after reading, replies only with words it has read', async () => {
 		const model = newModel();
-		await collect(model.read('Rhyme', [tokenize('the cow jumped over the moon')]));
+		await collect(model.read(rhyme));
 		const known = new Set(['the', 'cow', 'jumped', 'over', 'moon']);
 
 		for (let attempt = 0; attempt < 20; attempt++) {
@@ -60,17 +79,55 @@ describe('Model', () => {
 
 	it('recites a memorized exchange, words separated by spaces inside the tokens', async () => {
 		const model = newModel();
-		await collect(model.read('Hi', parseScripts('you: Hi Baby!\nbaby: Hello there!')));
+		await collect(model.read(hi));
 
 		expect(tokens(await collect(model.reply('Hi Baby!')))).toEqual(['hello', ' there', ' !']);
 	});
 
 	it('refuses to read two things at once', async () => {
 		const model = newModel();
-		const first = model.read('One', [tokenize('a b c')]);
+		const first = model.read(words('a b c'));
 		await first.next();
 
-		await expect(model.read('Two', [tokenize('d e f')]).next()).rejects.toThrow();
+		await expect(model.read(words('d e f')).next()).rejects.toThrow();
 		await collect(first);
+	});
+
+	it('carries on from a snapshot exactly where it left off', async () => {
+		const model = newModel();
+		await collect(model.read(hi));
+		const restored = new Model({
+			random: seededRandom(1),
+			idle: async () => {},
+			config: SMALL,
+			snapshot: model.snapshot()
+		});
+
+		expect(restored.state).toEqual(model.state);
+		expect(tokens(await collect(restored.reply('Hi Baby!')))).toEqual(['hello', ' there', ' !']);
+		expect(restored.snapshot()).toEqual(model.snapshot());
+	});
+
+	it('keeps reading after being restored, words keeping their ids', async () => {
+		const model = newModel();
+		await collect(model.read(hi));
+		const restored = new Model({
+			random: seededRandom(2),
+			idle: async () => {},
+			config: SMALL,
+			snapshot: model.snapshot()
+		});
+
+		await collect(restored.read(rhyme));
+
+		expect(restored.state.sources).toEqual(['hi', 'rhyme']);
+		expect(restored.state.words.slice(0, model.state.words.length)).toEqual(model.state.words);
+	});
+
+	it('refuses a snapshot of a different size', async () => {
+		const snapshot = newModel().snapshot();
+		const options = { random: seededRandom(1), idle: async () => {}, snapshot };
+
+		expect(() => new Model({ ...options, config: { ...SMALL, dim: 32 } })).toThrow();
 	});
 });

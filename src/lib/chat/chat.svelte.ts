@@ -1,4 +1,3 @@
-import { SvelteSet } from 'svelte/reactivity';
 import type { Baby, BabyEvent, BabyState } from '#lib/baby/index.ts';
 import type { Pack } from '#lib/library/index.ts';
 import type { Notice } from './notices.ts';
@@ -25,8 +24,8 @@ export class Chat {
 	reading = $state(false);
 	/** What Baby knows, as last reported by Baby. */
 	knowledge: BabyState | undefined = $state();
-	/** Ids of the packs Baby has finished reading. */
-	readPacks = new SvelteSet<string>();
+	/** Ids of the packs Baby has finished reading, as Baby reports them. */
+	readPacks: string[] = $derived(this.knowledge?.sources ?? []);
 
 	#baby: Baby;
 
@@ -51,9 +50,9 @@ export class Chat {
 	async read(pack: Pack) {
 		if (this.reading) throw new Error('Baby is already reading');
 		this.reading = true;
-		const read = await this.#follow(this.#baby.read(pack.title, pack.documents));
+		const { id: source, title, documents } = pack;
+		await this.#follow(this.#baby.read({ source, title, documents }));
 		this.reading = false;
-		if (read) this.readPacks.add(pack.id);
 	}
 
 	/**

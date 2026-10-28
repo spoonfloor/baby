@@ -1,8 +1,14 @@
 import { Plateau, sampleBatch } from './practice.ts';
-import type { BabyEvent, BabyState } from './protocol.ts';
-import { count, describeReading, readingStats, type Document } from './reading.ts';
+import type { BabyEvent, BabyState, Reading } from './protocol.ts';
+import { count, describeReading, readingStats } from './reading.ts';
 import { turnTokens } from './script.ts';
-import { BABY_CONFIG, Transformer, type TransformerConfig } from './transformer.ts';
+import {
+	BABY_CONFIG,
+	sameConfig,
+	Transformer,
+	type TransformerConfig,
+	type TransformerSnapshot
+} from './transformer.ts';
 import { EOS_ID, tokenize, UNK_ID, Vocabulary } from './vocabulary.ts';
 
 /**
@@ -20,28 +26,64 @@ export interface ModelOptions {
 	/** Lets other requests in between steps of work (chatting while Baby practices). */
 	idle: () => Promise<void>;
 	config?: TransformerConfig;
+	/** A Baby saved earlier, to carry on from. Must match `config`. */
+	snapshot?: ModelSnapshot;
+}
+
+/** Everything Baby is, as plain data to store and restore. */
+export interface ModelSnapshot {
+	/** Real words in id order, so restoring gives every word its old id. */
+	words: string[];
+	documents: number[][];
+	sources: string[];
+	transformer: TransformerSnapshot;
 }
 
 export class Model {
 	#vocabulary = new Vocabulary();
 	/** Everything Baby has read, as word ids, one array per document. */
 	#documents: number[][] = [];
+	/** The `source` of every finished reading, each once. */
+	#sources: string[] = [];
 	#transformer: Transformer;
 	#random: () => number;
 	#idle: () => Promise<void>;
 	#practicing = false;
 
-	constructor({ random, idle, config = BABY_CONFIG }: ModelOptions) {
+	constructor({ random, idle, config = BABY_CONFIG, snapshot }: ModelOptions) {
 		this.#random = random;
 		this.#idle = idle;
-		this.#transformer = new Transformer(config, this.#vocabulary.tokenCount, random);
+		if (!snapshot) {
+			this.#transformer = new Transformer(config, this.#vocabulary.tokenCount, random);
+			return;
+		}
+		if (!sameConfig(snapshot.transformer.config, config)) {
+			throw new RangeError('Snapshot is of a Baby with a different size');
+		}
+		this.#vocabulary.add(snapshot.words);
+		if (snapshot.transformer.vocabularySize !== this.#vocabulary.tokenCount) {
+			throw new RangeError('Snapshot’s words don’t match its numbers');
+		}
+		this.#documents = snapshot.documents.map((document) => [...document]);
+		this.#sources = [...snapshot.sources];
+		this.#transformer = Transformer.restore(snapshot.transformer, random);
 	}
 
 	get state(): BabyState {
-		return { words: this.#vocabulary.words };
+		return { words: this.#vocabulary.words, sources: [...this.#sources] };
 	}
 
-	async *read(title: string, documents: Document[]): AsyncGenerator<BabyEvent> {
+	/** A copy of everything Baby is right now. */
+	snapshot(): ModelSnapshot {
+		return {
+			words: this.#vocabulary.words,
+			documents: this.#documents.map((document) => [...document]),
+			sources: [...this.#sources],
+			transformer: this.#transformer.snapshot()
+		};
+	}
+
+	async *read({ source, title, documents }: Reading): AsyncGenerator<BabyEvent> {
 		if (this.#practicing) throw new Error('Baby is already reading');
 		this.#practicing = true;
 		try {
@@ -68,6 +110,7 @@ export class Model {
 				await this.#idle();
 			}
 
+			if (!this.#sources.includes(source)) this.#sources.push(source);
 			yield {
 				type: 'status',
 				text: `Read “${title}”: ${describeReading(stats)} · loss ${formatLoss(plateau.first)} → ${formatLoss(plateau.latest)} in ${count(plateau.steps, 'step')}`

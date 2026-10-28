@@ -17,12 +17,23 @@ export type BabyEvent =
 export interface BabyState {
 	/** Every word Baby has read, not counting the special tokens. */
 	words: string[];
+	/** The `source` of every reading Baby has finished, each once. */
+	sources: string[];
+}
+
+/** Something for Baby to read in one sitting. */
+export interface Reading {
+	/** Where it came from (a pack id), so the app can tell later what Baby has read. */
+	source: string;
+	/** Its name in status lines. */
+	title: string;
+	/** The exact tokens to train on. */
+	documents: Document[];
 }
 
 /** App → worker. */
 export type BabyRequest =
-	| { type: 'reply'; id: string; prompt: string }
-	| { type: 'read'; id: string; title: string; documents: Document[] };
+	{ type: 'reply'; id: string; prompt: string } | { type: 'read'; id: string; reading: Reading };
 
 /**
  * Worker → app: an event tagged with its request, a request that failed (ending it

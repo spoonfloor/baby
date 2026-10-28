@@ -20,7 +20,7 @@
 	const menuShelves = $derived(
 		shelves.map((shelf) => ({
 			...shelf,
-			packs: shelf.packs.map(({ id, title }) => ({ id, title, read: chat.readPacks.has(id) }))
+			packs: shelf.packs.map(({ id, title }) => ({ id, title, read: chat.readPacks.includes(id) }))
 		}))
 	);
 	const known = $derived(new Set(chat.knowledge?.words));
@@ -75,7 +75,7 @@
 		title={pack.title}
 		summary={describeReading(readingStats(pack.documents, (word) => known.has(word)))}
 		documents={pack.documents}
-		read={chat.readPacks.has(pack.id)}
+		read={chat.readPacks.includes(pack.id)}
 		onread={() => read(pack)}
 		onclose={() => (previewing = undefined)}
 	/>

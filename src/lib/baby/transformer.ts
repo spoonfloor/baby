@@ -51,6 +51,10 @@ export const BABY_CONFIG: TransformerConfig = {
 	context: 128
 };
 
+export function sameConfig(a: TransformerConfig, b: TransformerConfig): boolean {
+	return (Object.keys(a) as (keyof TransformerConfig)[]).every((key) => a[key] === b[key]);
+}
+
 export interface OptimizerConfig {
 	learningRate: number;
 	/** Caps the overall size of each step’s gradient, so one odd window can’t wreck Baby. */
@@ -93,6 +97,16 @@ export class Param {
 		this.m = extend(this.m, () => 0);
 		this.v = extend(this.v, () => 0);
 	}
+}
+
+/** Everything a transformer has learned, as plain data to store and restore. */
+export interface TransformerSnapshot {
+	config: TransformerConfig;
+	vocabularySize: number;
+	/** Training steps taken so far, which Adam’s corrections depend on. */
+	steps: number;
+	/** Each of `params`, in order, with Adam’s running averages. */
+	params: { data: Float32Array; m: Float32Array; v: Float32Array }[];
 }
 
 interface Layer {
@@ -172,6 +186,40 @@ export class Transformer {
 		}));
 		this.finalNorm = new Param(dim, ones);
 		this.unembedding = new Param(vocabularySize * dim, noise);
+	}
+
+	/** A transformer that picks up exactly where `snapshot` left off. */
+	static restore(snapshot: TransformerSnapshot, random: () => number): Transformer {
+		const transformer = new Transformer(snapshot.config, snapshot.vocabularySize, random);
+		const params = transformer.params;
+		if (params.length !== snapshot.params.length) {
+			throw new RangeError('Snapshot has the wrong number of parameters');
+		}
+		params.forEach((param, i) => {
+			const saved = snapshot.params[i];
+			if (saved?.data.length !== param.data.length) {
+				throw new RangeError('Snapshot parameters have the wrong sizes');
+			}
+			param.data.set(saved.data);
+			param.m.set(saved.m);
+			param.v.set(saved.v);
+		});
+		transformer.#steps = snapshot.steps;
+		return transformer;
+	}
+
+	/** A copy of everything learned so far; training on afterwards doesn’t change it. */
+	snapshot(): TransformerSnapshot {
+		return {
+			config: { ...this.config },
+			vocabularySize: this.#vocabularySize,
+			steps: this.#steps,
+			params: this.params.map(({ data, m, v }) => ({
+				data: data.slice(),
+				m: m.slice(),
+				v: v.slice()
+			}))
+		};
 	}
 
 	get vocabularySize(): number {

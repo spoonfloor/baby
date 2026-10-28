@@ -5,21 +5,31 @@ import { Chat } from './chat.svelte.ts';
 
 const pack: Pack = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
 
-/** A Baby that answers every request with `events`, then done, knowing `words`. */
+/**
+ * A Baby that answers every request with `events`, then done, knowing `words`.
+ * Like the real one, it reports a finished reading’s source just before done.
+ */
 function fakeBaby(events: BabyEvent[], words: string[]) {
 	let release = () => {};
 	const released = new Promise<void>((resolve) => (release = resolve));
-	async function* respond(): AsyncGenerator<BabyEvent> {
+	const listeners = new Set<(state: BabyState) => void>();
+	let state: BabyState = { words, sources: [] };
+	async function* respond(source?: string): AsyncGenerator<BabyEvent> {
 		yield* events;
 		await released;
+		if (source !== undefined) {
+			state = { ...state, sources: [...state.sources, source] };
+			for (const listener of listeners) listener(state);
+		}
 		yield { type: 'done' };
 	}
 	const baby: Baby = {
-		reply: respond,
-		read: respond,
-		subscribe(listener: (state: BabyState) => void) {
-			listener({ words });
-			return () => {};
+		reply: () => respond(),
+		read: ({ source }) => respond(source),
+		subscribe(listener) {
+			listeners.add(listener);
+			listener(state);
+			return () => listeners.delete(listener);
 		}
 	};
 	return { baby, release };
@@ -86,7 +96,7 @@ describe('Chat', () => {
 
 		const reading = chat.read(pack);
 		await Promise.resolve();
-		expect(chat.readPacks.has(pack.id)).toBe(false);
+		expect(chat.readPacks.includes(pack.id)).toBe(false);
 
 		release();
 		await reading;
@@ -94,7 +104,7 @@ describe('Chat', () => {
 		expect(chat.messages).toMatchObject([
 			{ role: 'baby', text: '', status: 'Read 3 words', pending: false }
 		]);
-		expect(chat.readPacks.has(pack.id)).toBe(true);
+		expect(chat.readPacks.includes(pack.id)).toBe(true);
 	});
 
 	it('refuses a second message while replying, and a second pack while reading', async () => {
@@ -131,7 +141,7 @@ describe('Chat', () => {
 		await chat.read(pack);
 
 		expect(chat.reading).toBe(false);
-		expect(chat.readPacks.has(pack.id)).toBe(false);
+		expect(chat.readPacks.includes(pack.id)).toBe(false);
 		expect(chat.messages).toMatchObject([
 			{ role: 'baby', status: 'Thinking', pending: false },
 			{ role: 'app', notice: 'failed' }
