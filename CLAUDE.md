@@ -7,6 +7,7 @@ Product brief: `README.md`. Solo hobby project: enterprise-quality code, no team
 - Fix problems at the highest appropriate level. No bandaids, no hacks, no tech debt; refactors toward best practice are welcome.
 - Sameness: anything that should look or act the same comes from one definition (a token, a component). Never duplicate a value.
 - No motion unless the user has approved it. Instant state changes by default.
+- Baby stays pure. Baby takes in text and produces its own words; nothing edits, replaces, or injects into its replies. How it learns, what text it sees (including conversation history), how it picks words, and learned mechanisms like copying words from the prompt are all fine. The app speaks only in its own voice.
 
 ## Stack
 
