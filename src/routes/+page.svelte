@@ -71,9 +71,10 @@
 		/>
 	</header>
 
-	<main class={['chat', { empty }]}>
+	<!-- The transcript and the composer both grow (a reply streaming, a draft wrapping), so follow them together. -->
+	<main class={['chat', { empty }]} {@attach bottom.attachment}>
 		{#if !empty}
-			<ol class="transcript" {@attach bottom.attachment}>
+			<ol class="transcript">
 				{#each chat.messages as message (message.id)}
 					<li>
 						{#if message.role === 'user'}

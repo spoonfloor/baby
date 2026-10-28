@@ -2,7 +2,8 @@ import type { Attachment } from 'svelte/attachments';
 
 /**
  * Keeps the page scrolled to the bottom as the attached element grows (e.g.
- * while Baby streams a reply), unless the user has scrolled up to read.
+ * while Baby streams a reply, or a draft wraps onto another line), unless the
+ * user has scrolled up to read.
  * `pin()` follows the bottom again, e.g. when the user sends.
  */
 export function stickToBottom(): { attachment: Attachment<HTMLElement>; pin: () => void } {
