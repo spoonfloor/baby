@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { spawnBaby } from '#lib/baby/index.ts';
 	import { describeReading, readingStats } from '#lib/baby/reading.ts';
+	import { typeset } from '#lib/baby/typeset.ts';
 	import { Chat } from '#lib/chat/chat.svelte.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { transcript } from '#lib/chat/transcript.ts';
@@ -77,7 +78,11 @@
 						{#if message.role === 'user'}
 							<UserMessage text={message.text} />
 						{:else if message.role === 'baby'}
-							<BabyMessage text={message.text} status={message.status} pending={message.pending} />
+							<BabyMessage
+								text={typeset(message.text.split(' '))}
+								status={message.status}
+								pending={message.pending}
+							/>
 						{:else}
 							<AppMessage text={noticeText(message.notice, pointerVerb())} />
 						{/if}
