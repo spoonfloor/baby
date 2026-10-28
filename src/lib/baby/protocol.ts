@@ -1,17 +1,25 @@
 /**
- * The seam between the app and the model. The app asks Baby for a reply and
- * receives a stream of events. The stub babbler and the real WebGPU model both
- * speak this protocol, so swapping one for the other never touches the UI.
+ * The seam between the app and the model. The app asks Baby to reply or to read,
+ * and receives a stream of events for each request. Baby also pushes its state
+ * whenever it changes. Any model behind this protocol (the untrained one now, the
+ * WebGPU transformer later) can be swapped in without touching the UI.
  */
 
-/** One step of a reply, in order: any number of `status`/`token`, then one `done`. */
+/** One step of a request, in order: any number of `status`/`token`, then one `done`. */
 export type BabyEvent =
 	| { type: 'status'; text: string } // what Baby is doing right now
-	| { type: 'token'; text: string } // the next piece of the reply, whitespace included
+	| { type: 'token'; text: string } // the next piece of a reply, whitespace included
 	| { type: 'done' };
 
-/** App → worker. */
-export type BabyRequest = { type: 'reply'; id: string; prompt: string };
+/** What Baby knows, for the app to react to (e.g. the Coach). */
+export interface BabyState {
+	/** Words Baby has read, not counting the special tokens. */
+	vocabularySize: number;
+}
 
-/** Worker → app: an event, tagged with the request it belongs to. */
-export type BabyResponse = BabyEvent & { id: string };
+/** App → worker. */
+export type BabyRequest =
+	{ type: 'reply'; id: string; prompt: string } | { type: 'read'; id: string; text: string };
+
+/** Worker → app: an event tagged with its request, or Baby's latest state. */
+export type BabyResponse = (BabyEvent & { id: string }) | { type: 'state'; state: BabyState };

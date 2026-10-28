@@ -20,11 +20,12 @@ SvelteKit 3 (static adapter, `ssr = false`), Svelte 5 runes, TypeScript strict, 
 ```
 src/lib/styles/   tokens.css (all raw values) + base.css
 src/lib/ui/       presentational components: props in, callbacks out, no app logic
-src/lib/chat/     conversation state (Chat class, runes)
+src/lib/chat/     conversation state (Chat class, runes) + Coach notices (the app's own voice)
 src/lib/baby/     the model, behind the Baby protocol
-  protocol.ts     the app ↔ model seam: status/token/done events
+  protocol.ts     the app ↔ model seam: reply/read requests → status/token/done events; pushed state
   client.ts       app side: createBaby(endpoint) → Baby
-  babble.ts       stub model (random words); the real model replaces it
+  vocabulary.ts   word-level tokenizer; vocabulary starts with only [UNK] and [EOS]
+  model.ts        untrained model: mute until it reads, then uniform random picks
   worker/         worker entry, its own TS project (WebWorker globals, not DOM)
 src/routes/       / (chat), /kitchen-sink (every component in every state)
 ```
@@ -34,6 +35,11 @@ src/routes/       / (chat), /kitchen-sink (every component in every state)
 - **Tokens** (Stylelint): hex/named colors, color functions, and px/rem/em/ms/s units are allowed only in `tokens.css`. `--raw-*` primitives are never used outside it; components use semantic tokens.
 - **Motion** (Stylelint): `transition*`, `animation*`, `@keyframes` and `scroll-behavior` are banned except in files on `APPROVED_ANIMATIONS` in `stylelint.config.js`. Add a file there only after the user approves the animation.
 - **No inline styles** in Svelte markup (ESLint), since they would bypass the token rules.
+- **Curly quotes** (ESLint): user-facing text uses ’ “ ”, never straight quotes. Code that genuinely needs one disables the rule on that line with a reason.
+
+## Voices
+
+Three voices, kept visibly distinct: the user (bubble), Baby (status line + plain reply), and the app/Coach (`AppMessage`, `--color-coach`). Baby stays honest (an empty reply is empty); the app interprets Baby's state and explains. Copy that depends on the device says Click/Tap via `pointerVerb()`.
 
 ## Workflow
 

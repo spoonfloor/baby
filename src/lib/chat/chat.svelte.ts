@@ -1,53 +1,77 @@
-import type { Baby } from '#lib/baby/index.ts';
+import type { Baby, BabyEvent, BabyState } from '#lib/baby/index.ts';
+import type { Notice } from './notices.ts';
 
 export type UserMessage = { id: string; role: 'user'; text: string };
 export type BabyMessage = {
 	id: string;
 	role: 'baby';
+	/** Reply text; empty for reading, or when Baby says nothing. */
 	text: string;
-	/** Baby's latest status, kept after the reply finishes as a record of what happened. */
+	/** Baby's latest status, kept after it finishes as a record of what happened. */
 	status: string;
 	pending: boolean;
 };
-export type Message = UserMessage | BabyMessage;
+export type AppMessage = { id: string; role: 'app'; notice: Notice };
+export type Message = UserMessage | BabyMessage | AppMessage;
 
-/** The conversation: what's been said, and whether Baby is mid-reply. */
+/** The conversation: what's been said and read, and whether Baby is busy. */
 export class Chat {
 	messages: Message[] = $state([]);
 	busy = $derived(this.messages.some((message) => message.role === 'baby' && message.pending));
+	/** What Baby knows, as last reported by Baby. */
+	knowledge: BabyState | undefined = $state();
 
 	#baby: Baby;
 
 	constructor(baby: Baby) {
 		this.#baby = baby;
+		baby.subscribe((state) => (this.knowledge = state));
 	}
 
 	async send(text: string) {
-		if (this.busy) throw new Error('Baby is still replying');
-
+		this.#assertIdle();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
-		const reply: BabyMessage = $state({
+		const reply = await this.#follow(this.#baby.reply(text));
+
+		if (reply.text === '' && this.knowledge?.vocabularySize === 0) {
+			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'newborn' });
+		}
+	}
+
+	async read(text: string) {
+		this.#assertIdle();
+		await this.#follow(this.#baby.read(text));
+	}
+
+	#assertIdle() {
+		if (this.busy) throw new Error('Baby is busy');
+	}
+
+	/** Adds a Baby message and keeps it in step with `events` until done. */
+	async #follow(events: AsyncIterable<BabyEvent>): Promise<BabyMessage> {
+		const message: BabyMessage = $state({
 			id: crypto.randomUUID(),
 			role: 'baby',
 			text: '',
 			status: '',
 			pending: true
 		});
-		this.messages.push(reply);
+		this.messages.push(message);
 
-		for await (const event of this.#baby.reply(text)) {
+		for await (const event of events) {
 			switch (event.type) {
 				case 'status':
-					reply.status = event.text;
+					message.status = event.text;
 					break;
 				case 'token':
-					reply.text += event.text;
+					message.text += event.text;
 					break;
 				case 'done':
-					reply.pending = false;
+					message.pending = false;
 					break;
 			}
 		}
+		return message;
 	}
 }

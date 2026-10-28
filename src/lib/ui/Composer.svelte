@@ -3,17 +3,20 @@
 	its text. Typing is always allowed, but sending waits until `ready`.
 -->
 <script lang="ts">
-	import ReturnIcon from './ReturnIcon.svelte';
+	import type { Snippet } from 'svelte';
+	import IconButton from './IconButton.svelte';
 	import Surface from './Surface.svelte';
 
 	interface Props {
 		placeholder: string;
 		ready?: boolean;
 		value?: string;
+		/** Controls shown before the field, e.g. the + menu. */
+		start?: Snippet;
 		onsend: (text: string) => void;
 	}
 
-	let { placeholder, ready = true, value = $bindable(''), onsend }: Props = $props();
+	let { placeholder, ready = true, value = $bindable(''), start, onsend }: Props = $props();
 
 	let field: HTMLTextAreaElement;
 	const canSend = $derived(ready && value.trim() !== '');
@@ -46,6 +49,7 @@
 
 <Surface as="form" {onsubmit}>
 	<div class="row">
+		{@render start?.()}
 		<textarea
 			bind:this={field}
 			bind:value
@@ -53,9 +57,7 @@
 			{onkeydown}
 			rows="1"
 			aria-label={placeholder}></textarea>
-		<button type="submit" disabled={!canSend} aria-label="Send">
-			<ReturnIcon />
-		</button>
+		<IconButton icon="return" label="Send" type="submit" disabled={!canSend} />
 	</div>
 </Surface>
 
@@ -79,20 +81,5 @@
 
 	textarea::placeholder {
 		color: var(--color-text-muted);
-	}
-
-	button {
-		display: grid;
-		place-items: center;
-		block-size: 1lh;
-		padding: 0;
-		border: none;
-		background: none;
-		color: var(--color-text-muted);
-		cursor: pointer;
-	}
-
-	button:disabled {
-		cursor: default;
 	}
 </style>

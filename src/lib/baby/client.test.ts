@@ -1,20 +1,25 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createBaby, type Endpoint } from './client.ts';
-import type { BabyEvent, BabyRequest, BabyResponse } from './protocol.ts';
+import type { BabyEvent, BabyRequest, BabyResponse, BabyState } from './protocol.ts';
 
-/** A fake worker on the far side of a real MessageChannel, replying with `script(prompt)`. */
-function fakeWorker(script: (prompt: string) => BabyEvent[]) {
+const ports: MessagePort[] = [];
+afterEach(() => ports.splice(0).forEach((port) => port.close()));
+
+/** A fake worker on the far side of a real MessageChannel. */
+function fakeWorker(script: (request: BabyRequest) => BabyResponse[]) {
 	const { port1, port2 } = new MessageChannel();
-	port2.onmessage = ({ data: { id, prompt } }: MessageEvent<BabyRequest>) => {
-		for (const event of script(prompt)) port2.postMessage({ ...event, id } satisfies BabyResponse);
+	port2.onmessage = ({ data }: MessageEvent<BabyRequest>) => {
+		for (const response of script(data)) port2.postMessage(response);
 	};
 	port1.start();
-	channels.push(port1, port2);
+	ports.push(port1, port2);
 	return port1 as Endpoint;
 }
 
-const channels: MessagePort[] = [];
-afterEach(() => channels.splice(0).forEach((port) => port.close()));
+const echo = (request: BabyRequest): BabyResponse[] => [
+	{ id: request.id, type: 'token', text: request.type === 'reply' ? request.prompt : request.text },
+	{ id: request.id, type: 'done' }
+];
 
 async function collect(stream: AsyncIterable<BabyEvent>) {
 	const events: BabyEvent[] = [];
@@ -23,30 +28,43 @@ async function collect(stream: AsyncIterable<BabyEvent>) {
 }
 
 describe('createBaby', () => {
-	it('yields the worker events for a reply, ending at done', async () => {
-		const baby = createBaby(
-			fakeWorker((prompt) => [
-				{ type: 'status', text: 'thinking' },
-				{ type: 'token', text: prompt },
-				{ type: 'done' }
-			])
-		);
+	it('streams the events for a request, ending at done', async () => {
+		const baby = createBaby(fakeWorker(echo));
 
 		expect(await collect(baby.reply('hi'))).toEqual([
-			{ type: 'status', text: 'thinking' },
 			{ type: 'token', text: 'hi' },
+			{ type: 'done' }
+		]);
+		expect(await collect(baby.read('moon'))).toEqual([
+			{ type: 'token', text: 'moon' },
 			{ type: 'done' }
 		]);
 	});
 
-	it('keeps concurrent replies apart', async () => {
-		const baby = createBaby(
-			fakeWorker((prompt) => [{ type: 'token', text: prompt }, { type: 'done' }])
-		);
+	it('keeps concurrent requests apart', async () => {
+		const baby = createBaby(fakeWorker(echo));
 
 		const [a, b] = await Promise.all([collect(baby.reply('a')), collect(baby.reply('b'))]);
 
 		expect(a).toEqual([{ type: 'token', text: 'a' }, { type: 'done' }]);
 		expect(b).toEqual([{ type: 'token', text: 'b' }, { type: 'done' }]);
+	});
+
+	it('passes state updates to subscribers, including late ones', async () => {
+		const baby = createBaby(
+			fakeWorker((request) => [
+				{ type: 'state', state: { vocabularySize: 3 } },
+				{ id: request.id, type: 'done' }
+			])
+		);
+		const early: BabyState[] = [];
+		baby.subscribe((state) => early.push(state));
+
+		await collect(baby.read('x'));
+		const late: BabyState[] = [];
+		baby.subscribe((state) => late.push(state));
+
+		expect(early).toEqual([{ vocabularySize: 3 }]);
+		expect(late).toEqual([{ vocabularySize: 3 }]);
 	});
 });

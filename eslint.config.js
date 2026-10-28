@@ -22,5 +22,23 @@ export default defineConfig(
 			// Inline styles would bypass the token rules enforced by Stylelint.
 			'svelte/no-inline-styles': 'error'
 		}
+	},
+	{
+		// User-facing copy uses curly quotes and apostrophes (’ “ ”), never straight ones.
+		files: ['src/**'],
+		rules: {
+			'no-restricted-syntax': [
+				'error',
+				...[
+					'Literal[value=/[\'"]/]',
+					'TemplateElement[value.raw=/[\'"]/]',
+					'SvelteText[value=/[\'"]/]:not(SvelteStyleElement > SvelteText)',
+					'SvelteLiteral[value=/[\'"]/]'
+				].map((selector) => ({
+					selector,
+					message: 'Use curly quotes (’ “ ”) in text, not straight ones.'
+				}))
+			]
+		}
 	}
 );

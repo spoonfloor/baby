@@ -1,5 +1,11 @@
+<script lang="ts">
+	import { icons, type IconName } from './icons.ts';
+
+	let { name }: { name: IconName } = $props();
+</script>
+
 <svg viewBox="0 0 24 24" aria-hidden="true">
-	<path d="M20 5v7a3 3 0 0 1-3 3H5M9 11l-4 4 4 4" />
+	<path d={icons[name]} />
 </svg>
 
 <style>

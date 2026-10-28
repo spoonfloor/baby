@@ -12,12 +12,16 @@
 	--raw-gray-850: #2a2a2a;
 	--raw-gray-450: #8a8a8a;
 	--raw-gray-50: #f4f4f4;
+	--raw-pink-400: #ee6f97;
+	--raw-black-60: #0009;
 
 	/* Color */
 	--color-bg: var(--raw-gray-950);
 	--color-surface: var(--raw-gray-850); /* composer + user bubble */
 	--color-text: var(--raw-gray-50); /* all message text */
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, icons, labels */
+	--color-coach: var(--raw-pink-400); /* the app speaking, as distinct from Baby */
+	--color-backdrop: var(--raw-black-60); /* behind modal dialogs */
 
 	/* Type: one family, one size */
 	--font-family: 'Inter Variable', system-ui, sans-serif;
