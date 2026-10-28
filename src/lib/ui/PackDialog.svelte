@@ -22,7 +22,7 @@
 	let { title, summary, documents, read, onread, onclose }: Props = $props();
 </script>
 
-<Dialog {title} description={summary} {onclose}>
+<Dialog {title} size="wide" line={{ meta: summary }} {onclose}>
 	<ScriptText {documents} />
 	{#snippet actions(close)}
 		<Button onclick={close}>Cancel</Button>

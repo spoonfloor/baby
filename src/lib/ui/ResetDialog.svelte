@@ -13,7 +13,11 @@
 
 <Dialog
 	title="Reset model?"
-	description="Baby will forget everything it has ever read and start from a blank slate. This can’t be undone."
+	size="narrow"
+	line={{
+		description:
+			'Baby will forget everything it has ever read and start from a blank slate. This can’t be undone.'
+	}}
 	{onclose}
 >
 	{#snippet actions(close)}

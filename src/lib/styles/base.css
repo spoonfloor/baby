@@ -11,7 +11,22 @@ body {
 	font-family: var(--font-family);
 	font-size: var(--font-size-body);
 	line-height: var(--line-height-body);
+	font-weight: var(--font-weight-body);
 	-webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+	font-size: inherit;
+	font-weight: var(--font-weight-strong);
+	text-wrap: balance;
+}
+
+/* Running text stays readable: no overlong lines, no word stranded on the last one. */
+p {
+	max-inline-size: var(--measure);
+	text-wrap: pretty;
 }
 
 button,

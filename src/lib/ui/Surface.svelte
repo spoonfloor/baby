@@ -1,6 +1,7 @@
 <!--
-	The raised container for everything that sits "on" the page: the composer and
-	the user's message bubbles. Its look is defined once, here.
+	The raised container for everything that sits "on" the page: the composer, the
+	user's message bubbles, menus and dialogs. Its look is defined once, here.
+	Dialogs are `roomy`: equal padding on every side, matching the corner radius.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -8,13 +9,14 @@
 
 	interface Props extends HTMLAttributes<HTMLElement> {
 		as?: 'div' | 'form';
+		roomy?: boolean;
 		children: Snippet;
 	}
 
-	let { as = 'div', children, ...rest }: Props = $props();
+	let { as = 'div', roomy = false, children, ...rest }: Props = $props();
 </script>
 
-<svelte:element this={as} class="surface" {...rest}>
+<svelte:element this={as} class={['surface', { roomy }]} {...rest}>
 	{@render children()}
 </svelte:element>
 
@@ -23,5 +25,9 @@
 		background: var(--color-surface);
 		border-radius: var(--radius-surface);
 		padding: var(--space-surface-block) var(--space-surface-inline);
+	}
+
+	.roomy {
+		padding: var(--space-surface-roomy);
 	}
 </style>

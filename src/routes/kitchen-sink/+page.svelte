@@ -184,8 +184,7 @@
 	h2 {
 		margin: 0;
 		color: var(--color-text-muted);
-		font-size: inherit;
-		font-weight: inherit;
+		font-weight: var(--font-weight-body);
 	}
 
 	.row {
