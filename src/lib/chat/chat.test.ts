@@ -26,6 +26,11 @@ function fakeBaby(events: BabyEvent[], words: string[]) {
 	const baby: Baby = {
 		reply: () => respond(),
 		read: ({ source }) => respond(source),
+		async *reset() {
+			state = { words: [], sources: [] };
+			for (const listener of listeners) listener(state);
+			yield { type: 'done' };
+		},
 		subscribe(listener) {
 			listeners.add(listener);
 			listener(state);
@@ -41,7 +46,7 @@ function failingBaby(): Baby {
 		yield { type: 'status', text: 'Thinking' };
 		throw new Error('Baby broke');
 	}
-	return { reply: respond, read: respond, subscribe: () => () => {} };
+	return { reply: respond, read: respond, reset: respond, subscribe: () => () => {} };
 }
 
 describe('Chat', () => {
@@ -147,5 +152,37 @@ describe('Chat', () => {
 			{ role: 'app', notice: 'failed' }
 		]);
 		await expect(chat.send('still there?')).resolves.toBeUndefined();
+	});
+
+	it('resets: Baby forgets its reading and the conversation is cleared', async () => {
+		const { baby, release } = fakeBaby([], ['a']);
+		const chat = new Chat(baby);
+		release();
+		await chat.read(pack);
+		await chat.send('hi');
+
+		await chat.reset();
+
+		expect(chat.messages).toEqual([]);
+		expect(chat.readPacks).toEqual([]);
+	});
+
+	it('refuses to reset while Baby is busy', async () => {
+		const { baby, release } = fakeBaby([], ['a']);
+		const chat = new Chat(baby);
+
+		const reading = chat.read(pack);
+		await expect(chat.reset()).rejects.toThrow();
+
+		release();
+		await reading;
+	});
+
+	it('keeps the conversation and says so when a reset fails', async () => {
+		const chat = new Chat(failingBaby());
+
+		await chat.reset();
+
+		expect(chat.messages).toMatchObject([{ role: 'app', notice: 'failed' }]);
 	});
 });

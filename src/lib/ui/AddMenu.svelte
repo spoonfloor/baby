@@ -1,13 +1,11 @@
 <!--
 	The + button and its menu of things Baby can read. Each shelf drills into its list
-	of packs, in place; a shelf with nothing on it is disabled. Uses the native
-	popover, which gives light dismiss and Escape for free.
+	of packs, in place; a shelf with nothing on it is disabled.
 -->
 <script lang="ts">
 	import { tick } from 'svelte';
 	import Icon from './Icon.svelte';
-	import IconButton from './IconButton.svelte';
-	import Surface from './Surface.svelte';
+	import Menu from './Menu.svelte';
 
 	interface MenuPack {
 		id: string;
@@ -31,42 +29,28 @@
 
 	let { disabled = false, shelves, onopen }: Props = $props();
 
-	const id = $props.id();
-	let anchor: HTMLElement;
-	let menu: HTMLElement;
+	let list: HTMLElement | undefined = $state();
 	/** The shelf being browsed, or none for the top level. */
 	let browsing: number | undefined = $state();
 	const shelf = $derived(browsing === undefined ? undefined : shelves[browsing]);
-
-	// Open upward from the + button, aligned to its left edge; start at the top level.
-	function onbeforetoggle(event: ToggleEvent) {
-		if (event.newState !== 'open') return;
-		browsing = undefined;
-		const { left, top } = anchor.getBoundingClientRect();
-		menu.style.left = `${left}px`;
-		menu.style.bottom = `${window.innerHeight - top}px`;
-	}
 
 	/** Switches level, keeping keyboard focus in the menu. */
 	async function browse(index: number | undefined) {
 		browsing = index;
 		await tick();
-		menu.querySelector('button')?.focus();
-	}
-
-	function open(packId: string) {
-		menu.hidePopover();
-		onopen(packId);
+		list?.querySelector('button')?.focus();
 	}
 </script>
 
-<span bind:this={anchor}>
-	<IconButton icon="plus" label="Give Baby something to read" popovertarget={id} {disabled} />
-</span>
-
-<div bind:this={menu} {id} popover="auto" {onbeforetoggle}>
-	<Surface>
-		<ul>
+<Menu
+	icon="plus"
+	label="Give Baby something to read"
+	placement="above-start"
+	{disabled}
+	onopen={() => (browsing = undefined)}
+>
+	{#snippet children(close)}
+		<ul bind:this={list}>
 			{#if shelf}
 				<li>
 					<button class="back" onclick={() => browse(undefined)}>
@@ -76,7 +60,12 @@
 				</li>
 				{#each shelf.packs as pack, index (pack.id)}
 					<li>
-						<button onclick={() => open(pack.id)}>
+						<button
+							onclick={() => {
+								close();
+								onopen(pack.id);
+							}}
+						>
 							{shelf.ordered ? `${index + 1}. ${pack.title}` : pack.title}
 							{#if pack.read}
 								<span class="mark" aria-label="Read"><Icon name="check" /></span>
@@ -98,46 +87,10 @@
 				<li><button disabled>Read from URL</button></li>
 			{/if}
 		</ul>
-	</Surface>
-</div>
+	{/snippet}
+</Menu>
 
 <style>
-	[popover] {
-		position: fixed;
-		inset: auto;
-		width: var(--width-menu);
-		margin: 0 0 var(--space-tight);
-		padding: 0;
-		border: none;
-		background: none;
-		color: var(--color-text);
-		overflow: visible;
-	}
-
-	ul {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	button {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-inline);
-		width: 100%;
-		padding: var(--space-control-block) 0;
-		border: none;
-		background: none;
-		text-align: start;
-		cursor: pointer;
-	}
-
-	button:disabled {
-		color: var(--color-text-muted);
-		cursor: default;
-	}
-
 	.back {
 		justify-content: flex-start;
 		color: var(--color-text-muted);

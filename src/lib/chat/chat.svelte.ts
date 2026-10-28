@@ -56,6 +56,21 @@ export class Chat {
 	}
 
 	/**
+	 * Forgets everything Baby has ever read and clears the conversation. Refused while
+	 * Baby is busy, so no reading can save over the reset.
+	 */
+	async reset() {
+		if (this.replying || this.reading) throw new Error('Baby is busy');
+		try {
+			for await (const event of this.#baby.reset()) if (event.type === 'done') break;
+			this.messages = [];
+		} catch (error) {
+			console.error(error);
+			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
+		}
+	}
+
+	/**
 	 * Adds a Baby message and keeps it in step with `events` until done. If the
 	 * request fails, the message ends where it got to, the app says so, and this
 	 * returns undefined; it never throws, so Baby is never left busy.

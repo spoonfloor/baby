@@ -40,12 +40,22 @@ export async function loadSnapshot(): Promise<ModelSnapshot | undefined> {
 
 /** Saves `snapshot`, resolving once it is safely written. */
 export async function saveSnapshot(snapshot: ModelSnapshot): Promise<void> {
-	const transaction = (await open()).transaction(STORE, 'readwrite');
 	const saved: Saved = { format: FORMAT, snapshot };
-	transaction.objectStore(STORE).put(saved, KEY);
+	await write((store) => store.put(saved, KEY));
+}
+
+/** Deletes the saved Baby, resolving once it is gone. */
+export async function clearSnapshot(): Promise<void> {
+	await write((store) => store.delete(KEY));
+}
+
+async function write(change: (store: IDBObjectStore) => void): Promise<void> {
+	const transaction = (await open()).transaction(STORE, 'readwrite');
+	change(transaction.objectStore(STORE));
 	await new Promise<void>((resolve, reject) => {
 		transaction.oncomplete = () => resolve();
-		transaction.onerror = () => reject(transaction.error ?? new Error('Couldn’t save Baby'));
-		transaction.onabort = () => reject(transaction.error ?? new Error('Saving Baby was cancelled'));
+		transaction.onerror = () => reject(transaction.error ?? new Error('Couldn’t write to storage'));
+		transaction.onabort = () =>
+			reject(transaction.error ?? new Error('Writing to storage was cancelled'));
 	});
 }

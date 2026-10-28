@@ -20,7 +20,12 @@ const echo = (request: BabyRequest): BabyResponse[] => [
 	{
 		id: request.id,
 		type: 'token',
-		text: request.type === 'reply' ? request.prompt : request.reading.title
+		text:
+			request.type === 'reply'
+				? request.prompt
+				: request.type === 'read'
+					? request.reading.title
+					: 'reset'
 	},
 	{ id: request.id, type: 'done' }
 ];
@@ -41,6 +46,10 @@ describe('createBaby', () => {
 		]);
 		expect(await collect(baby.read({ source: 'moon', title: 'moon', documents: [] }))).toEqual([
 			{ type: 'token', text: 'moon' },
+			{ type: 'done' }
+		]);
+		expect(await collect(baby.reset())).toEqual([
+			{ type: 'token', text: 'reset' },
 			{ type: 'done' }
 		]);
 	});

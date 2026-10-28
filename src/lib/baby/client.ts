@@ -5,6 +5,8 @@ export interface Baby {
 	reply(prompt: string): AsyncIterable<BabyEvent>;
 	/** Reads, then practices on everything read so far. */
 	read(reading: Reading): AsyncIterable<BabyEvent>;
+	/** Forgets everything Baby has ever read, leaving a blank model. */
+	reset(): AsyncIterable<BabyEvent>;
 	/** Calls `listener` with Baby's state now (once known) and on every change. Returns an unsubscribe. */
 	subscribe(listener: (state: BabyState) => void): () => void;
 }
@@ -65,6 +67,7 @@ export function createBaby(endpoint: Endpoint): Baby {
 	return {
 		reply: (prompt) => stream((id) => ({ type: 'reply', id, prompt })),
 		read: (reading) => stream((id) => ({ type: 'read', id, reading })),
+		reset: () => stream((id) => ({ type: 'reset', id })),
 		subscribe(listener) {
 			listeners.add(listener);
 			if (state) listener(state);

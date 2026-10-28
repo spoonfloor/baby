@@ -33,7 +33,10 @@ export interface Reading {
 
 /** App → worker. */
 export type BabyRequest =
-	{ type: 'reply'; id: string; prompt: string } | { type: 'read'; id: string; reading: Reading };
+	| { type: 'reply'; id: string; prompt: string }
+	| { type: 'read'; id: string; reading: Reading }
+	/** Forgets everything, saved Baby included, leaving a blank model. */
+	| { type: 'reset'; id: string };
 
 /**
  * Worker → app: an event tagged with its request, a request that failed (ending it

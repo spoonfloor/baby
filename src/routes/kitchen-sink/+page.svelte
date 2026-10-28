@@ -12,6 +12,8 @@
 	import { icons, type IconName } from '#lib/ui/icons.ts';
 	import PackDialog from '#lib/ui/PackDialog.svelte';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
+	import ResetDialog from '#lib/ui/ResetDialog.svelte';
+	import SettingsMenu from '#lib/ui/SettingsMenu.svelte';
 	import ScriptText from '#lib/ui/ScriptText.svelte';
 	import Spinner from '#lib/ui/Spinner.svelte';
 	import StatusLine from '#lib/ui/StatusLine.svelte';
@@ -40,6 +42,7 @@
 
 	/** Which pack preview is open: never read, or read before. */
 	let previewing: 'unread' | 'read' | undefined = $state();
+	let confirmingReset = $state(false);
 </script>
 
 <main>
@@ -78,6 +81,27 @@
 	</section>
 
 	<section>
+		<h2>Settings menu</h2>
+		<div class="row end">
+			<SettingsMenu onreset={() => (confirmingReset = true)} />
+			<SettingsMenu disabled onreset={noop} />
+		</div>
+	</section>
+
+	<section>
+		<h2>Reset dialog</h2>
+		<div class="row">
+			<Button onclick={() => (confirmingReset = true)}>Open</Button>
+		</div>
+		{#if confirmingReset}
+			<ResetDialog
+				onreset={() => (confirmingReset = false)}
+				onclose={() => (confirmingReset = false)}
+			/>
+		{/if}
+	</section>
+
+	<section>
 		<h2>Script text</h2>
 		<ScriptText documents={pack.documents.slice(7, 9)} />
 	</section>
@@ -102,11 +126,16 @@
 		<BabyMessage status="Recognized 0 of 3 words" text="" pending />
 		<BabyMessage status="Looked for words to say but found none" text="" pending={false} />
 		<BabyMessage
-			status="Picked 9 words at random, without knowing how to use them"
+			status="Picked 29 words, each a guess at what comes next"
 			text={long}
 			pending={false}
 		/>
-		<BabyMessage status="Read “Greetings”: 130 words · 28 new" text="" pending={false} />
+		<BabyMessage status="Practicing “Greetings” · step 100 · loss 0.19" text="" pending />
+		<BabyMessage
+			status="Read “Greetings”: 130 words · 28 new · loss 1.02 → 0.15 in 500 steps"
+			text=""
+			pending={false}
+		/>
 	</section>
 
 	<section>
@@ -162,5 +191,9 @@
 	.row {
 		display: flex;
 		gap: var(--space-inline);
+	}
+
+	.end {
+		justify-content: flex-end;
 	}
 </style>

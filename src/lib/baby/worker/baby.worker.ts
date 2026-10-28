@@ -1,7 +1,7 @@
 import { Model, type ModelSnapshot } from '../model.ts';
-import type { BabyRequest, BabyResponse } from '../protocol.ts';
+import type { BabyEvent, BabyRequest, BabyResponse } from '../protocol.ts';
 import { seededRandom } from '../random.ts';
-import { loadSnapshot, saveSnapshot } from './storage.ts';
+import { clearSnapshot, loadSnapshot, saveSnapshot } from './storage.ts';
 
 const post = (response: BabyResponse) => self.postMessage(response);
 
@@ -25,21 +25,36 @@ async function start(): Promise<Model> {
 	return createModel();
 }
 
-const ready = start().then((model) => {
+/** The current Baby; a reset swaps in a new one. */
+let current = start().then((model) => {
 	post({ type: 'state', state: model.state });
 	return model;
 });
 
+/** Forgets the saved Baby, then starts over with a blank one. */
+async function* reset(): AsyncGenerator<BabyEvent> {
+	await clearSnapshot();
+	const model = createModel();
+	current = Promise.resolve(model);
+	post({ type: 'state', state: model.state });
+	yield { type: 'done' };
+}
+
 self.addEventListener('message', async ({ data: request }: MessageEvent<BabyRequest>) => {
 	try {
-		const model = await ready;
+		const model = await current;
 		const events =
-			request.type === 'reply' ? model.reply(request.prompt) : model.read(request.reading);
+			request.type === 'reply'
+				? model.reply(request.prompt)
+				: request.type === 'read'
+					? model.read(request.reading)
+					: reset();
 		for await (const event of events) {
 			if (event.type === 'done') {
 				// Keep what Baby just learned, then publish it, before the request finishes.
 				if (request.type === 'read') await saveSnapshot(model.snapshot());
-				post({ type: 'state', state: model.state });
+				// A reset has already published its new Baby’s state.
+				if (request.type !== 'reset') post({ type: 'state', state: model.state });
 			}
 			post({ ...event, id: request.id });
 		}
