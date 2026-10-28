@@ -8,10 +8,9 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 
 ## Core model decisions
 
-- **Real, not simulated.** A genuine tiny transformer, trained on-device (WebGPU), running the actual math: embeddings, query/key/value, attention, softmax, residual connection, unembedding, sampling.
+- **Real, not simulated.** A genuine tiny transformer, trained on-device (WebGPU), running the actual math: embeddings, query/key/value, attention, softmax, residual connection, feed-forward (MLP), unembedding, sampling.
 - **Token = word.** Word-level tokenizer. Unknown words become `[UNK]`; documents end with `[EOS]`. Possible later “grow up” toggle to word pieces.
-- **Tiny by default.** 4 dimensions and 1 layer, so every number is inspectable. A size slider (dimensions 16, 32, 64, 128…, and layers) to show quality improving.
-- **Conversation size:** 32 dimensions, 2 layers, 2 attention heads per layer, a 64-word context (~3–4 turns). Two layers is the minimum for copying from context (“i like cake” → “i like cake too”): one layer marks each word’s predecessor, the next finds and copies the word after a match (an induction head). 1 vs. 2 layers should be a visible “aha” on the slider. 32 dimensions fits a ~400-word vocabulary plus word kind, position, and predecessor; ~50k numbers in all, trains in seconds. Untested: validate offline at 16/32/64 × 1/2 layers on generated scripts, scored on held-out exchanges.
+- **One fixed size, as capable as the browser allows.** Baby is limited only by how little it has read, never by model design, so there is no size slider: improvement comes from training alone. Target: ~64–128 dimensions, 2–4 layers with 2+ attention heads each, a feed-forward step in every layer, and a ~128-word context; roughly 0.5–3M numbers. Two layers is the minimum for copying from context (“i like cake” → “i like cake too”): one layer marks each word’s predecessor, the next finds and copies the word after a match (an induction head). The vocabulary has no cap: it is every word Baby has read. Untested: pick the size offline as the largest that trains in seconds to minutes on a mid-range laptop and phone and still beats smaller sizes on held-out exchanges; measure step time as well as quality.
 - **Random initialization** with a visible seed. Untrained = pure noise, shown as the baseline.
 - **Training and chatting are separate phases**, but training can loop while the app is open, and chat always uses Baby’s current numbers.
 
@@ -66,9 +65,9 @@ baby : i like cake too . [EOS]
 
 Stages:
 
-1. **One memorized exchange.** Roughly what 4 dimensions can hold.
-2. **Small talk:** tens of thousands of words of scripts at the conversation size. Replies that fit the turn, often with the wrong content.
-3. **Real answers to new questions:** a generated world of ~100 fictional people with a few attributes each. Statements about everyone, Q&A for ~80%, the rest held out as the test. Each fact written several ways (paraphrase variety matters). Needs ~64–128 dimensions, a few layers, and a feed-forward (MLP) step to store facts, which the forward pass above doesn’t include yet. Generator settings become app knobs.
+1. **One memorized exchange,** recited word for word.
+2. **Small talk:** tens of thousands of words of scripts. Replies that fit the turn, often with the wrong content.
+3. **Real answers to new questions:** a generated world of ~100 fictional people with a few attributes each. Statements about everyone, Q&A for ~80%, the rest held out as the test. Each fact written several ways (paraphrase variety matters). Tests whether the fixed size can store facts (the feed-forward step’s job) and answer about people it has no Q&A for. Generator settings become app knobs.
 
 ## Open questions
 
