@@ -31,6 +31,7 @@ src/lib/baby/     the model, behind the Baby protocol
   worker/         worker entry, its own TS project (WebWorker globals, not DOM)
 src/lib/library/  what the + menu offers: shelves of packs (Chatbot 101 conversation lessons…)
 src/routes/       / (chat), /kitchen-sink (every component in every state)
+lab/              lesson lab: trains Baby headless on Chatbot 101 and scores replies against probes
 ```
 
 ## Rules enforced by tooling
@@ -51,5 +52,6 @@ Status lines are always a single fragment with no final period (“Looked for wo
 - `npm run dev`: dev server. `/kitchen-sink` is the design-review page; add new components and states there.
 - `npm run check`: types (app + worker), ESLint, Stylelint, Prettier, Vitest. Must pass before every commit.
 - `npm run format`: auto-fix formatting.
+- `npm run lab`: trains Baby in Node on Chatbot 101 (several seeds in parallel) and scores each pack against its probes and targets (`lab/probes.ts`). Use it to change a lesson: edit the script, rerun, compare, and record what changed in `lab/log.md`. `--through <pack>` stops early for faster iteration.
 - Unit tests only for logic that can break (state, protocol, model code). No coverage targets.
 - Commit straight to `main`.

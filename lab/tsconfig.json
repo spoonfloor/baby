@@ -1,0 +1,11 @@
+{
+	// The lab runs in Node, so it gets Node’s types on top of the app’s settings.
+	"extends": "../tsconfig.json",
+	"compilerOptions": {
+		"lib": ["ESNext", "DOM"],
+		"types": ["node"],
+		"noEmit": true
+	},
+	"include": ["."],
+	"exclude": ["reports"]
+}
