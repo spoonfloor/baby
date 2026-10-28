@@ -80,3 +80,17 @@ Turns now start with `[YOU]` / `[BABY]`, markers like `[EOS]` that no text can p
 | about-baby | 91%     | 69% → 82% | 4%       | 100%       | 1.4% → 0.4% | 0%         |
 
 Every target met in every pack. The 20 remaining turn stops (of ~5,700 replies) are Baby losing the thread mid-reply (“i eat i eat”), not a collision with a word it said. Near scores rose too: Baby no longer has to tell the label `you` from the word `you`.
+
+## 2026-10-28 · Rubric, and one reply per prompt
+
+Scores alone missed what chatting with Baby feels like, so lessons are now judged against `rubric.md` too: six qualities, most judged by reading replies.
+
+A/B on Greetings + Thanks, 3 seeds, one casual 13-message chat each:
+
+- **One reply per prompt** (today): reliable and repetitive, “hi !” every time.
+- **Two replies per prompt** (common prompts repeated with a second reply, Greetings +37% words): a little more variety, many more broken blends: “hi” → “thank you !”, “hi there” → “hello there you’re welcome afternoon !” and “?”. Reading time about the same, since practice stops at a plateau.
+- **A different reply per framing:** worse, the framing decides the reply again (“how are you?” → “you’re welcome !”).
+
+Kept one reply per prompt. Length is a judgment call, with reading time reported and each lesson under about 40 seconds.
+
+Found along the way: bare “how are you?” is broken on every seed (“i am good afternoon !”); Greetings never asks it without a greeting or “Baby” attached.

@@ -53,6 +53,6 @@ Status lines are always a single fragment with no final period (“Looked for wo
 - `npm run dev`: dev server. `/kitchen-sink` is the design-review page; add new components and states there.
 - `npm run check`: types (app + worker), ESLint, Stylelint, Prettier, Vitest. Must pass before every commit.
 - `npm run format`: auto-fix formatting.
-- `npm run lab`: trains Baby in Node on Chatbot 101 (several seeds in parallel) and scores each pack against its probes and targets (`lab/probes.ts`). Use it to change a lesson: edit the script, rerun, compare, and record what changed in `lab/log.md`. `--through <pack>` stops early for faster iteration.
+- `npm run lab`: trains Baby in Node on Chatbot 101 (several seeds in parallel) and scores each pack against its probes and targets (`lab/probes.ts`). Use it to change a lesson: edit the script, rerun, compare against `lab/rubric.md` (what makes a good chat, and the lesson-writing rules), and record what changed in `lab/log.md`. `--through <pack>` stops early for faster iteration.
 - Unit tests only for logic that can break (state, protocol, model code). No coverage targets.
 - Commit straight to `main`.
