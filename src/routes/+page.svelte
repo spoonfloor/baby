@@ -28,6 +28,7 @@
 		}))
 	);
 	const known = $derived(new Set(chat.knowledge?.words));
+	const bottom = stickToBottom();
 
 	/** The pack being previewed. Raw, not deeply reactive: packs never change, and Baby’s worker can only be sent plain data. */
 	let previewing: Pack | undefined = $state.raw();
@@ -72,7 +73,7 @@
 
 	<main class={['chat', { empty }]}>
 		{#if !empty}
-			<ol class="transcript" {@attach stickToBottom}>
+			<ol class="transcript" {@attach bottom.attachment}>
 				{#each chat.messages as message (message.id)}
 					<li>
 						{#if message.role === 'user'}
@@ -96,7 +97,10 @@
 			<Composer
 				placeholder={empty ? 'Say hi to Baby' : 'Reply'}
 				ready={!chat.replying}
-				onsend={(text) => chat.send(text)}
+				onsend={(text) => {
+					bottom.pin();
+					chat.send(text);
+				}}
 			>
 				{#snippet start()}
 					<AddMenu
