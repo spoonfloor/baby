@@ -20,7 +20,7 @@ SvelteKit 3 (static adapter, `ssr = false`), Svelte 5 runes, TypeScript strict, 
 ```
 src/lib/styles/   tokens.css (all raw values) + base.css
 src/lib/ui/       presentational components: props in, callbacks out, no app logic
-src/lib/chat/     conversation state (Chat class, runes) + Coach notices (the app's own voice)
+src/lib/chat/     conversation state (Chat class, runes) + app notices (the app's own voice)
 src/lib/baby/     the model, behind the Baby protocol
   protocol.ts     the app ↔ model seam: reply/read requests → status/token/done events; pushed state
   client.ts       app side: createBaby(endpoint) → Baby
@@ -42,7 +42,7 @@ src/routes/       / (chat), /kitchen-sink (every component in every state)
 
 ## Voices
 
-Three voices, kept visibly distinct: the user (bubble), Baby (status line + plain reply), and the app/Coach (`AppMessage`, `--color-coach`). Baby stays honest (an empty reply is empty); the app interprets Baby's state and explains. Copy that depends on the device says Click/Tap via `pointerVerb()`.
+Three voices, kept visibly distinct: the user (bubble), Baby (status line + plain reply), and the app (`AppMessage`, `--color-app-voice`). Baby stays honest (an empty reply is empty); the app interprets Baby's state and explains. Copy that depends on the device says Click/Tap via `pointerVerb()`.
 
 Status lines are always a single fragment with no final period (“Looked for words to say but found none”), never two sentences.
 

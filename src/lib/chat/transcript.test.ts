@@ -81,7 +81,7 @@ describe('transcript', () => {
 		expect(text).not.toContain('verbatim');
 	});
 
-	it('shows readings, empty replies and the Coach’s notices', () => {
+	it('shows readings, empty replies and the app’s notices', () => {
 		const messages: Message[] = [
 			reply('', { request: 'read', status: 'Read “About Baby”: 9 words · 9 new' }),
 			reply(''),

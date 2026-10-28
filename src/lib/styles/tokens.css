@@ -31,7 +31,8 @@
 	--color-surface: var(--raw-gray-850); /* composer + user bubble */
 	--color-text: var(--raw-gray-50); /* all message text */
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, counts, icons, labels */
-	--color-coach: var(--raw-pink-400); /* the app speaking, as distinct from Baby */
+	--color-accent: var(--raw-pink-400);
+	--color-app-voice: var(--color-accent); /* the app speaking, as distinct from Baby */
 	--color-backdrop: var(--raw-black-60); /* behind modal dialogs */
 	--color-action: var(--raw-gray-50); /* primary button fill */
 	--color-on-action: var(--raw-gray-950); /* primary button text */

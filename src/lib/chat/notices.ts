@@ -1,5 +1,5 @@
 /**
- * What the app (the Coach) says, in its own voice, separate from Baby's. Notices
+ * What the app says, in its own voice, separate from Baby's. Notices
  * are stored by name and turned into copy at render time, so copy that depends on
  * the device (Click vs Tap) stays current.
  */

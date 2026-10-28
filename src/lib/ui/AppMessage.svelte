@@ -1,4 +1,4 @@
-<!-- The app speaking for itself (the Coach), visibly not Baby. -->
+<!-- The app speaking for itself, visibly not Baby. -->
 <script lang="ts">
 	import MessageText from './MessageText.svelte';
 
@@ -11,7 +11,7 @@
 
 <style>
 	.app {
-		color: var(--color-coach);
+		color: var(--color-app-voice);
 		font-style: italic;
 	}
 </style>

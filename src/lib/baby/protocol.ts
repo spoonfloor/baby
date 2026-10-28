@@ -29,7 +29,7 @@ export interface ReplyTrace {
 	stop: 'eos' | 'limit';
 }
 
-/** What Baby knows, for the app to react to (e.g. the Coach, a reading preview). */
+/** What Baby knows, for the app to react to (e.g. its notices, a reading preview). */
 export interface BabyState {
 	/** Every word Baby has read, not counting the special tokens. */
 	words: string[];

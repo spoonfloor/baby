@@ -16,7 +16,7 @@ export interface TranscriptOptions {
 	knowledge: BabyState | undefined;
 	/** Every pack there is; the ones Baby has read are looked up in it. */
 	packs: readonly Pack[];
-	/** The Coach’s words for a notice. */
+	/** The app’s words for a notice. */
 	noticeText: (notice: Notice) => string;
 	at: Date;
 }
