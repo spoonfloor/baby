@@ -12,6 +12,7 @@
 	import { icons, type IconName } from '#lib/ui/icons.ts';
 	import PackDialog from '#lib/ui/PackDialog.svelte';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
+	import ProgressBar from '#lib/ui/ProgressBar.svelte';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SettingsMenu from '#lib/ui/SettingsMenu.svelte';
 	import ScriptText from '#lib/ui/ScriptText.svelte';
@@ -130,9 +131,20 @@
 			text={long}
 			pending={false}
 		/>
-		<BabyMessage status="Practicing “Greetings” · step 100 · loss 0.19" text="" pending />
 		<BabyMessage
-			status="Read “Greetings”: 130 words · 28 new · loss 1.02 → 0.15 in 500 steps"
+			status="Practicing “Greetings”"
+			text=""
+			pending
+			progress={{ done: 0, total: 800 }}
+		/>
+		<BabyMessage
+			status="Practicing “Greetings” · step 300 of 800 · about 25 seconds left"
+			text=""
+			pending
+			progress={{ done: 300, total: 800 }}
+		/>
+		<BabyMessage
+			status="Read “Greetings”: 256 words · 28 new · loss 1.24 → 0.29 in 450 of 800 steps"
 			text=""
 			pending={false}
 		/>
@@ -148,6 +160,13 @@
 		<h2>Status line</h2>
 		<StatusLine text="Active" active />
 		<StatusLine text="Finished" active={false} />
+	</section>
+
+	<section>
+		<h2>ProgressBar</h2>
+		<ProgressBar done={0} total={800} />
+		<ProgressBar done={300} total={800} />
+		<ProgressBar done={800} total={800} />
 	</section>
 
 	<section>

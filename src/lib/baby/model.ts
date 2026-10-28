@@ -1,4 +1,4 @@
-import { Plateau, sampleBatch } from './practice.ts';
+import { Plateau, practiceBudget, sampleBatch } from './practice.ts';
 import type { BabyEvent, BabyState, Reading, ReplyTrace } from './protocol.ts';
 import { count, describeReading, readingStats } from './reading.ts';
 import { TURN_START, turnTokens } from './script.ts';
@@ -25,6 +25,8 @@ export interface ModelOptions {
 	random: () => number;
 	/** Lets other requests in between steps of work (chatting while Baby practices). */
 	idle: () => Promise<void>;
+	/** Milliseconds from any fixed start, for estimating how long practice has left. */
+	now?: () => number;
 	config?: TransformerConfig;
 	/** A Baby saved earlier, to carry on from. Must match `config`. */
 	snapshot?: ModelSnapshot;
@@ -48,11 +50,19 @@ export class Model {
 	#transformer: Transformer;
 	#random: () => number;
 	#idle: () => Promise<void>;
+	#now: () => number;
 	#practicing = false;
 
-	constructor({ random, idle, config = BABY_CONFIG, snapshot }: ModelOptions) {
+	constructor({
+		random,
+		idle,
+		now = () => performance.now(),
+		config = BABY_CONFIG,
+		snapshot
+	}: ModelOptions) {
 		this.#random = random;
 		this.#idle = idle;
+		this.#now = now;
 		if (!snapshot) {
 			this.#transformer = new Transformer(config, this.#vocabulary.tokenCount, random);
 			return;
@@ -97,15 +107,21 @@ export class Model {
 				this.#documents.push(document.map((word) => this.#vocabulary.id(word)));
 			}
 
-			const plateau = new Plateau();
+			const plateau = new Plateau(practiceBudget(stats.words));
 			const context = this.#transformer.config.context;
+			const started = this.#now();
+			yield { type: 'status', text: `Practicing “${title}”` };
+			yield { type: 'progress', done: 0, total: plateau.budget };
 			while (!plateau.reached) {
 				plateau.add(this.#transformer.train(sampleBatch(this.#documents, context, this.#random)));
 				if (plateau.blockEnded) {
+					const perStep = (this.#now() - started) / plateau.steps;
+					const left = (plateau.budget - plateau.steps) * perStep;
 					yield {
 						type: 'status',
-						text: `Practicing “${title}” · step ${plateau.steps} · loss ${formatLoss(plateau.latest)}`
+						text: `Practicing “${title}” · step ${plateau.steps} of ${plateau.budget} · ${timeLeft(left)}`
 					};
+					yield { type: 'progress', done: plateau.steps, total: plateau.budget };
 				}
 				await this.#idle();
 			}
@@ -113,7 +129,7 @@ export class Model {
 			if (!this.#sources.includes(source)) this.#sources.push(source);
 			yield {
 				type: 'status',
-				text: `Read “${title}”: ${describeReading(stats)} · loss ${formatLoss(plateau.first)} → ${formatLoss(plateau.latest)} in ${count(plateau.steps, 'step')}`
+				text: `Read “${title}”: ${describeReading(stats)} · loss ${formatLoss(plateau.first)} → ${formatLoss(plateau.latest)} in ${plateau.steps} of ${count(plateau.budget, 'step')}`
 			};
 			yield { type: 'done' };
 		} finally {
@@ -186,6 +202,16 @@ export class Model {
 		if (picked === 0) return `Picked ${marker ?? EOS} first, so said nothing`;
 		return `Picked ${count(picked, 'word')}, each a guess at what comes next`;
 	}
+}
+
+/**
+ * “About 25 seconds left”, “about 3 minutes left”: an estimate, so rounded up to 5
+ * seconds or to the nearest minute.
+ */
+function timeLeft(milliseconds: number): string {
+	const seconds = milliseconds / 1000;
+	if (seconds < 60) return `about ${count(Math.max(5, Math.ceil(seconds / 5) * 5), 'second')} left`;
+	return `about ${count(Math.round(seconds / 60), 'minute')} left`;
 }
 
 /** Loss to two decimals, for status lines. */

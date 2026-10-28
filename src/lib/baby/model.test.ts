@@ -60,10 +60,35 @@ describe('Model', () => {
 		expect(events.at(-2)).toMatchObject({
 			type: 'status',
 			text: expect.stringMatching(
-				/^Read “Rhyme”: 6 words · 5 new · loss \d\.\d\d → \d\.\d\d in \d+ steps$/
+				/^Read “Rhyme”: 6 words · 5 new · loss \d\.\d\d → \d\.\d\d in \d+ of \d+ steps$/
 			)
 		});
 		expect(events.at(-1)).toEqual({ type: 'done' });
+	});
+
+	it('shows practice against a budget set before it starts, with the time left', async () => {
+		let clock = 0;
+		const model = new Model({
+			random: seededRandom(1),
+			idle: async () => {},
+			now: () => (clock += 1000),
+			config: SMALL
+		});
+		const events = await collect(model.read(rhyme));
+		const progress = events.flatMap((event) => (event.type === 'progress' ? [event] : []));
+
+		expect(progress[0]).toEqual({ type: 'progress', done: 0, total: 200 });
+		expect(progress.every(({ total }) => total === 200)).toBe(true);
+		expect(progress.map(({ done }) => done)).toEqual(
+			[...progress.map(({ done }) => done)].sort((a, b) => a - b)
+		);
+		expect(progress.at(-1)?.done).toBeLessThanOrEqual(200);
+		expect(events).toContainEqual({
+			type: 'status',
+			text: expect.stringMatching(
+				/^Practicing “Rhyme” · step 50 of 200 · about \d+ (seconds|minutes?) left$/
+			)
+		});
 	});
 
 	it('after reading, replies only with words it has read', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Plateau, sampleBatch } from './practice.ts';
+import { Plateau, practiceBudget, sampleBatch } from './practice.ts';
 import { seededRandom } from './random.ts';
 
 describe('sampleBatch', () => {
@@ -34,9 +34,21 @@ describe('sampleBatch', () => {
 	});
 });
 
+describe('practiceBudget', () => {
+	it('grows with the reading, in whole blocks of steps', () => {
+		expect(practiceBudget(256)).toBe(800);
+		expect(practiceBudget(189)).toBe(600);
+	});
+
+	it('leaves a short reading enough steps to notice a stall, and caps a long one', () => {
+		expect(practiceBudget(6)).toBe(200);
+		expect(practiceBudget(100_000)).toBe(5000);
+	});
+});
+
 describe('Plateau', () => {
-	const run = (lossAt: (step: number) => number) => {
-		const plateau = new Plateau();
+	const run = (lossAt: (step: number) => number, budget = 5000) => {
+		const plateau = new Plateau(budget);
 		while (!plateau.reached) plateau.add(lossAt(plateau.steps));
 		return plateau;
 	};
@@ -53,7 +65,7 @@ describe('Plateau', () => {
 		expect(plateau.latest).toBeCloseTo(0.5);
 	});
 
-	it('always ends, even if the loss falls forever', () => {
-		expect(run((step) => 1 / (step + 1)).steps).toBeLessThanOrEqual(5000);
+	it('ends at its budget, even if the loss falls forever', () => {
+		expect(run((step) => 1 / (step + 1), 300).steps).toBe(300);
 	});
 });

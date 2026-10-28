@@ -13,6 +13,8 @@ export type BabyMessage = {
 	/** Baby's latest status, kept after it finishes as a record of what happened. */
 	status: string;
 	pending: boolean;
+	/** How far through its work Baby is, when it knows how much there is (practice). */
+	progress?: { done: number; total: number };
 	/** How a finished reply came about; only replies have one. */
 	trace?: ReplyTrace;
 };
@@ -98,6 +100,9 @@ export class Chat {
 				switch (event.type) {
 					case 'status':
 						message.status = event.text;
+						break;
+					case 'progress':
+						message.progress = { done: event.done, total: event.total };
 						break;
 					case 'token':
 						message.text += event.text;

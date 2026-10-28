@@ -33,6 +33,8 @@
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, counts, icons, labels */
 	--color-accent: var(--raw-pink-400);
 	--color-app-voice: var(--color-accent); /* the app speaking, as distinct from Baby */
+	--color-progress: var(--color-accent); /* the done part of a progress bar, like the spinner */
+	--color-progress-track: var(--color-surface); /* the part still to do */
 	--color-backdrop: var(--raw-black-60); /* behind modal dialogs */
 	--color-action: var(--raw-gray-50); /* primary button fill */
 	--color-on-action: var(--raw-gray-950); /* primary button text */
@@ -71,6 +73,7 @@
 	--width-bubble: 85%; /* max width of a user bubble */
 	--height-composer-max: 40dvh; /* composer grows with its text up to this */
 	--width-menu: 240px; /* the + menu */
+	--height-progress: 4px; /* a progress bar under a status line */
 	--height-dialog-max: 80dvh; /* a modal scrolls inside, up to this */
 	--width-dialog-narrow: 400px; /* a confirmation: a title, a sentence or two, actions */
 	--width-dialog-wide: var(--width-content); /* a dialog showing content, e.g. a pack preview */

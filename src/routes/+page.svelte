@@ -84,6 +84,7 @@
 								text={typeset(message.text.split(' '))}
 								status={message.status}
 								pending={message.pending}
+								progress={message.progress}
 							/>
 						{:else}
 							<AppMessage text={noticeText(message.notice, pointerVerb())} />

@@ -1,6 +1,7 @@
 /**
  * How Baby practices: over and over, it guesses each next word of random stretches
- * of everything it has read, until its guesses stop getting better.
+ * of everything it has read, until its guesses stop getting better or it reaches
+ * the budget set before it started.
  */
 
 /** Steps averaged together before deciding whether practice is still paying off. */
@@ -9,8 +10,24 @@ const BLOCK_STEPS = 50;
 const MIN_IMPROVEMENT = 0.02;
 /** Blocks in a row without progress before Baby stops. */
 const PATIENCE = 3;
-/** Stops regardless, so practice always ends. */
+/**
+ * Practice steps budgeted per word read. Measured on Chatbot 101: readings of 190 to
+ * 260 words stopped improving after 300 to 700 steps, so most finish before the budget.
+ */
+const STEPS_PER_WORD = 3;
+/** The fewest steps budgeted: enough blocks for practice to notice it has stalled. */
+const MIN_STEPS = BLOCK_STEPS * (PATIENCE + 1);
+/** The most steps budgeted, however long the reading, so practice always ends soon enough. */
 const MAX_STEPS = 5000;
+
+/**
+ * How many steps practicing on a reading of `words` words may take, set before it
+ * starts so progress can be shown against it. Whole blocks, so the last one counts.
+ */
+export function practiceBudget(words: number): number {
+	const blocks = Math.ceil((words * STEPS_PER_WORD) / BLOCK_STEPS);
+	return Math.min(MAX_STEPS, Math.max(MIN_STEPS, blocks * BLOCK_STEPS));
+}
 
 export interface Window {
 	inputs: number[];
@@ -51,8 +68,9 @@ export function sampleBatch(
 	return windows;
 }
 
-/** Watches the loss step by step and says when it has stopped falling. */
+/** Watches the loss step by step and says when it has stopped falling or used up its budget. */
 export class Plateau {
+	readonly budget: number;
 	#steps = 0;
 	#blockTotal = 0;
 	#best = Infinity;
@@ -60,6 +78,10 @@ export class Plateau {
 	/** The first and latest block averages, or undefined before the first block. */
 	first: number | undefined;
 	latest: number | undefined;
+
+	constructor(budget: number) {
+		this.budget = budget;
+	}
 
 	get steps(): number {
 		return this.#steps;
@@ -71,7 +93,7 @@ export class Plateau {
 	}
 
 	get reached(): boolean {
-		return this.#stalls >= PATIENCE || this.#steps >= MAX_STEPS;
+		return this.#stalls >= PATIENCE || this.#steps >= this.budget;
 	}
 
 	add(loss: number) {

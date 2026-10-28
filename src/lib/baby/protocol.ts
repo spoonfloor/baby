@@ -8,11 +8,12 @@ import type { Document } from './reading.ts';
  */
 
 /**
- * One step of a request, in order: any number of `status`/`token`, a reply's one
- * `trace`, then one `done`.
+ * One step of a request, in order: any number of `status`/`progress`/`token`, a
+ * reply's one `trace`, then one `done`.
  */
 export type BabyEvent =
 	| { type: 'status'; text: string } // what Baby is doing right now
+	| { type: 'progress'; done: number; total: number } // how far through a known amount of work
 	| { type: 'token'; text: string } // the next piece of a reply, whitespace included
 	| { type: 'trace'; trace: ReplyTrace } // how a reply came about, for debugging
 	| { type: 'done' };

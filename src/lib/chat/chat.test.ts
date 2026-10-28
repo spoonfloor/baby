@@ -128,6 +128,23 @@ describe('Chat', () => {
 		expect(chat.readPacks.includes(pack.id)).toBe(true);
 	});
 
+	it('keeps a reading’s latest progress on its message', async () => {
+		const { baby, release } = fakeBaby(
+			[
+				{ type: 'progress', done: 0, total: 200 },
+				{ type: 'progress', done: 50, total: 200 }
+			],
+			['a']
+		);
+		const chat = new Chat(baby);
+
+		const reading = chat.read(pack);
+		release();
+		await reading;
+
+		expect(chat.messages).toMatchObject([{ role: 'baby', progress: { done: 50, total: 200 } }]);
+	});
+
 	it('refuses a second message while replying, and a second pack while reading', async () => {
 		const { baby, release } = fakeBaby([], ['moon']);
 		const chat = new Chat(baby);
