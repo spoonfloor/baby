@@ -25,6 +25,15 @@ function fakeBaby(events: BabyEvent[], words: string[]) {
 	return { baby, release };
 }
 
+/** A Baby whose every request fails partway, after one status. */
+function failingBaby(): Baby {
+	async function* respond(): AsyncGenerator<BabyEvent> {
+		yield { type: 'status', text: 'Thinking' };
+		throw new Error('Baby broke');
+	}
+	return { reply: respond, read: respond, subscribe: () => () => {} };
+}
+
 describe('Chat', () => {
 	it('adds the user message and builds Baby’s reply from events', async () => {
 		const { baby, release } = fakeBaby(
@@ -99,5 +108,19 @@ describe('Chat', () => {
 
 		release();
 		await sending;
+	});
+
+	it('ends a failed request instead of staying busy, and says so', async () => {
+		const chat = new Chat(failingBaby());
+
+		await chat.read(pack);
+
+		expect(chat.busy).toBe(false);
+		expect(chat.readPacks.has(pack.id)).toBe(false);
+		expect(chat.messages).toMatchObject([
+			{ role: 'baby', status: 'Thinking', pending: false },
+			{ role: 'app', notice: 'failed' }
+		]);
+		await expect(chat.send('still there?')).resolves.toBeUndefined();
 	});
 });

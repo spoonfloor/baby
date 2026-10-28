@@ -18,9 +18,13 @@ self.addEventListener('message', async ({ data: request }: MessageEvent<BabyRequ
 		request.type === 'reply'
 			? model.reply(request.prompt)
 			: model.read(request.title, request.documents);
-	for await (const event of events) {
-		// Publish any change to what Baby knows before the request finishes.
-		if (event.type === 'done') post({ type: 'state', state: model.state });
-		post({ ...event, id: request.id });
+	try {
+		for await (const event of events) {
+			// Publish any change to what Baby knows before the request finishes.
+			if (event.type === 'done') post({ type: 'state', state: model.state });
+			post({ ...event, id: request.id });
+		}
+	} catch (error) {
+		post({ type: 'error', id: request.id, message: String(error) });
 	}
 });

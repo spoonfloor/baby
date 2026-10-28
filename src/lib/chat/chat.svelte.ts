@@ -38,23 +38,28 @@ export class Chat {
 
 		const reply = await this.#follow(this.#baby.reply(text));
 
-		if (reply.text === '' && this.knowledge?.words.length === 0) {
+		if (reply && reply.text === '' && this.knowledge?.words.length === 0) {
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'newborn' });
 		}
 	}
 
 	async read(pack: Pack) {
 		this.#assertIdle();
-		await this.#follow(this.#baby.read(pack.title, pack.documents));
-		this.readPacks.add(pack.id);
+		if (await this.#follow(this.#baby.read(pack.title, pack.documents))) {
+			this.readPacks.add(pack.id);
+		}
 	}
 
 	#assertIdle() {
 		if (this.busy) throw new Error('Baby is busy');
 	}
 
-	/** Adds a Baby message and keeps it in step with `events` until done. */
-	async #follow(events: AsyncIterable<BabyEvent>): Promise<BabyMessage> {
+	/**
+	 * Adds a Baby message and keeps it in step with `events` until done. If the
+	 * request fails, the message ends where it got to, the app says so, and this
+	 * returns undefined; Baby is never left busy.
+	 */
+	async #follow(events: AsyncIterable<BabyEvent>): Promise<BabyMessage | undefined> {
 		const message: BabyMessage = $state({
 			id: crypto.randomUUID(),
 			role: 'baby',
@@ -64,19 +69,26 @@ export class Chat {
 		});
 		this.messages.push(message);
 
-		for await (const event of events) {
-			switch (event.type) {
-				case 'status':
-					message.status = event.text;
-					break;
-				case 'token':
-					message.text += event.text;
-					break;
-				case 'done':
-					message.pending = false;
-					break;
+		try {
+			for await (const event of events) {
+				switch (event.type) {
+					case 'status':
+						message.status = event.text;
+						break;
+					case 'token':
+						message.text += event.text;
+						break;
+					case 'done':
+						message.pending = false;
+						break;
+				}
 			}
+			return message;
+		} catch (error) {
+			console.error(error);
+			message.pending = false;
+			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
+			return undefined;
 		}
-		return message;
 	}
 }

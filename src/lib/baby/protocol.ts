@@ -24,5 +24,11 @@ export type BabyRequest =
 	| { type: 'reply'; id: string; prompt: string }
 	| { type: 'read'; id: string; title: string; documents: Document[] };
 
-/** Worker → app: an event tagged with its request, or Baby's latest state. */
-export type BabyResponse = (BabyEvent & { id: string }) | { type: 'state'; state: BabyState };
+/**
+ * Worker → app: an event tagged with its request, a request that failed (ending it
+ * in place of `done`), or Baby's latest state.
+ */
+export type BabyResponse =
+	| (BabyEvent & { id: string })
+	| { type: 'error'; id: string; message: string }
+	| { type: 'state'; state: BabyState };

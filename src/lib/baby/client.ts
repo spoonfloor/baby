@@ -18,7 +18,7 @@ export interface Endpoint {
 
 /** Talks to a Baby running behind `endpoint`, routing each response to its request's stream. */
 export function createBaby(endpoint: Endpoint): Baby {
-	const streams = new Map<string, (event: BabyEvent) => void>();
+	const streams = new Map<string, (event: BabyEvent | Error) => void>();
 	const listeners = new Set<(state: BabyState) => void>();
 	let state: BabyState | undefined;
 
@@ -28,13 +28,17 @@ export function createBaby(endpoint: Endpoint): Baby {
 			for (const listener of listeners) listener(data.state);
 			return;
 		}
+		if (data.type === 'error') {
+			streams.get(data.id)?.(new Error(data.message));
+			return;
+		}
 		const { id, ...event } = data;
 		streams.get(id)?.(event);
 	});
 
 	async function* stream(request: (id: string) => BabyRequest): AsyncGenerator<BabyEvent> {
 		const id = crypto.randomUUID();
-		const queue: BabyEvent[] = [];
+		const queue: (BabyEvent | Error)[] = [];
 		let wake = () => {};
 
 		streams.set(id, (event) => {
@@ -50,6 +54,7 @@ export function createBaby(endpoint: Endpoint): Baby {
 					await new Promise<void>((resolve) => (wake = resolve));
 					continue;
 				}
+				if (event instanceof Error) throw event;
 				yield event;
 				if (event.type === 'done') return;
 			}

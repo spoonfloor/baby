@@ -71,4 +71,21 @@ describe('createBaby', () => {
 		expect(early).toEqual([{ words: ['a', 'b', 'c'] }]);
 		expect(late).toEqual([{ words: ['a', 'b', 'c'] }]);
 	});
+
+	it('fails the stream when Baby reports an error', async () => {
+		const baby = createBaby(
+			fakeWorker((request) => [
+				{ id: request.id, type: 'status', text: 'Reading' },
+				{ id: request.id, type: 'error', message: 'Baby broke' }
+			])
+		);
+		const events: BabyEvent[] = [];
+
+		await expect(
+			(async () => {
+				for await (const event of baby.read('x', [])) events.push(event);
+			})()
+		).rejects.toThrow('Baby broke');
+		expect(events).toEqual([{ type: 'status', text: 'Reading' }]);
+	});
 });

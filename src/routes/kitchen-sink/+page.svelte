@@ -112,6 +112,7 @@
 	<section>
 		<h2>App message</h2>
 		<AppMessage text={noticeText('newborn', pointerVerb())} />
+		<AppMessage text={noticeText('failed', pointerVerb())} />
 	</section>
 
 	<section>
