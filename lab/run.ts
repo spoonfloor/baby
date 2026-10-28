@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { Worker } from 'node:worker_threads';
 import { chatbot101 } from '#lib/library/chatbot-101.ts';
-import { probesFor, TARGETS, type Probe, type Tier } from './probes.ts';
+import { curriculumProbes, TARGETS, type Probe, type Tier } from './probes.ts';
 import { probeKey, type Sample, type Stage, type TrialRequest } from './trial.ts';
 
 /**
@@ -35,7 +35,10 @@ const packs = options.through
 	: chatbot101.length;
 if (packs === 0) throw new Error(`No pack “${options.through}” in Chatbot 101`);
 const read = chatbot101.slice(0, packs);
-const probes = read.flatMap(probesFor);
+// Checked against every lesson, read or not, so no probe is ever taught.
+const probes = curriculumProbes(chatbot101).filter((probe) =>
+	read.some((pack) => pack.id === probe.pack)
+);
 
 function runTrial(request: TrialRequest): Promise<Stage[]> {
 	return new Promise((resolve, reject) => {

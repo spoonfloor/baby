@@ -43,7 +43,7 @@ const howAreYou = [
 	'It’s going well!'
 ];
 const welcome = ['You’re welcome!', 'You’re welcome.', 'You’re very welcome!'];
-const thankYou = ['Thank you!', 'Thanks!'];
+const thankYou = ['Thank you!', 'Thank you.', 'Thanks!'];
 const bye = ['Bye!', 'Goodbye!', 'Okay. Bye!', 'See you later!'];
 
 /** Hand-written probes, by pack id, in the same casual style as the scripts. */
@@ -144,14 +144,6 @@ export function probesFor(pack: Pack): Probe[] {
 			prompt: asTokens(prompt),
 			accept: accept.map(asTokens)
 		});
-	const untrained = [...extra.near.map(probe('near')), ...extra.heldOut.map(probe('held-out'))];
-	const leaked = untrained.filter((p) => trained.has(p.prompt));
-	if (leaked.length > 0) {
-		// A probe in the script tests recall, not generalizing: the score would be a lie.
-		throw new Error(
-			`“${pack.id}” teaches its own probes: ${leaked.map((p) => p.prompt).join(' | ')}`
-		);
-	}
 	return [
 		...[...trained].map(([prompt, replies]) => ({
 			pack: pack.id,
@@ -159,6 +151,18 @@ export function probesFor(pack: Pack): Probe[] {
 			prompt,
 			accept: [...replies]
 		})),
-		...untrained
+		...extra.near.map(probe('near')),
+		...extra.heldOut.map(probe('held-out'))
 	];
+}
+
+/** Probes for each pack, refusing any written probe that a lesson teaches verbatim. */
+export function curriculumProbes(packs: readonly Pack[]): Probe[] {
+	const probes = packs.flatMap(probesFor);
+	const taught = new Set(probes.filter((p) => p.tier === 'trained').map((p) => p.prompt));
+	const leaked = probes.filter((p) => p.tier !== 'trained' && taught.has(p.prompt));
+	if (leaked.length > 0) {
+		throw new Error(`Lessons teach their own probes: ${leaked.map((p) => p.prompt).join(' | ')}`);
+	}
+	return probes;
 }
