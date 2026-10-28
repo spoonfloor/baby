@@ -16,10 +16,13 @@ export type BabyMessage = {
 export type AppMessage = { id: string; role: 'app'; notice: Notice };
 export type Message = UserMessage | BabyMessage | AppMessage;
 
-/** The conversation: what's been said and read, and whether Baby is busy. */
+/** The conversation: what's been said and read, and what Baby is busy with. */
 export class Chat {
 	messages: Message[] = $state([]);
-	busy = $derived(this.messages.some((message) => message.role === 'baby' && message.pending));
+	/** Baby answers one message at a time. */
+	replying = $state(false);
+	/** Baby reads (and practices) one pack at a time, and can still chat meanwhile. */
+	reading = $state(false);
 	/** What Baby knows, as last reported by Baby. */
 	knowledge: BabyState | undefined = $state();
 	/** Ids of the packs Baby has finished reading. */
@@ -33,10 +36,12 @@ export class Chat {
 	}
 
 	async send(text: string) {
-		this.#assertIdle();
+		if (this.replying) throw new Error('Baby is already replying');
+		this.replying = true;
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
 		const reply = await this.#follow(this.#baby.reply(text));
+		this.replying = false;
 
 		if (reply && reply.text === '' && this.knowledge?.words.length === 0) {
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'newborn' });
@@ -44,20 +49,17 @@ export class Chat {
 	}
 
 	async read(pack: Pack) {
-		this.#assertIdle();
-		if (await this.#follow(this.#baby.read(pack.title, pack.documents))) {
-			this.readPacks.add(pack.id);
-		}
-	}
-
-	#assertIdle() {
-		if (this.busy) throw new Error('Baby is busy');
+		if (this.reading) throw new Error('Baby is already reading');
+		this.reading = true;
+		const read = await this.#follow(this.#baby.read(pack.title, pack.documents));
+		this.reading = false;
+		if (read) this.readPacks.add(pack.id);
 	}
 
 	/**
 	 * Adds a Baby message and keeps it in step with `events` until done. If the
 	 * request fails, the message ends where it got to, the app says so, and this
-	 * returns undefined; Baby is never left busy.
+	 * returns undefined; it never throws, so Baby is never left busy.
 	 */
 	async #follow(events: AsyncIterable<BabyEvent>): Promise<BabyMessage | undefined> {
 		const message: BabyMessage = $state({

@@ -40,6 +40,11 @@ export class Vocabulary {
 		return this.#words.length - SPECIAL_TOKENS.length;
 	}
 
+	/** How many tokens have ids, special tokens included: the model’s vocabulary size. */
+	get tokenCount(): number {
+		return this.#words.length;
+	}
+
 	/** Every real word, in the order Baby learned them, excluding the special tokens. */
 	get words(): string[] {
 		return this.#words.slice(SPECIAL_TOKENS.length);

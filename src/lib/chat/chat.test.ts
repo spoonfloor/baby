@@ -47,13 +47,12 @@ describe('Chat', () => {
 		const chat = new Chat(baby);
 
 		const sending = chat.send('hello');
-		await Promise.resolve();
-		expect(chat.busy).toBe(true);
+		expect(chat.replying).toBe(true);
 
 		release();
 		await sending;
 
-		expect(chat.busy).toBe(false);
+		expect(chat.replying).toBe(false);
 		expect(chat.messages).toMatchObject([
 			{ role: 'user', text: 'hello' },
 			{ role: 'baby', text: 'moon spoon', status: 'Thinking', pending: false }
@@ -98,16 +97,32 @@ describe('Chat', () => {
 		expect(chat.readPacks.has(pack.id)).toBe(true);
 	});
 
-	it('refuses new requests while Baby is busy', async () => {
+	it('refuses a second message while replying, and a second pack while reading', async () => {
 		const { baby, release } = fakeBaby([], ['moon']);
 		const chat = new Chat(baby);
 
 		const sending = chat.send('one');
+		const reading = chat.read(pack);
 		await expect(chat.send('two')).rejects.toThrow();
 		await expect(chat.read(pack)).rejects.toThrow();
 
 		release();
-		await sending;
+		await Promise.all([sending, reading]);
+	});
+
+	it('chats while reading', async () => {
+		const { baby, release } = fakeBaby([], ['moon']);
+		const chat = new Chat(baby);
+
+		const reading = chat.read(pack);
+		expect(chat.reading).toBe(true);
+		const sending = chat.send('still there?');
+		expect(chat.replying).toBe(true);
+
+		release();
+		await Promise.all([reading, sending]);
+		expect(chat.reading).toBe(false);
+		expect(chat.replying).toBe(false);
 	});
 
 	it('ends a failed request instead of staying busy, and says so', async () => {
@@ -115,7 +130,7 @@ describe('Chat', () => {
 
 		await chat.read(pack);
 
-		expect(chat.busy).toBe(false);
+		expect(chat.reading).toBe(false);
 		expect(chat.readPacks.has(pack.id)).toBe(false);
 		expect(chat.messages).toMatchObject([
 			{ role: 'baby', status: 'Thinking', pending: false },

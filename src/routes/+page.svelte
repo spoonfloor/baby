@@ -55,12 +55,12 @@
 	<div class="composer">
 		<Composer
 			placeholder={empty ? 'Say hi to Baby' : 'Reply'}
-			ready={!chat.busy}
+			ready={!chat.replying}
 			onsend={(text) => chat.send(text)}
 		>
 			{#snippet start()}
 				<AddMenu
-					disabled={chat.busy}
+					disabled={chat.reading}
 					shelves={menuShelves}
 					onopen={(id) => (previewing = packs.get(id))}
 				/>

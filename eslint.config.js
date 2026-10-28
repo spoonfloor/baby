@@ -24,6 +24,11 @@ export default defineConfig(
 		}
 	},
 	{
+		// Math kernels index typed arrays by shape-derived offsets in hot loops; see the file’s header.
+		files: ['src/lib/baby/math.ts'],
+		rules: { '@typescript-eslint/no-non-null-assertion': 'off' }
+	},
+	{
 		// User-facing copy uses curly quotes and apostrophes (’ “ ”), never straight ones.
 		files: ['src/**'],
 		rules: {

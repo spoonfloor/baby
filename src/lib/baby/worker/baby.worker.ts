@@ -2,11 +2,10 @@ import { Model } from '../model.ts';
 import type { BabyRequest, BabyResponse } from '../protocol.ts';
 import { seededRandom } from '../random.ts';
 
-const STEP_INTERVAL_MS = 120;
-
 const model = new Model({
 	random: seededRandom(crypto.getRandomValues(new Uint32Array(1))[0] ?? 0),
-	pause: () => new Promise((resolve) => setTimeout(resolve, STEP_INTERVAL_MS))
+	// A macrotask, not a microtask, so messages (a chat during practice) get handled.
+	idle: () => new Promise((resolve) => setTimeout(resolve))
 });
 
 const post = (response: BabyResponse) => self.postMessage(response);
