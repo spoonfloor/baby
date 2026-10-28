@@ -1,4 +1,5 @@
 import type { BabyEvent, BabyState } from './protocol.ts';
+import { count, describeReading, readingStats, type Document } from './reading.ts';
 import { EOS_ID, tokenize, UNK_ID, Vocabulary } from './vocabulary.ts';
 
 /**
@@ -28,18 +29,17 @@ export class Model {
 	}
 
 	get state(): BabyState {
-		return { vocabularySize: this.#vocabulary.size };
+		return { words: this.#vocabulary.words };
 	}
 
-	async *read(text: string): AsyncGenerator<BabyEvent> {
-		const title = excerpt(text);
+	async *read(title: string, documents: Document[]): AsyncGenerator<BabyEvent> {
 		yield { type: 'status', text: `Reading “${title}”` };
 		await this.#pause();
 
-		const words = tokenize(text);
-		const added = this.#vocabulary.add(words);
+		const stats = readingStats(documents, (word) => this.#vocabulary.has(word));
+		this.#vocabulary.add(documents.flat());
 
-		yield { type: 'status', text: `Read “${title}”: ${count(words.length, 'word')}, ${added} new` };
+		yield { type: 'status', text: `Read “${title}”: ${describeReading(stats)}` };
 		yield { type: 'done' };
 	}
 
@@ -72,15 +72,4 @@ export class Model {
 		if (picked === 0) return 'Picked [EOS] first, so said nothing';
 		return `Picked ${count(picked, 'word')} at random, without knowing how to use them`;
 	}
-}
-
-/** “3 words”, “1 word”. */
-function count(n: number, noun: string): string {
-	return `${n} ${noun}${n === 1 ? '' : 's'}`;
-}
-
-/** The first few words of `text`, to name it in status lines. */
-function excerpt(text: string, words = 5): string {
-	const all = text.trim().split(/\s+/);
-	return all.slice(0, words).join(' ') + (all.length > words ? '…' : '');
 }

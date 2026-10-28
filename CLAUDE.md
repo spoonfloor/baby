@@ -24,9 +24,12 @@ src/lib/chat/     conversation state (Chat class, runes) + Coach notices (the ap
 src/lib/baby/     the model, behind the Baby protocol
   protocol.ts     the app ↔ model seam: reply/read requests → status/token/done events; pushed state
   client.ts       app side: createBaby(endpoint) → Baby
-  vocabulary.ts   word-level tokenizer; vocabulary starts with only [UNK] and [EOS]
+  vocabulary.ts   word-level tokenizer (punctuation marks are words); vocabulary starts with only [UNK] and [EOS]
+  script.ts       conversation format: `you : … [EOS] baby : … [EOS]`, parsed from `you: …` lines
+  reading.ts      documents (exact tokens Baby trains on) + reading stats, shared by preview and status
   model.ts        untrained model: mute until it reads, then uniform random picks
   worker/         worker entry, its own TS project (WebWorker globals, not DOM)
+src/lib/library/  what the + menu offers: shelves of packs (Chatbot 101 conversation lessons…)
 src/routes/       / (chat), /kitchen-sink (every component in every state)
 ```
 

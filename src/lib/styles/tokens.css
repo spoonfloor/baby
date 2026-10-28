@@ -22,6 +22,8 @@
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, icons, labels */
 	--color-coach: var(--raw-pink-400); /* the app speaking, as distinct from Baby */
 	--color-backdrop: var(--raw-black-60); /* behind modal dialogs */
+	--color-action: var(--raw-gray-50); /* primary button fill */
+	--color-on-action: var(--raw-gray-950); /* primary button text */
 
 	/* Type: one family, one size */
 	--font-family: 'Inter Variable', system-ui, sans-serif;
@@ -30,6 +32,7 @@
 
 	/* Shape */
 	--radius-surface: 24px; /* composer + user bubble */
+	--radius-pill: 999px; /* text buttons */
 
 	/* Space */
 	--space-gutter: 16px; /* page edge → content */
@@ -38,12 +41,16 @@
 	--space-stack: 32px; /* between conversation blocks */
 	--space-tight: 8px; /* between related lines, e.g. status line → reply */
 	--space-inline: 10px; /* icon ↔ text */
+	--space-control-block: 8px; /* inside a button or menu row, top/bottom */
+	--space-control-inline: 16px; /* inside a text button, left/right */
 
 	/* Size */
 	--size-icon: 20px;
 	--width-content: 720px; /* max width of the conversation column */
 	--width-bubble: 85%; /* max width of a user bubble */
 	--height-composer-max: 40dvh; /* composer grows with its text up to this */
+	--width-menu: 240px; /* the + menu */
+	--height-dialog-max: 80dvh; /* a modal scrolls inside, up to this */
 
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */

@@ -14,7 +14,10 @@ const post = (response: BabyResponse) => self.postMessage(response);
 post({ type: 'state', state: model.state });
 
 self.addEventListener('message', async ({ data: request }: MessageEvent<BabyRequest>) => {
-	const events = request.type === 'reply' ? model.reply(request.prompt) : model.read(request.text);
+	const events =
+		request.type === 'reply'
+			? model.reply(request.prompt)
+			: model.read(request.title, request.documents);
 	for await (const event of events) {
 		// Publish any change to what Baby knows before the request finishes.
 		if (event.type === 'done') post({ type: 'state', state: model.state });

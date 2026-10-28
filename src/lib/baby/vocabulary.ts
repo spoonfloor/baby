@@ -1,6 +1,6 @@
 /** Stands in for any word Baby has never read. */
 export const UNK = '[UNK]';
-/** Marks the end of a document or reply. */
+/** Marks the end of a turn, a document, or a reply. */
 export const EOS = '[EOS]';
 
 export const UNK_ID = 0;
@@ -11,14 +11,23 @@ const SPECIAL_TOKENS = [UNK, EOS];
 // eslint-disable-next-line no-restricted-syntax
 const APOSTROPHE = "'";
 
-/** Splits text into word tokens: lowercase runs of letters, digits and apostrophes. */
+/**
+ * Splits text into the words Baby reads: lowercase runs of letters, digits and
+ * apostrophes, with every other visible character (punctuation) a word of its own.
+ * Reading and chat both go through this, so Baby always sees text the same way.
+ */
 export function tokenize(text: string): string[] {
 	return (
 		text
 			.toLowerCase()
 			.replaceAll('’', APOSTROPHE)
-			.match(/[\p{L}\p{N}']+/gu) ?? []
+			.match(/[\p{L}\p{N}']+|[^\s\p{L}\p{N}']/gu) ?? []
 	);
+}
+
+/** Whether `token` is one of Baby’s markers ([UNK], [EOS]) rather than a word it read. */
+export function isSpecial(token: string): boolean {
+	return SPECIAL_TOKENS.includes(token);
 }
 
 /** The words Baby knows, each with a numeric id. Starts with only the special tokens. */
@@ -29,6 +38,11 @@ export class Vocabulary {
 	/** How many real words Baby knows, not counting the special tokens. */
 	get size(): number {
 		return this.#words.length - SPECIAL_TOKENS.length;
+	}
+
+	/** Every real word, in the order Baby learned them, excluding the special tokens. */
+	get words(): string[] {
+		return this.#words.slice(SPECIAL_TOKENS.length);
 	}
 
 	/** Ids of every real word, excluding the special tokens. */
@@ -45,6 +59,10 @@ export class Vocabulary {
 			this.#words.push(word);
 		}
 		return this.#words.length - before;
+	}
+
+	has(word: string): boolean {
+		return this.#ids.has(word);
 	}
 
 	/** The id for `word`, or [UNK]'s id if Baby has never read it. */

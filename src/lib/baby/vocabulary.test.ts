@@ -2,8 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { tokenize, UNK_ID, Vocabulary } from './vocabulary.ts';
 
 describe('tokenize', () => {
-	it('splits into lowercase words, ignoring punctuation', () => {
-		expect(tokenize('Hi, Baby! How are you?')).toEqual(['hi', 'baby', 'how', 'are', 'you']);
+	it('splits into lowercase words, with each punctuation mark a word of its own', () => {
+		expect(tokenize('Hi, Baby! How are you?')).toEqual([
+			'hi',
+			',',
+			'baby',
+			'!',
+			'how',
+			'are',
+			'you',
+			'?'
+		]);
 	});
 
 	it('treats curly and straight apostrophes as the same word', () => {
@@ -16,6 +25,7 @@ describe('Vocabulary', () => {
 		const vocabulary = new Vocabulary();
 		expect(vocabulary.size).toBe(0);
 		expect(vocabulary.wordIds).toEqual([]);
+		expect(vocabulary.words).toEqual([]);
 	});
 
 	it('learns new words once and reports how many were new', () => {
@@ -23,6 +33,7 @@ describe('Vocabulary', () => {
 		expect(vocabulary.add(['moon', 'cow', 'moon'])).toBe(2);
 		expect(vocabulary.add(['cow', 'spoon'])).toBe(1);
 		expect(vocabulary.size).toBe(3);
+		expect(vocabulary.words).toEqual(['moon', 'cow', 'spoon']);
 	});
 
 	it('maps unknown words to [UNK]', () => {

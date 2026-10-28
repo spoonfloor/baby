@@ -17,7 +17,11 @@ function fakeWorker(script: (request: BabyRequest) => BabyResponse[]) {
 }
 
 const echo = (request: BabyRequest): BabyResponse[] => [
-	{ id: request.id, type: 'token', text: request.type === 'reply' ? request.prompt : request.text },
+	{
+		id: request.id,
+		type: 'token',
+		text: request.type === 'reply' ? request.prompt : request.title
+	},
 	{ id: request.id, type: 'done' }
 ];
 
@@ -35,7 +39,7 @@ describe('createBaby', () => {
 			{ type: 'token', text: 'hi' },
 			{ type: 'done' }
 		]);
-		expect(await collect(baby.read('moon'))).toEqual([
+		expect(await collect(baby.read('moon', []))).toEqual([
 			{ type: 'token', text: 'moon' },
 			{ type: 'done' }
 		]);
@@ -53,18 +57,18 @@ describe('createBaby', () => {
 	it('passes state updates to subscribers, including late ones', async () => {
 		const baby = createBaby(
 			fakeWorker((request) => [
-				{ type: 'state', state: { vocabularySize: 3 } },
+				{ type: 'state', state: { words: ['a', 'b', 'c'] } },
 				{ id: request.id, type: 'done' }
 			])
 		);
 		const early: BabyState[] = [];
 		baby.subscribe((state) => early.push(state));
 
-		await collect(baby.read('x'));
+		await collect(baby.read('x', []));
 		const late: BabyState[] = [];
 		baby.subscribe((state) => late.push(state));
 
-		expect(early).toEqual([{ vocabularySize: 3 }]);
-		expect(late).toEqual([{ vocabularySize: 3 }]);
+		expect(early).toEqual([{ words: ['a', 'b', 'c'] }]);
+		expect(late).toEqual([{ words: ['a', 'b', 'c'] }]);
 	});
 });

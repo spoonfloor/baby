@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { Baby, BabyEvent, BabyState } from '#lib/baby/index.ts';
+import type { Pack } from '#lib/library/index.ts';
 import { Chat } from './chat.svelte.ts';
 
-/** A Baby that answers every request with `events`, then done, knowing `vocabularySize` words. */
-function fakeBaby(events: BabyEvent[], vocabularySize: number) {
+const pack: Pack = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
+
+/** A Baby that answers every request with `events`, then done, knowing `words`. */
+function fakeBaby(events: BabyEvent[], words: string[]) {
 	let release = () => {};
 	const released = new Promise<void>((resolve) => (release = resolve));
 	async function* respond(): AsyncGenerator<BabyEvent> {
@@ -15,7 +18,7 @@ function fakeBaby(events: BabyEvent[], vocabularySize: number) {
 		reply: respond,
 		read: respond,
 		subscribe(listener: (state: BabyState) => void) {
-			listener({ vocabularySize });
+			listener({ words });
 			return () => {};
 		}
 	};
@@ -30,7 +33,7 @@ describe('Chat', () => {
 				{ type: 'token', text: 'moon' },
 				{ type: 'token', text: ' spoon' }
 			],
-			2
+			['moon', 'spoon']
 		);
 		const chat = new Chat(baby);
 
@@ -49,7 +52,7 @@ describe('Chat', () => {
 	});
 
 	it('adds the newborn notice when a Baby that knows nothing says nothing', async () => {
-		const { baby, release } = fakeBaby([], 0);
+		const { baby, release } = fakeBaby([], []);
 		const chat = new Chat(baby);
 
 		release();
@@ -60,7 +63,7 @@ describe('Chat', () => {
 	});
 
 	it('adds no notice when a Baby that knows words happens to say nothing', async () => {
-		const { baby, release } = fakeBaby([], 5);
+		const { baby, release } = fakeBaby([], ['moon']);
 		const chat = new Chat(baby);
 
 		release();
@@ -69,25 +72,30 @@ describe('Chat', () => {
 		expect(chat.messages.map((message) => message.role)).toEqual(['user', 'baby']);
 	});
 
-	it('shows reading as a Baby message with no user message', async () => {
-		const { baby, release } = fakeBaby([{ type: 'status', text: 'Read 3 words' }], 3);
+	it('shows reading as a Baby message with no user message, then marks the pack read', async () => {
+		const { baby, release } = fakeBaby([{ type: 'status', text: 'Read 3 words' }], ['a']);
 		const chat = new Chat(baby);
 
+		const reading = chat.read(pack);
+		await Promise.resolve();
+		expect(chat.readPacks.has(pack.id)).toBe(false);
+
 		release();
-		await chat.read('a b c');
+		await reading;
 
 		expect(chat.messages).toMatchObject([
 			{ role: 'baby', text: '', status: 'Read 3 words', pending: false }
 		]);
+		expect(chat.readPacks.has(pack.id)).toBe(true);
 	});
 
 	it('refuses new requests while Baby is busy', async () => {
-		const { baby, release } = fakeBaby([], 1);
+		const { baby, release } = fakeBaby([], ['moon']);
 		const chat = new Chat(baby);
 
 		const sending = chat.send('one');
 		await expect(chat.send('two')).rejects.toThrow();
-		await expect(chat.read('text')).rejects.toThrow();
+		await expect(chat.read(pack)).rejects.toThrow();
 
 		release();
 		await sending;

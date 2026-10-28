@@ -17,8 +17,8 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 
 ## Feeding Baby
 
-1. **Paste or upload text** (fully offline).
-2. **Curated reading list:** public-domain texts (nursery rhymes, Aesop, the Constitution preamble, _Alice in Wonderland_), plus conversation lessons.
+1. **Upload text files** (fully offline).
+2. **Curated reading list:** each pack previewed before reading, showing the exact text Baby will train on. Public-domain texts (nursery rhymes, Aesop, the Constitution preamble, _Alice in Wonderland_), plus conversation lessons.
 3. **URLs / RSS / reader view:** via a small Cloudflare Worker proxy on erichenry.com, locked to the PWA’s origin and a domain allowlist. Offer raw page vs. RSS vs. Readability-cleaned text as a comparison of “diet.”
 4. **New words** can be added mid-life (vocabulary expansion), seeded with noise or the average embedding — both worth comparing.
 

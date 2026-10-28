@@ -1,20 +1,37 @@
 <script lang="ts">
 	import { spawnBaby } from '#lib/baby/index.ts';
+	import { describeReading, readingStats } from '#lib/baby/reading.ts';
 	import { Chat } from '#lib/chat/chat.svelte.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
+	import { shelves, type Pack } from '#lib/library/index.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
+	import PackDialog from '#lib/ui/PackDialog.svelte';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
-	import ReadDialog from '#lib/ui/ReadDialog.svelte';
 	import { stickToBottom } from '#lib/ui/stickToBottom.ts';
 	import UserMessage from '#lib/ui/UserMessage.svelte';
 
 	const chat = new Chat(spawnBaby());
 	const empty = $derived(chat.messages.length === 0);
 
-	let reader: ReadDialog;
+	const packs = new Map(shelves.flatMap((shelf) => shelf.packs.map((pack) => [pack.id, pack])));
+	const menuShelves = $derived(
+		shelves.map((shelf) => ({
+			...shelf,
+			packs: shelf.packs.map(({ id, title }) => ({ id, title, read: chat.readPacks.has(id) }))
+		}))
+	);
+	const known = $derived(new Set(chat.knowledge?.words));
+
+	/** The pack being previewed. Raw, not deeply reactive: packs never change, and Baby’s worker can only be sent plain data. */
+	let previewing: Pack | undefined = $state.raw();
+
+	function read(pack: Pack) {
+		previewing = undefined;
+		chat.read(pack);
+	}
 </script>
 
 <main class={['chat', { empty }]}>
@@ -42,13 +59,27 @@
 			onsend={(text) => chat.send(text)}
 		>
 			{#snippet start()}
-				<AddMenu disabled={chat.busy} onpaste={() => reader.show()} />
+				<AddMenu
+					disabled={chat.busy}
+					shelves={menuShelves}
+					onopen={(id) => (previewing = packs.get(id))}
+				/>
 			{/snippet}
 		</Composer>
 	</div>
 </main>
 
-<ReadDialog bind:this={reader} onread={(text) => chat.read(text)} />
+{#if previewing}
+	{@const pack = previewing}
+	<PackDialog
+		title={pack.title}
+		summary={describeReading(readingStats(pack.documents, (word) => known.has(word)))}
+		documents={pack.documents}
+		read={chat.readPacks.has(pack.id)}
+		onread={() => read(pack)}
+		onclose={() => (previewing = undefined)}
+	/>
+{/if}
 
 <style>
 	.chat {

@@ -1,3 +1,5 @@
+import type { Document } from './reading.ts';
+
 /**
  * The seam between the app and the model. The app asks Baby to reply or to read,
  * and receives a stream of events for each request. Baby also pushes its state
@@ -11,15 +13,16 @@ export type BabyEvent =
 	| { type: 'token'; text: string } // the next piece of a reply, whitespace included
 	| { type: 'done' };
 
-/** What Baby knows, for the app to react to (e.g. the Coach). */
+/** What Baby knows, for the app to react to (e.g. the Coach, a reading preview). */
 export interface BabyState {
-	/** Words Baby has read, not counting the special tokens. */
-	vocabularySize: number;
+	/** Every word Baby has read, not counting the special tokens. */
+	words: string[];
 }
 
 /** App → worker. */
 export type BabyRequest =
-	{ type: 'reply'; id: string; prompt: string } | { type: 'read'; id: string; text: string };
+	| { type: 'reply'; id: string; prompt: string }
+	| { type: 'read'; id: string; title: string; documents: Document[] };
 
 /** Worker → app: an event tagged with its request, or Baby's latest state. */
 export type BabyResponse = (BabyEvent & { id: string }) | { type: 'state'; state: BabyState };

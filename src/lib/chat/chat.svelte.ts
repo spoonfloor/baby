@@ -1,4 +1,6 @@
+import { SvelteSet } from 'svelte/reactivity';
 import type { Baby, BabyEvent, BabyState } from '#lib/baby/index.ts';
+import type { Pack } from '#lib/library/index.ts';
 import type { Notice } from './notices.ts';
 
 export type UserMessage = { id: string; role: 'user'; text: string };
@@ -20,6 +22,8 @@ export class Chat {
 	busy = $derived(this.messages.some((message) => message.role === 'baby' && message.pending));
 	/** What Baby knows, as last reported by Baby. */
 	knowledge: BabyState | undefined = $state();
+	/** Ids of the packs Baby has finished reading. */
+	readPacks = new SvelteSet<string>();
 
 	#baby: Baby;
 
@@ -34,14 +38,15 @@ export class Chat {
 
 		const reply = await this.#follow(this.#baby.reply(text));
 
-		if (reply.text === '' && this.knowledge?.vocabularySize === 0) {
+		if (reply.text === '' && this.knowledge?.words.length === 0) {
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'newborn' });
 		}
 	}
 
-	async read(text: string) {
+	async read(pack: Pack) {
 		this.#assertIdle();
-		await this.#follow(this.#baby.read(text));
+		await this.#follow(this.#baby.read(pack.title, pack.documents));
+		this.readPacks.add(pack.id);
 	}
 
 	#assertIdle() {
