@@ -23,7 +23,7 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 
 ## Experiences
 
-- **Birth:** before reading anything, Baby babbles noise.
+- **Birth:** before reading anything, Baby knows no words, so it is mute: the only thing it can pick is `[EOS]`. The Coach explains and points to the + menu. Once Baby has read something but isn’t trained, it babbles noise: real words in random order.
 - **Probe prompts:** a fixed set of prompts replayed after each feeding, so you compare younger vs. older Baby.
 - **Growth chart:** probability of the right next word over training time (“rock” climbing 44% → 99%).
 - **Noise map:** which numbers training has touched vs. leftover randomness.
