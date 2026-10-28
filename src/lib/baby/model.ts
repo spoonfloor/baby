@@ -68,9 +68,9 @@ export class Model {
 	}
 
 	#replySummary(picked: number): string {
-		if (this.#vocabulary.size === 0) return 'Looked for words to say. Found none';
+		if (this.#vocabulary.size === 0) return 'Looked for words to say but found none';
 		if (picked === 0) return 'Picked [EOS] first, so said nothing';
-		return `Picked ${count(picked, 'word')} at random. Doesn’t know how to use them yet`;
+		return `Picked ${count(picked, 'word')} at random, without knowing how to use them`;
 	}
 }
 

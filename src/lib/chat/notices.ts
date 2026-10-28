@@ -8,6 +8,6 @@ export type Notice = 'newborn';
 export function noticeText(notice: Notice, pointerVerb: 'Click' | 'Tap'): string {
 	switch (notice) {
 		case 'newborn':
-			return `Baby tried and failed to think of anything to say. Baby is brand new and knows literally nothing. ${pointerVerb} the + icon to start Baby’s training.`;
+			return `Baby tried and failed to think of anything to say. Baby is brand new and knows literally nothing. ${pointerVerb} the + in the reply box below to start Baby’s training.`;
 	}
 }

@@ -51,9 +51,9 @@
 	<section>
 		<h2>Baby message</h2>
 		<BabyMessage status="Recognized 0 of 3 words" text="" pending />
-		<BabyMessage status="Looked for words to say. Found none" text="" pending={false} />
+		<BabyMessage status="Looked for words to say but found none" text="" pending={false} />
 		<BabyMessage
-			status="Picked 9 words at random. Doesn’t know how to use them yet"
+			status="Picked 9 words at random, without knowing how to use them"
 			text={long}
 			pending={false}
 		/>

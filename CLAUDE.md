@@ -41,6 +41,8 @@ src/routes/       / (chat), /kitchen-sink (every component in every state)
 
 Three voices, kept visibly distinct: the user (bubble), Baby (status line + plain reply), and the app/Coach (`AppMessage`, `--color-coach`). Baby stays honest (an empty reply is empty); the app interprets Baby's state and explains. Copy that depends on the device says Click/Tap via `pointerVerb()`.
 
+Status lines are always a single fragment with no final period (“Looked for words to say but found none”), never two sentences.
+
 ## Workflow
 
 - `npm run dev`: dev server. `/kitchen-sink` is the design-review page; add new components and states there.
