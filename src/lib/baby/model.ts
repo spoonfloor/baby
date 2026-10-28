@@ -125,14 +125,18 @@ export class Model {
 		yield { type: 'status', text: 'Reading your message…' };
 		await this.#idle();
 
-		const words = tokenize(prompt).map((word) => this.#vocabulary.id(word));
-		const known = words.filter((id) => id !== UNK_ID).length;
-		yield { type: 'status', text: `Recognized ${known} of ${count(words.length, 'word')}` };
+		const words = tokenize(prompt);
+		const unknown = words.filter((word) => !this.#vocabulary.has(word));
+		yield {
+			type: 'status',
+			text: `Recognized ${words.length - unknown.length} of ${count(words.length, 'word')}`
+		};
 
 		// The script format: Baby sees `you : … [EOS] baby :` and continues from there.
 		const ids = [...turnTokens('you', prompt), 'baby', ':'].map((word) =>
 			this.#vocabulary.id(word)
 		);
+		const context = ids.map((id) => this.#vocabulary.word(id));
 		let picked = 0;
 		while (picked < MAX_REPLY_TOKENS) {
 			await this.#idle();
@@ -145,6 +149,15 @@ export class Model {
 		}
 
 		yield { type: 'status', text: this.#replySummary(picked) };
+		yield {
+			type: 'trace',
+			trace: {
+				prompt: words,
+				unknown: [...new Set(unknown)],
+				context,
+				stop: picked < MAX_REPLY_TOKENS ? 'eos' : 'limit'
+			}
+		};
 		yield { type: 'done' };
 	}
 

@@ -84,6 +84,22 @@ describe('Model', () => {
 		expect(tokens(await collect(model.reply('Hi Baby!')))).toEqual(['hello', ' there', ' !']);
 	});
 
+	it('traces a reply: what it saw, which words were unknown, and why it stopped', async () => {
+		const model = newModel();
+		await collect(model.read(hi));
+		const events = await collect(model.reply('Hi shouls Baby, shouls!'));
+
+		expect(events.at(-2)).toEqual({
+			type: 'trace',
+			trace: {
+				prompt: ['hi', 'shouls', 'baby', ',', 'shouls', '!'],
+				unknown: ['shouls', ','],
+				context: ['you', ':', 'hi', '[UNK]', 'baby', '[UNK]', '[UNK]', '!', '[EOS]', 'baby', ':'],
+				stop: 'eos'
+			}
+		});
+	});
+
 	it('refuses to read two things at once', async () => {
 		const model = newModel();
 		const first = model.read(words('a b c'));

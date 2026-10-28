@@ -1,4 +1,4 @@
-import type { Baby, BabyEvent, BabyState } from '#lib/baby/index.ts';
+import type { Baby, BabyEvent, BabyState, ReplyTrace } from '#lib/baby/index.ts';
 import type { Pack } from '#lib/library/index.ts';
 import type { Notice } from './notices.ts';
 
@@ -6,11 +6,15 @@ export type UserMessage = { id: string; role: 'user'; text: string };
 export type BabyMessage = {
 	id: string;
 	role: 'baby';
+	/** What Baby was asked to do. */
+	request: 'reply' | 'read';
 	/** Reply text; empty for reading, or when Baby says nothing. */
 	text: string;
 	/** Baby's latest status, kept after it finishes as a record of what happened. */
 	status: string;
 	pending: boolean;
+	/** How a finished reply came about; only replies have one. */
+	trace?: ReplyTrace;
 };
 export type AppMessage = { id: string; role: 'app'; notice: Notice };
 export type Message = UserMessage | BabyMessage | AppMessage;
@@ -39,7 +43,7 @@ export class Chat {
 		this.replying = true;
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
-		const reply = await this.#follow(this.#baby.reply(text));
+		const reply = await this.#follow('reply', this.#baby.reply(text));
 		this.replying = false;
 
 		if (reply && reply.text === '' && this.knowledge?.words.length === 0) {
@@ -51,7 +55,7 @@ export class Chat {
 		if (this.reading) throw new Error('Baby is already reading');
 		this.reading = true;
 		const { id: source, title, documents } = pack;
-		await this.#follow(this.#baby.read({ source, title, documents }));
+		await this.#follow('read', this.#baby.read({ source, title, documents }));
 		this.reading = false;
 	}
 
@@ -75,10 +79,14 @@ export class Chat {
 	 * request fails, the message ends where it got to, the app says so, and this
 	 * returns undefined; it never throws, so Baby is never left busy.
 	 */
-	async #follow(events: AsyncIterable<BabyEvent>): Promise<BabyMessage | undefined> {
+	async #follow(
+		request: BabyMessage['request'],
+		events: AsyncIterable<BabyEvent>
+	): Promise<BabyMessage | undefined> {
 		const message: BabyMessage = $state({
 			id: crypto.randomUUID(),
 			role: 'baby',
+			request,
 			text: '',
 			status: '',
 			pending: true
@@ -93,6 +101,9 @@ export class Chat {
 						break;
 					case 'token':
 						message.text += event.text;
+						break;
+					case 'trace':
+						message.trace = event.trace;
 						break;
 					case 'done':
 						message.pending = false;

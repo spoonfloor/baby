@@ -83,8 +83,8 @@
 	<section>
 		<h2>Settings menu</h2>
 		<div class="row end">
-			<SettingsMenu onreset={() => (confirmingReset = true)} />
-			<SettingsMenu disabled onreset={noop} />
+			<SettingsMenu oncopytranscript={noop} onreset={() => (confirmingReset = true)} />
+			<SettingsMenu resetDisabled oncopytranscript={noop} onreset={noop} />
 		</div>
 	</section>
 

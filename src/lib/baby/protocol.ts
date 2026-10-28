@@ -7,11 +7,27 @@ import type { Document } from './reading.ts';
  * WebGPU transformer later) can be swapped in without touching the UI.
  */
 
-/** One step of a request, in order: any number of `status`/`token`, then one `done`. */
+/**
+ * One step of a request, in order: any number of `status`/`token`, a reply's one
+ * `trace`, then one `done`.
+ */
 export type BabyEvent =
 	| { type: 'status'; text: string } // what Baby is doing right now
 	| { type: 'token'; text: string } // the next piece of a reply, whitespace included
+	| { type: 'trace'; trace: ReplyTrace } // how a reply came about, for debugging
 	| { type: 'done' };
+
+/** How Baby arrived at a reply, recorded as it happened (Baby’s words change as it reads). */
+export interface ReplyTrace {
+	/** The message as Baby read it, word by word. */
+	prompt: string[];
+	/** Words in `prompt` Baby had never read, so saw as [UNK]; each once, in order. */
+	unknown: string[];
+	/** Exactly what Baby continued from: the script around the message, unknown words as [UNK]. */
+	context: string[];
+	/** Baby picked [EOS], or reached the longest reply it will give. */
+	stop: 'eos' | 'limit';
+}
 
 /** What Baby knows, for the app to react to (e.g. the Coach, a reading preview). */
 export interface BabyState {

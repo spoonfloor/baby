@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Baby, BabyEvent, BabyState } from '#lib/baby/index.ts';
+import type { Baby, BabyEvent, BabyState, ReplyTrace } from '#lib/baby/index.ts';
 import type { Pack } from '#lib/library/index.ts';
 import { Chat } from './chat.svelte.ts';
 
@@ -71,6 +71,22 @@ describe('Chat', () => {
 		expect(chat.messages).toMatchObject([
 			{ role: 'user', text: 'hello' },
 			{ role: 'baby', text: 'moon spoon', status: 'Thinking', pending: false }
+		]);
+	});
+
+	it('keeps a reply’s trace on its message, and marks which request each message was', async () => {
+		const trace: ReplyTrace = { prompt: ['hi'], unknown: [], context: ['hi'], stop: 'eos' };
+		const { baby, release } = fakeBaby([{ type: 'trace', trace }], ['hi']);
+		const chat = new Chat(baby);
+
+		release();
+		await chat.send('hi');
+		await chat.read(pack);
+
+		expect(chat.messages).toMatchObject([
+			{ role: 'user' },
+			{ role: 'baby', request: 'reply', trace },
+			{ role: 'baby', request: 'read' }
 		]);
 	});
 

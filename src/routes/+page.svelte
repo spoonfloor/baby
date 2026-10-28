@@ -3,6 +3,7 @@
 	import { describeReading, readingStats } from '#lib/baby/reading.ts';
 	import { Chat } from '#lib/chat/chat.svelte.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
+	import { transcript } from '#lib/chat/transcript.ts';
 	import { shelves, type Pack } from '#lib/library/index.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
@@ -38,6 +39,21 @@
 		chat.read(pack);
 	}
 
+	async function copyTranscript() {
+		const text = transcript(chat.messages, {
+			knowledge: chat.knowledge,
+			packs: [...packs.values()],
+			noticeText: (notice) => noticeText(notice, pointerVerb()),
+			at: new Date()
+		});
+		try {
+			await navigator.clipboard.writeText(text);
+		} catch (error) {
+			// A debugging aid: say why in the console rather than in the conversation.
+			console.error('Couldn’t copy the transcript', error);
+		}
+	}
+
 	function reset() {
 		confirmingReset = false;
 		chat.reset();
@@ -47,7 +63,8 @@
 <div class="page">
 	<header class="toolbar">
 		<SettingsMenu
-			disabled={chat.reading || chat.replying}
+			resetDisabled={chat.reading || chat.replying}
+			oncopytranscript={copyTranscript}
 			onreset={() => (confirmingReset = true)}
 		/>
 	</header>
