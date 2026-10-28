@@ -5,6 +5,10 @@
 <span class="spinner" aria-hidden="true"></span>
 
 <style>
+	.spinner {
+		color: var(--color-accent);
+	}
+
 	.spinner::before {
 		content: '◐';
 		animation: cycle var(--duration-spinner-cycle) steps(1, end) infinite;
