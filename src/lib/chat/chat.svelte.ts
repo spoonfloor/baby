@@ -48,8 +48,11 @@ export class Chat {
 		const reply = await this.#follow('reply', this.#baby.reply(text));
 		this.replying = false;
 
-		if (reply && reply.text === '' && this.knowledge?.words.length === 0) {
+		if (!reply) return;
+		if (reply.text === '' && this.knowledge?.words.length === 0) {
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'newborn' });
+		} else if (reply.trace && mostlyUnknown(reply.trace)) {
+			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'unrecognized' });
 		}
 	}
 
@@ -123,4 +126,10 @@ export class Chat {
 			return undefined;
 		}
 	}
+}
+
+/** Whether more than half the words of a message were ones Baby had never read. */
+function mostlyUnknown({ prompt, unknown }: ReplyTrace): boolean {
+	const unknownWords = prompt.filter((word) => unknown.includes(word)).length;
+	return unknownWords > prompt.length / 2;
 }

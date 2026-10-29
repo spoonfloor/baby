@@ -111,6 +111,44 @@ describe('Chat', () => {
 		expect(chat.messages.map((message) => message.role)).toEqual(['user', 'baby']);
 	});
 
+	it('adds the unrecognized notice when most of the message was words Baby never read', async () => {
+		const trace: ReplyTrace = {
+			prompt: ['you', 'are', 'the', 'best'],
+			unknown: ['the', 'best', 'are'],
+			context: [],
+			stop: 'eos'
+		};
+		const { baby, release } = fakeBaby(
+			[
+				{ type: 'token', text: 'hey' },
+				{ type: 'trace', trace }
+			],
+			['you', 'hey']
+		);
+		const chat = new Chat(baby);
+
+		release();
+		await chat.send('You are the best');
+
+		expect(chat.messages.at(-1)).toMatchObject({ role: 'app', notice: 'unrecognized' });
+	});
+
+	it('adds no notice when Baby knew at least half the message', async () => {
+		const trace: ReplyTrace = {
+			prompt: ['good', 'morning', 'to', 'you'],
+			unknown: ['to'],
+			context: [],
+			stop: 'eos'
+		};
+		const { baby, release } = fakeBaby([{ type: 'trace', trace }], ['good', 'morning', 'you']);
+		const chat = new Chat(baby);
+
+		release();
+		await chat.send('Good morning to you');
+
+		expect(chat.messages.map((message) => message.role)).toEqual(['user', 'baby']);
+	});
+
 	it('shows reading as a Baby message with no user message, then marks the pack read', async () => {
 		const { baby, release } = fakeBaby([{ type: 'status', text: 'Read 3 words' }], ['a']);
 		const chat = new Chat(baby);
