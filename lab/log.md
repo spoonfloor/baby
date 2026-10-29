@@ -111,10 +111,10 @@ Can the user teach Baby a reply? Baby read Greetings + Thanks, then 5 correction
 
 | corrections read | exact message | near variant (“idk, Baby”, “this is repetitive”) | lesson probes |
 | ---------------- | ------------- | ------------------------------------------------ | ------------- |
-| none             | 0%            | 3%                                               | 93–96%        |
-| ×1               | 95%           | 14%                                              | 97–99%        |
-| ×3               | 95%           | 6%                                               | 88–96%        |
-| ×10              | 98%           | 8%                                               | 89–97%        |
+| none             | 0%            | 6%                                               | 93–96%        |
+| ×1               | 97%           | 14%                                              | 97–99%        |
+| ×3               | 97%           | 6%                                               | 88–96%        |
+| ×10              | 99%           | 8%                                               | 89–97%        |
 
 - **One correction is enough** for the exact message, and costs only the minimum 200 steps of practice.
 - **It doesn’t generalize:** one framing per correction is the Baseline problem again. Teaching a few phrasings would, as it did for the lessons.
