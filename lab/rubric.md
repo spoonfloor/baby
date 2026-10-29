@@ -44,15 +44,32 @@ you: what’s your name? → baby: Don’t you remember? It’s Baby! B-A-B-Y
 
 - **Every prompt in several framings, one reply.** Bare, “…, Baby”, “Baby, …”, with `!` / `.` / `,`. If framings get different replies, the framing decides the reply instead of the words (Greetings 1 in the log).
 - **One reply per prompt, for now.** Two replies per prompt bought a little variety and many more blends (“hello there you’re welcome afternoon !”): Baby is too small to keep two answers apart. Retest once Baby sees the conversation history.
-- **Length is a judgment call.** Each addition is justified in the log. Reading time is what the user feels, so the lab reports it, and each lesson should read in about 40 seconds or less.
+- **Length is a judgment call.** Each addition is justified in the log. Reading time is what the user feels, so the lab reports it, and each lesson should read in about 40 seconds or less. That’s lab time (Node, several seeds in parallel); the browser can differ, so check it there before a lesson ships.
 - **Baby stays pure** (see `CLAUDE.md`): lessons shape Baby only through what it reads.
+
+## Checks
+
+Two more checks are planned for the lab, and not built yet. Until they are, the qualities judged by reading rest on the probes’ replies and one-off experiments like `experiments/replies-per-prompt.ts`.
+
+- **Conversations.** About 30 short chats a curious person would plausibly have (greetings, small talk, off-topic remarks, compliments), run after each lesson and read in full. This is where the reading-judged qualities get judged.
+- **A hidden set.** Probes and conversations of about the same size whose text is never read while writing lessons, only their scores. Gains there are real; gains only on the visible set may be the scripts learning the tests.
 
 ## Each round
 
-1. Run `npm run lab` and read the replies, not just the scores.
+1. Run `npm run lab` and read the replies and conversations, not just the scores.
 2. Name the cause of the worst failure, edit the script for that cause, rerun.
 3. Keep it if it helps without breaking another quality; undo it otherwise.
 4. Log it. Stop when two rounds in a row don’t help.
+
+## Done
+
+A stretch of rounds is done when:
+
+- A casual chat after the lessons doesn’t feel like a wall: Baby asks back where it fits and says less “hey !” to things it didn’t understand.
+- The hidden set improves, not just the visible one.
+- Each lesson reads in about the time it did before.
+
+Then report with before/after conversations to read, alongside the numbers.
 
 ## Beyond scripts
 

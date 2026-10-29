@@ -85,7 +85,7 @@ Every target met in every pack. The 20 remaining turn stops (of ~5,700 replies) 
 
 Scores alone missed what chatting with Baby feels like, so lessons are now judged against `rubric.md` too: six qualities, most judged by reading replies.
 
-A/B on Greetings + Thanks, 3 seeds, one casual 13-message chat each:
+A/B on Greetings + Thanks, 3 seeds, one casual 13-message chat each (`experiments/replies-per-prompt.ts`):
 
 - **One reply per prompt** (today): reliable and repetitive, “hi !” every time.
 - **Two replies per prompt** (common prompts repeated with a second reply, Greetings +37% words): a little more variety, many more broken blends: “hi” → “thank you !”, “hi there” → “hello there you’re welcome afternoon !” and “?”. Reading time about the same, since practice stops at a plateau.

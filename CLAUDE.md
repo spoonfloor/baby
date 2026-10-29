@@ -54,5 +54,6 @@ Status lines are always a single fragment with no final period (“Looked for wo
 - `npm run check`: types (app + worker), ESLint, Stylelint, Prettier, Vitest. Must pass before every commit.
 - `npm run format`: auto-fix formatting.
 - `npm run lab`: trains Baby in Node on Chatbot 101 (several seeds in parallel) and scores each pack against its probes and targets (`lab/probes.ts`). Use it to change a lesson: edit the script, rerun, compare against `lab/rubric.md` (what makes a good chat, and the lesson-writing rules), and record what changed in `lab/log.md`. `--through <pack>` stops early for faster iteration.
+- Lessons are Claude’s to develop: scripts, probes, and the lab, judged against `lab/rubric.md`, without asking each round. App UI and copy, the model, and the protocol are proposed first.
 - Unit tests only for logic that can break (state, protocol, model code). No coverage targets.
 - Commit straight to `main`.
