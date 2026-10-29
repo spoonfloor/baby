@@ -1,8 +1,15 @@
-import type { Baby, BabyEvent, BabyState, ReplyTrace } from '#lib/baby/index.ts';
+import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace } from '#lib/baby/index.ts';
+import { turnTokens } from '#lib/baby/script.ts';
 import type { Primer } from '#lib/library/index.ts';
 import type { Notice } from './notices.ts';
 
-export type UserMessage = { id: string; role: 'user'; text: string };
+export type UserMessage = {
+	id: string;
+	role: 'user';
+	text: string;
+	/** The message this one teaches Baby a reply to, when it’s a taught reply. */
+	replyTo?: string;
+};
 export type BabyMessage = {
 	id: string;
 	role: 'baby';
@@ -32,6 +39,24 @@ export class Chat {
 	knowledge: BabyState | undefined = $state();
 	/** Ids of the sources Baby has finished reading, as Baby reports them. */
 	readSources: string[] = $derived(this.knowledge?.sources ?? []);
+	/**
+	 * Baby’s latest reply and the message it answered, while the user can teach a
+	 * better one: the reply is finished, nothing has been said since, and Baby isn’t
+	 * reading (it reads one thing at a time).
+	 */
+	teachable: { reply: string; prompt: string } | undefined = $derived.by(() => {
+		if (this.reading) return undefined;
+		const index = this.messages.findLastIndex(
+			(message) => message.role === 'user' || message.role === 'baby'
+		);
+		const reply = this.messages[index];
+		const prompt = this.messages[index - 1];
+		if (reply?.role !== 'baby' || reply.request !== 'reply' || reply.pending) return undefined;
+		if (prompt?.role !== 'user') return undefined;
+		return { reply: reply.id, prompt: prompt.text };
+	});
+	/** The message the user is teaching Baby a reply to; their next message is that reply. */
+	teaching: string | undefined = $state();
 
 	#baby: Baby;
 
@@ -57,11 +82,35 @@ export class Chat {
 	}
 
 	async read(primer: Primer) {
-		if (this.reading) throw new Error('Baby is already reading');
-		this.reading = true;
 		const { id: source, title, documents } = primer;
-		await this.#follow('read', this.#baby.read({ source, title, documents }));
-		this.reading = false;
+		await this.#read({ source, title, documents });
+	}
+
+	/** Starts teaching a reply to the latest message Baby answered. */
+	startTeaching() {
+		if (!this.teachable) throw new Error('Nothing to teach a reply to');
+		this.teaching = this.teachable.prompt;
+	}
+
+	cancelTeaching() {
+		this.teaching = undefined;
+	}
+
+	/**
+	 * Baby reads `reply` as its answer to the message being taught: the pair as one
+	 * turn each, like a lesson, so it learns what to say back, not just the words.
+	 */
+	async teach(reply: string) {
+		const prompt = this.teaching;
+		if (prompt === undefined) throw new Error('Not teaching a reply');
+		if (this.reading) throw new Error('Baby is already reading');
+		this.teaching = undefined;
+		this.messages.push({ id: crypto.randomUUID(), role: 'user', text: reply, replyTo: prompt });
+		await this.#read({
+			source: `taught:${crypto.randomUUID()}`,
+			title: `Your reply to ‘${prompt}’`,
+			documents: [[...turnTokens('you', prompt), ...turnTokens('baby', reply)]]
+		});
 	}
 
 	/**
@@ -73,10 +122,18 @@ export class Chat {
 		try {
 			for await (const event of this.#baby.reset()) if (event.type === 'done') break;
 			this.messages = [];
+			this.teaching = undefined;
 		} catch (error) {
 			console.error(error);
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
 		}
+	}
+
+	async #read(reading: Reading) {
+		if (this.reading) throw new Error('Baby is already reading');
+		this.reading = true;
+		await this.#follow('read', this.#baby.read(reading));
+		this.reading = false;
 	}
 
 	/**

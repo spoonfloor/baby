@@ -39,7 +39,13 @@ export function transcript(
 	for (const message of messages) {
 		switch (message.role) {
 			case 'user':
-				lines.push('', RULE, `you: ${message.text}`);
+				lines.push(
+					'',
+					RULE,
+					message.replyTo === undefined
+						? `you: ${message.text}`
+						: `you (teaching a reply to “${message.replyTo}”): ${message.text}`
+				);
 				break;
 			case 'app':
 				lines.push(`app: ${noticeText(message.notice)}`);

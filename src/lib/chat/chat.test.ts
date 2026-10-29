@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Baby, BabyEvent, BabyState, ReplyTrace } from '#lib/baby/index.ts';
+import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace } from '#lib/baby/index.ts';
 import type { Primer } from '#lib/library/index.ts';
 import { Chat } from './chat.svelte.ts';
 
@@ -223,6 +223,65 @@ describe('Chat', () => {
 			{ role: 'app', notice: 'failed' }
 		]);
 		await expect(chat.send('still there?')).resolves.toBeUndefined();
+	});
+
+	it('offers to teach a reply to the latest finished reply, until something else is said', async () => {
+		const { baby, release } = fakeBaby([{ type: 'token', text: 'hey' }], ['hey']);
+		const chat = new Chat(baby);
+
+		const sending = chat.send('IDK');
+		expect(chat.teachable).toBeUndefined();
+		release();
+		await sending;
+		const reply = chat.messages.at(-1);
+		expect(chat.teachable).toEqual({ reply: reply?.id, prompt: 'IDK' });
+
+		const reading = chat.read(primer);
+		expect(chat.teachable).toBeUndefined();
+		await reading;
+		expect(chat.teachable).toBeUndefined();
+	});
+
+	it('teaches a reply: Baby reads the message and the reply as a script', async () => {
+		const { baby, release } = fakeBaby([], ['hey']);
+		const readings: Reading[] = [];
+		const read = baby.read;
+		baby.read = (reading) => {
+			readings.push(reading);
+			return read(reading);
+		};
+		const chat = new Chat(baby);
+		release();
+		await chat.send('IDK');
+
+		chat.startTeaching();
+		expect(chat.teaching).toBe('IDK');
+		await chat.teach('Me too!');
+
+		expect(chat.teaching).toBeUndefined();
+		expect(chat.messages.slice(-2)).toMatchObject([
+			{ role: 'user', text: 'Me too!', replyTo: 'IDK' },
+			{ role: 'baby', request: 'read', pending: false }
+		]);
+		expect(readings).toHaveLength(1);
+		expect(readings[0]?.documents).toEqual([
+			['[YOU]', 'idk', '[EOS]', '[BABY]', 'me', 'too', '!', '[EOS]']
+		]);
+		expect(chat.readSources).toEqual([readings[0]?.source]);
+	});
+
+	it('cancels teaching without saying anything', async () => {
+		const { baby, release } = fakeBaby([], ['hey']);
+		const chat = new Chat(baby);
+		release();
+		await chat.send('IDK');
+
+		chat.startTeaching();
+		chat.cancelTeaching();
+
+		expect(chat.teaching).toBeUndefined();
+		expect(chat.messages).toHaveLength(2);
+		await expect(chat.teach('Me too!')).rejects.toThrow();
 	});
 
 	it('resets: Baby forgets its reading and the conversation is cleared', async () => {

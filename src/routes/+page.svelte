@@ -9,6 +9,7 @@
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
+	import Button from '#lib/ui/Button.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
@@ -37,6 +38,7 @@
 		}))
 	);
 	const bottom = stickToBottom();
+	let composer: Composer;
 
 	/** The primer being previewed. Raw, not deeply reactive: primers never change, and Baby’s worker can only be sent plain data. */
 	let previewing: Primer | undefined = $state.raw();
@@ -64,11 +66,20 @@
 		}
 	}
 
+	function startTeaching() {
+		chat.startTeaching();
+		composer.focus();
+	}
+
 	function reset() {
 		confirmingReset = false;
 		chat.reset();
 	}
 </script>
+
+{#snippet teachLink()}
+	<Button inline onclick={startTeaching}>Teach a reply</Button>
+{/snippet}
 
 <div class="page">
 	<header class="toolbar">
@@ -87,13 +98,21 @@
 				{#each chat.messages as message (message.id)}
 					<li>
 						{#if message.role === 'user'}
-							<UserMessage text={message.text} />
+							<UserMessage
+								text={message.text}
+								label={message.replyTo === undefined
+									? undefined
+									: `Your reply to “${message.replyTo}”`}
+							/>
 						{:else if message.role === 'baby'}
 							<BabyMessage
 								text={typeset(message.text.split(' '))}
 								status={message.status}
 								pending={message.pending}
 								progress={message.progress}
+								actions={chat.teachable?.reply === message.id && chat.teaching === undefined
+									? teachLink
+									: undefined}
 							/>
 						{:else}
 							<AppMessage text={noticeText(message.notice, pointerVerb())} />
@@ -107,11 +126,23 @@
 		<div class="composer">
 			<div class="field">
 				<Composer
-					placeholder={empty ? 'Say hi to Baby' : 'Reply'}
-					ready={!chat.replying}
+					bind:this={composer}
+					placeholder={chat.teaching !== undefined
+						? 'What should Baby say?'
+						: empty
+							? 'Say hi to Baby'
+							: 'Reply'}
+					ready={chat.teaching !== undefined ? !chat.reading : !chat.replying}
+					note={chat.teaching === undefined
+						? undefined
+						: {
+								text: `Teaching Baby a reply to “${chat.teaching}”`,
+								oncancel: () => chat.cancelTeaching()
+							}}
 					onsend={(text) => {
 						bottom.pin();
-						chat.send(text);
+						if (chat.teaching !== undefined) chat.teach(text);
+						else chat.send(text);
 					}}
 				>
 					{#snippet start()}

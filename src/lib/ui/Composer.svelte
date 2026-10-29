@@ -1,6 +1,7 @@
 <!--
 	Where the user types. Enter sends, Shift+Enter adds a line; the field grows with
-	its text. Typing is always allowed, but sending waits until `ready`.
+	its text. Typing is always allowed, but sending waits until `ready`. A `note` above
+	the field says what sending will do differently, with ✕ to go back to normal.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -11,12 +12,13 @@
 		placeholder: string;
 		ready?: boolean;
 		value?: string;
+		note?: { text: string; oncancel: () => void } | undefined;
 		/** Controls shown before the field, e.g. the + menu. */
 		start?: Snippet;
 		onsend: (text: string) => void;
 	}
 
-	let { placeholder, ready = true, value = $bindable(''), start, onsend }: Props = $props();
+	let { placeholder, ready = true, value = $bindable(''), note, start, onsend }: Props = $props();
 
 	let field: HTMLTextAreaElement;
 	const canSend = $derived(ready && value.trim() !== '');
@@ -27,6 +29,10 @@
 		field.style.height = 'auto';
 		field.style.height = `${field.scrollHeight}px`;
 	});
+
+	export function focus() {
+		field.focus();
+	}
 
 	function send() {
 		if (!canSend) return;
@@ -48,6 +54,12 @@
 </script>
 
 <Surface as="form" {onsubmit}>
+	{#if note}
+		<div class="note">
+			<p>{note.text}</p>
+			<IconButton icon="close" label="Cancel" onclick={note.oncancel} />
+		</div>
+	{/if}
 	<div class="row">
 		{@render start?.()}
 		<textarea
@@ -66,6 +78,18 @@
 		display: flex;
 		align-items: flex-end;
 		gap: var(--space-inline);
+	}
+
+	.note {
+		display: flex;
+		justify-content: space-between;
+		gap: var(--space-inline);
+		margin-block-end: var(--space-tight);
+		color: var(--color-text-muted);
+	}
+
+	.note p {
+		margin: 0;
 	}
 
 	textarea {

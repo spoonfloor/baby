@@ -57,6 +57,10 @@
 	let confirmingReset = $state(false);
 </script>
 
+{#snippet teachLink()}
+	<Button inline>Teach a reply</Button>
+{/snippet}
+
 <main>
 	<section>
 		<h2>Composer</h2>
@@ -68,6 +72,11 @@
 		<Composer placeholder="Reply" value={short} onsend={noop} />
 		<Composer placeholder="Reply" value={multiline} onsend={noop} />
 		<Composer placeholder="Reply" value={long} ready={false} onsend={noop} />
+		<Composer
+			placeholder="What should Baby say?"
+			note={{ text: 'Teaching Baby a reply to “IDK”', oncancel: noop }}
+			onsend={noop}
+		/>
 	</section>
 
 	<section>
@@ -141,6 +150,7 @@
 		<div class="row">
 			<Button>Cancel</Button>
 			<Button primary>Read</Button>
+			<Button inline>Teach a reply</Button>
 		</div>
 	</section>
 
@@ -149,12 +159,25 @@
 		<UserMessage text={short} />
 		<UserMessage text={long} />
 		<UserMessage text={multiline} />
+		<UserMessage text="Me too!" label="Your reply to “IDK”" />
 	</section>
 
 	<section>
 		<h2>Baby message</h2>
 		<BabyMessage status="Recognized 0 of 3 words" text="" pending />
 		<BabyMessage status="Looked for words to say but found none" text="" pending={false} />
+		<BabyMessage
+			status="Looked for words to say but found none"
+			text=""
+			pending={false}
+			actions={teachLink}
+		/>
+		<BabyMessage
+			status="Picked 3 words, each a guess at what comes next"
+			text="Thank you ?"
+			pending={false}
+			actions={teachLink}
+		/>
 		<BabyMessage
 			status="Picked 29 words, each a guess at what comes next"
 			text={long}
