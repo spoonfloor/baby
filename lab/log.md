@@ -103,4 +103,4 @@ Does reading the user’s own messages help? Baby read Greetings + Thanks, then 
 - **Lessons:** no forgetting; trained + near 93–97% → 96–99%.
 - **Replies:** no better. Baby still answers with lesson replies (“thank you !”, “you’re welcome !”) because those are the only replies it has read. The chat’s words leak in as blends: “you’re little welcome !”, “thank you for talking with me that ?”.
 
-Knowing a word isn’t understanding it, and plain text can’t teach what to say back. It also hides the “didn’t recognize” notice for messages Baby still can’t follow. Not built as planned.
+Knowing a word isn’t understanding it, and plain text can’t teach what to say back. It also hides the “didn’t recognize” notice for messages Baby still can’t follow. Recommendation: don’t build it as planned.
