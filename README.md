@@ -4,7 +4,7 @@ A PWA that trains a real, tiny language model (“Baby”) in the browser, so yo
 
 ## The point
 
-Baby is supposed to be bad. The experience is about how bad it is with very little to read, and watching it get less bad, never “good.” Simplification in service of understanding.
+Talking to Baby should be enjoyable, as `lab/rubric.md` defines it. Simplification in service of understanding.
 
 ## Core model decisions
 

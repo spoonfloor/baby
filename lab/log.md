@@ -120,3 +120,7 @@ Can the user teach Baby a reply? Baby read Greetings + Thanks, then 5 correction
 - **It doesn’t generalize:** one framing per correction is the Baseline problem again. Teaching a few phrasings would, as it did for the lessons.
 - **Repeating it doesn’t help** and starts to cost the lessons (one seed fell to 88%).
 - Correction phrases leak into other replies as blends (“you’re song no . i only know a few words .”), on character if not on topic.
+
+## 2026-10-29 · Rubric: the goal is enjoyable
+
+The goal of a chat was stated four ways: the README’s “supposed to be bad”, the rubric’s “fun to poke at”, `CLAUDE.md`’s “how chatting feels”, and a private note’s “enjoyable”. Now the rubric is the one definition and the others point to it. A good chat is **enjoyable**: the six qualities, and never boring, confusing, frustrating (several replies in a row ignore you) or broken (no sentence to find). Word salad is judged by quality, not amount. Primitive comes free and is never a goal.

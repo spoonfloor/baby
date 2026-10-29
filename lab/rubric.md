@@ -1,10 +1,19 @@
 # What makes a good chat
 
-The standard every lesson change is judged against. `log.md` records what changed and why; this file is the current rules. When a decision changes them, log it there and update this file to match.
+The one definition of a good chat with Baby: the standard every lesson change is judged against, and what the README and `CLAUDE.md` point to. `log.md` records what changed and why; this file is the current rules. When a decision changes them, log it there and update this file to match.
 
-## Qualities
+## Enjoyable
 
-Baby is small and knows few words, so the bar is a chat that’s fun to poke at, not one that’s smart.
+A good chat is **enjoyable**: worth your time to keep talking to Baby. Baby is tiny, so it’s primitive without our trying; that’s never a goal.
+
+A chat is enjoyable when it has the qualities below, and stops being enjoyable when it’s any of these:
+
+- **Boring.** Flat, samey, nothing to react to.
+- **Confusing.** You can’t tell what Baby meant or why.
+- **Frustrating.** Several replies in a row ignore what you said.
+- **Broken.** You can’t find a sentence in it.
+
+**Word salad** is judged by its quality, not its amount. Salad that’s charming is fine; salad that’s boring, confusing, or broken isn’t.
 
 | quality            | means                                                        | judged by                                         |
 | ------------------ | ------------------------------------------------------------ | ------------------------------------------------- |
@@ -32,7 +41,7 @@ baby: Do you like horses?
 baby: I don’t like funky smells. Do you like funky smells?
 ```
 
-Broken is a fragment, or the same reply whatever you say:
+Broken is a fragment, with no sentence to find; giving the same one whatever you say makes it frustrating too:
 
 ```
 you: hi → baby: my name ?
