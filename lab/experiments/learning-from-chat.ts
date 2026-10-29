@@ -4,7 +4,7 @@ import { seededRandom } from '#lib/baby/random.ts';
 import type { Reading } from '#lib/baby/index.ts';
 import { EOS, tokenize } from '#lib/baby/vocabulary.ts';
 import { chatbot101 } from '#lib/library/chatbot-101.ts';
-import type { Pack } from '#lib/library/pack.ts';
+import type { Primer } from '#lib/library/primer.ts';
 import { probesFor } from '../probes.ts';
 
 /**
@@ -53,7 +53,7 @@ const test = [
 	'good morning, I think'
 ];
 
-function lesson(id: string): Pack {
+function lesson(id: string): Primer {
 	const pack = chatbot101.find((pack) => pack.id === id);
 	if (!pack) throw new Error(`No pack “${id}” in Chatbot 101`);
 	return pack;
@@ -76,7 +76,7 @@ async function ask(model: Model, prompt: string): Promise<{ reply: string; unkno
 }
 
 /** Share of probe samples, over every lesson read, that got an acceptable reply. */
-async function probeScore(model: Model, packs: Pack[], samples: number): Promise<number> {
+async function probeScore(model: Model, packs: Primer[], samples: number): Promise<number> {
 	let good = 0;
 	let total = 0;
 	for (const probe of packs.flatMap(probesFor)) {

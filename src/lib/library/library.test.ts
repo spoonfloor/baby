@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { shelves } from './index.ts';
+import { groups } from './index.ts';
 
-describe('shelves', () => {
-	const packs = shelves.flatMap((shelf) => shelf.packs);
+describe('groups', () => {
+	const primers = groups.flatMap((group) => group.primers);
 
-	it('gives every pack a unique id', () => {
-		expect(new Set(packs.map((pack) => pack.id)).size).toBe(packs.length);
+	it('gives every primer a unique id', () => {
+		expect(new Set(primers.map((primer) => primer.id)).size).toBe(primers.length);
 	});
 
 	it('starts every conversation with you and ends it on Baby’s turn', () => {
-		for (const document of packs.flatMap((pack) => pack.documents)) {
+		for (const document of primers.flatMap((primer) => primer.documents)) {
 			// Each turn begins right after the previous one’s [EOS].
 			const lastTurn = document.lastIndexOf('[EOS]', -2) + 1;
 			expect(document[0]).toBe('[YOU]');

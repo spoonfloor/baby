@@ -1,8 +1,8 @@
-import { scriptPack } from './pack.ts';
+import { scriptPrimer } from './primer.ts';
 
 /** Conversation lessons: short scripts that teach Baby to take turns, in curriculum order. */
 export const chatbot101 = [
-	scriptPack(
+	scriptPrimer(
 		'greetings',
 		'Greetings',
 		`
@@ -105,7 +105,7 @@ export const chatbot101 = [
 		baby: It’s going well!
 		`
 	),
-	scriptPack(
+	scriptPrimer(
 		'thanks',
 		'Thanks',
 		`
@@ -173,7 +173,7 @@ export const chatbot101 = [
 		baby: Thank you for talking with me too!
 		`
 	),
-	scriptPack(
+	scriptPrimer(
 		'goodbyes',
 		'Goodbyes',
 		`
@@ -252,7 +252,7 @@ export const chatbot101 = [
 		baby: Bye!
 		`
 	),
-	scriptPack(
+	scriptPrimer(
 		'about-baby',
 		'About Baby',
 		`

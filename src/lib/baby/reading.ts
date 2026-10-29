@@ -25,6 +25,11 @@ export function describeReading({ words, newWords }: ReadingStats): string {
 	return `${count(words, 'word')} · ${newWords} new`;
 }
 
+/** “412 words · 13 sources”: what Baby knows, in the sources panel. */
+export function describeKnowledge(words: number, sources: number): string {
+	return words === 0 ? 'No words yet' : `${count(words, 'word')} · ${count(sources, 'source')}`;
+}
+
 /** “3 words”, “1 word”. */
 export function count(n: number, noun: string): string {
 	return `${n} ${noun}${n === 1 ? '' : 's'}`;

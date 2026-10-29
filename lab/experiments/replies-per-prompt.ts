@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { Model } from '#lib/baby/model.ts';
 import { seededRandom } from '#lib/baby/random.ts';
 import { chatbot101 } from '#lib/library/chatbot-101.ts';
-import { scriptPack, type Pack } from '#lib/library/pack.ts';
+import { scriptPrimer, type Primer } from '#lib/library/primer.ts';
 
 /**
  * The 2026-10-28 A/B on replies per prompt (see log.md): a newborn Baby reads a
@@ -16,7 +16,7 @@ import { scriptPack, type Pack } from '#lib/library/pack.ts';
  */
 
 // Same prompts and same number of conversations as Greetings; only the replies vary.
-const framed = scriptPack(
+const framed = scriptPrimer(
 	'greetings',
 	'Greetings',
 	`
@@ -121,7 +121,7 @@ const framed = scriptPack(
 );
 
 // The same prompts again with a second reply, so the prompt alone predicts a few replies.
-const extra = scriptPack(
+const extra = scriptPrimer(
 	'greetings',
 	'Greetings',
 	`
@@ -162,7 +162,7 @@ const extra = scriptPack(
 	baby: I am good. How are you?
 	`
 );
-function lesson(id: string): Pack {
+function lesson(id: string): Primer {
 	const pack = chatbot101.find((pack) => pack.id === id);
 	if (!pack) throw new Error(`No pack “${id}” in Chatbot 101`);
 	return pack;

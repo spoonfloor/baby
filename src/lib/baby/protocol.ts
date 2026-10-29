@@ -43,7 +43,7 @@ export interface BabyState {
 
 /** Something for Baby to read in one sitting. */
 export interface Reading {
-	/** Where it came from (a pack id), so the app can tell later what Baby has read. */
+	/** Where it came from (a primer id), so the app can tell later what Baby has read. */
 	source: string;
 	/** Its name in status lines. */
 	title: string;

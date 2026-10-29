@@ -8,7 +8,7 @@ export type Notice = 'newborn' | 'unrecognized' | 'failed';
 export function noticeText(notice: Notice, pointerVerb: 'Click' | 'Tap'): string {
 	switch (notice) {
 		case 'newborn':
-			return `Baby tried and failed to think of anything to say. Baby is brand new and knows literally nothing. ${pointerVerb} the + in the reply box below to start Baby’s training.`;
+			return `Baby tried and failed to think of anything to say. Baby is brand new and knows literally nothing. ${pointerVerb} Greetings, under Chatbot 101 at the top, to start Baby’s training.`;
 		case 'unrecognized':
 			return 'Baby didn’t recognize most of those words, so it couldn’t follow what you said. It only knows words from what it has read.';
 		case 'failed':

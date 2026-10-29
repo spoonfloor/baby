@@ -1,6 +1,7 @@
 <!-- The gear button and its menu of settings. -->
 <script lang="ts">
 	import Menu from './Menu.svelte';
+	import Row from './Row.svelte';
 
 	interface Props {
 		/** Reset model can’t be chosen (Baby is busy). */
@@ -14,21 +15,21 @@
 	let { resetDisabled = false, oncopytranscript, onreset }: Props = $props();
 </script>
 
-<Menu icon="gear" label="Settings" placement="below-end">
+<Menu icon="gear" label="Settings" placement="above-end">
 	{#snippet children(close)}
 		<ul>
 			<li>
-				<button
+				<Row
 					onclick={() => {
 						close();
 						oncopytranscript();
 					}}
 				>
 					Copy transcript
-				</button>
+				</Row>
 			</li>
 			<li>
-				<button
+				<Row
 					disabled={resetDisabled}
 					onclick={() => {
 						close();
@@ -36,7 +37,7 @@
 					}}
 				>
 					Reset model
-				</button>
+				</Row>
 			</li>
 		</ul>
 	{/snippet}

@@ -48,7 +48,7 @@
 	--measure: 60ch; /* longest line of running text */
 
 	/* Shape */
-	--radius-surface: 24px; /* composer + user bubble */
+	--radius-surface: 12px; /* every surface: composer, user bubble, menus, dialogs, sources panel */
 	--radius-pill: 999px; /* text buttons */
 
 	/*
@@ -58,25 +58,29 @@
 	--space-gutter: var(--raw-space-16); /* page edge → content */
 	--space-surface-inline: var(--raw-space-24); /* inside a surface, left/right */
 	--space-surface-block: var(--raw-space-16); /* inside a surface, top/bottom */
-	--space-surface-roomy: var(--raw-space-24); /* inside a dialog, all sides: matches its radius */
+	--space-surface-roomy: var(--raw-space-24); /* inside a dialog, all sides */
 	--space-stack: var(--raw-space-32); /* between conversation blocks */
 	--space-section: var(--raw-space-24); /* between groups inside a surface, e.g. text → actions */
 	--space-heading: var(--raw-space-12); /* title → its text */
 	--space-tight: var(--raw-space-8); /* between related lines, e.g. status line → reply */
 	--space-inline: var(--raw-space-8); /* icon ↔ text */
+	--space-inline-tight: var(--raw-space-4); /* a small icon right after its label */
 	--space-control-block: var(--raw-space-8); /* inside a button or menu row, top/bottom */
 	--space-control-inline: var(--raw-space-16); /* inside a text button, left/right */
 
 	/* Size */
 	--size-icon: 20px;
+	--size-icon-small: 16px; /* an icon set inline with a label, e.g. a group’s chevron */
 	--width-content: 720px; /* max width of the conversation column */
 	--width-bubble: 85%; /* max width of a user bubble */
 	--height-composer-max: 40dvh; /* composer grows with its text up to this */
-	--width-menu: 240px; /* the + menu */
+	--width-menu: 240px; /* menus: the + menu, settings */
+	--width-panel: 280px; /* the sources panel, open or closed */
+	--height-panel-max: 70dvh; /* the open sources panel scrolls inside, up to this */
 	--height-progress: 4px; /* a progress bar under a status line */
 	--height-dialog-max: 80dvh; /* a modal scrolls inside, up to this */
 	--width-dialog-narrow: 400px; /* a confirmation: a title, a sentence or two, actions */
-	--width-dialog-wide: var(--width-content); /* a dialog showing content, e.g. a pack preview */
+	--width-dialog-wide: var(--width-content); /* a dialog showing content, e.g. a source preview */
 
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */

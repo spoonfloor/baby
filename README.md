@@ -16,19 +16,21 @@ Baby is supposed to be bad. The experience is about how bad it is with very litt
 
 ## Feeding Baby
 
+Anything Baby has read is a **source**, the one word for it on screen. Texts we supply are **primers**, a word used only in code and docs. The sources panel, pinned to the top corner, sums up what Baby knows (“412 words · 13 sources”) and opens to list the primers: Chatbot 101 first, then subjects A–Z, each a group you can open and close. Clicking one previews it. The + menu is only for bringing your own text: upload and URL.
+
 1. **Upload text files** (fully offline).
-2. **Curated reading list:** each pack previewed before reading, showing the exact text Baby will train on. Public-domain texts (nursery rhymes, Aesop, the Constitution preamble, _Alice in Wonderland_), plus conversation lessons.
+2. **Primers:** each previewed before reading, showing the exact text Baby will train on. Public-domain texts (nursery rhymes, Aesop, the Constitution preamble, _Alice in Wonderland_), grouped by subject, plus Chatbot 101’s conversation lessons.
 3. **URLs / RSS / reader view:** via a small Cloudflare Worker proxy on erichenry.com, locked to the PWA’s origin and a domain allowlist. Offer raw page vs. RSS vs. Readability-cleaned text as a comparison of “diet.”
 4. **New words** can be added mid-life (vocabulary expansion), seeded with noise or the average embedding — both worth comparing.
 
 ## Experiences
 
-- **Birth:** before reading anything, Baby knows no words, so it is mute: the only things it can pick are markers that end its turn (`[EOS]`, or a new turn’s `[YOU]` / `[BABY]`). The app explains and points to the + menu. Once Baby has read something but isn’t trained, it babbles noise: real words in random order.
+- **Birth:** before reading anything, Baby knows no words, so it is mute: the only things it can pick are markers that end its turn (`[EOS]`, or a new turn’s `[YOU]` / `[BABY]`). The app explains and points to Chatbot 101 in the sources panel. Once Baby has read something but isn’t trained, it babbles noise: real words in random order.
 - **Probe prompts:** a fixed set of prompts replayed after each feeding, so you compare younger vs. older Baby.
 - **Growth chart:** probability of the right next word over training time (“rock” climbing 44% → 99%).
 - **Noise map:** which numbers training has touched vs. leftover randomness.
 - **Peek inside:** step through any prompt’s forward pass, stage by stage, with plain-language labels in parentheses (embedding (coordinates), query (question), key (name tag), value (content), weights (dials)…).
-- **App notices:** deterministic hints in a voice visibly separate from Baby’s, driven by Baby’s actual state (“Baby knows absolutely nothing. Try giving Baby something to read.” / “Baby has never seen ‘cake.’” / “Baby doesn’t know how to take turns yet. Try the conversation lessons.”).
+- **App notices:** deterministic hints in a voice visibly separate from Baby’s, driven by Baby’s actual state (“Baby knows absolutely nothing. Try giving Baby something to read.” / “Baby has never seen ‘cake.’” / “Baby doesn’t know how to take turns yet. Try Chatbot 101.”).
 - **Forgetting:** show earlier lessons sagging when Baby reads only new material, and recovering when old docs are mixed back in.
 
 ## Feedback → training
@@ -74,5 +76,5 @@ Stages:
 
 - Framework / build tooling for the PWA.
 - Hosting: Cloudflare Pages on erichenry.com (same domain as the Worker) vs. GitHub Pages.
-- First-run experience and the order of the reading list.
+- First-run experience, and which subjects to offer.
 - How much of the math view ships in v1.

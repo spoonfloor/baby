@@ -30,7 +30,7 @@ src/lib/baby/     the model, behind the Baby protocol
   reading.ts      documents (exact tokens Baby trains on) + reading stats, shared by preview and status
   model.ts        untrained model: mute until it reads, then uniform random picks
   worker/         worker entry, its own TS project (WebWorker globals, not DOM)
-src/lib/library/  what the + menu offers: shelves of packs (Chatbot 101 conversation lessons…)
+src/lib/library/  primers (texts we supply) in groups for the sources panel: Chatbot 101, then subjects A–Z
 src/routes/       / (chat), /kitchen-sink (every component in every state)
 lab/              lesson lab: trains Baby headless on Chatbot 101 and scores replies against probes
 ```

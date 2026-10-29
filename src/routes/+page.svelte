@@ -1,50 +1,58 @@
 <script lang="ts">
 	import { spawnBaby } from '#lib/baby/index.ts';
-	import { describeReading, readingStats } from '#lib/baby/reading.ts';
+	import { describeKnowledge, describeReading, readingStats } from '#lib/baby/reading.ts';
 	import { typeset } from '#lib/baby/typeset.ts';
 	import { Chat } from '#lib/chat/chat.svelte.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { transcript } from '#lib/chat/transcript.ts';
-	import { shelves, type Pack } from '#lib/library/index.ts';
+	import { groups, type Primer } from '#lib/library/index.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
-	import PackDialog from '#lib/ui/PackDialog.svelte';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SettingsMenu from '#lib/ui/SettingsMenu.svelte';
+	import SourceDialog from '#lib/ui/SourceDialog.svelte';
+	import SourcesPanel from '#lib/ui/SourcesPanel.svelte';
 	import { stickToBottom } from '#lib/ui/stickToBottom.ts';
 	import UserMessage from '#lib/ui/UserMessage.svelte';
 
 	const chat = new Chat(spawnBaby());
 	const empty = $derived(chat.messages.length === 0);
 
-	const packs = new Map(shelves.flatMap((shelf) => shelf.packs.map((pack) => [pack.id, pack])));
-	const menuShelves = $derived(
-		shelves.map((shelf) => ({
-			...shelf,
-			packs: shelf.packs.map(({ id, title }) => ({ id, title, read: chat.readPacks.includes(id) }))
-		}))
+	const primers = new Map(
+		groups.flatMap((group) => group.primers.map((primer) => [primer.id, primer]))
 	);
 	const known = $derived(new Set(chat.knowledge?.words));
+	const panelGroups = $derived(
+		groups.map(({ title, primers }) => ({
+			title,
+			sources: primers.map(({ id, title, documents }) => ({
+				id,
+				title,
+				read: chat.readSources.includes(id),
+				newWords: readingStats(documents, (word) => known.has(word)).newWords
+			}))
+		}))
+	);
 	const bottom = stickToBottom();
 
-	/** The pack being previewed. Raw, not deeply reactive: packs never change, and Baby’s worker can only be sent plain data. */
-	let previewing: Pack | undefined = $state.raw();
+	/** The primer being previewed. Raw, not deeply reactive: primers never change, and Baby’s worker can only be sent plain data. */
+	let previewing: Primer | undefined = $state.raw();
 
 	/** The Reset model confirmation is open. */
 	let confirmingReset = $state(false);
 
-	function read(pack: Pack) {
+	function read(primer: Primer) {
 		previewing = undefined;
-		chat.read(pack);
+		chat.read(primer);
 	}
 
 	async function copyTranscript() {
 		const text = transcript(chat.messages, {
 			knowledge: chat.knowledge,
-			packs: [...packs.values()],
+			primers: [...primers.values()],
 			noticeText: (notice) => noticeText(notice, pointerVerb()),
 			at: new Date()
 		});
@@ -64,10 +72,11 @@
 
 <div class="page">
 	<header class="toolbar">
-		<SettingsMenu
-			resetDisabled={chat.reading || chat.replying}
-			oncopytranscript={copyTranscript}
-			onreset={() => (confirmingReset = true)}
+		<SourcesPanel
+			summary={describeKnowledge(known.size, chat.readSources.length)}
+			groups={panelGroups}
+			disabled={chat.reading}
+			onopen={(id) => (previewing = primers.get(id))}
 		/>
 	</header>
 
@@ -96,22 +105,25 @@
 
 		<!-- One composer for both states, so focus and draft text survive the first send. -->
 		<div class="composer">
-			<Composer
-				placeholder={empty ? 'Say hi to Baby' : 'Reply'}
-				ready={!chat.replying}
-				onsend={(text) => {
-					bottom.pin();
-					chat.send(text);
-				}}
-			>
-				{#snippet start()}
-					<AddMenu
-						disabled={chat.reading}
-						shelves={menuShelves}
-						onopen={(id) => (previewing = packs.get(id))}
-					/>
-				{/snippet}
-			</Composer>
+			<div class="field">
+				<Composer
+					placeholder={empty ? 'Say hi to Baby' : 'Reply'}
+					ready={!chat.replying}
+					onsend={(text) => {
+						bottom.pin();
+						chat.send(text);
+					}}
+				>
+					{#snippet start()}
+						<AddMenu />
+					{/snippet}
+				</Composer>
+			</div>
+			<SettingsMenu
+				resetDisabled={chat.reading || chat.replying}
+				oncopytranscript={copyTranscript}
+				onreset={() => (confirmingReset = true)}
+			/>
 		</div>
 	</main>
 </div>
@@ -121,13 +133,13 @@
 {/if}
 
 {#if previewing}
-	{@const pack = previewing}
-	<PackDialog
-		title={pack.title}
-		summary={describeReading(readingStats(pack.documents, (word) => known.has(word)))}
-		documents={pack.documents}
-		read={chat.readPacks.includes(pack.id)}
-		onread={() => read(pack)}
+	{@const primer = previewing}
+	<SourceDialog
+		title={primer.title}
+		summary={describeReading(readingStats(primer.documents, (word) => known.has(word)))}
+		documents={primer.documents}
+		read={chat.readSources.includes(primer.id)}
+		onread={() => read(primer)}
 		onclose={() => (previewing = undefined)}
 	/>
 {/if}
@@ -143,6 +155,9 @@
 	.toolbar {
 		position: sticky;
 		top: 0;
+
+		/* The open sources panel hangs below the toolbar, over the conversation and composer. */
+		z-index: 1;
 		display: flex;
 		justify-content: flex-end;
 		padding: max(var(--space-gutter), env(safe-area-inset-top)) var(--space-gutter) 0;
@@ -173,10 +188,18 @@
 		list-style: none;
 	}
 
+	/* The settings gear sits beside the composer, at the bottom end. */
 	.composer {
 		position: sticky;
 		bottom: 0;
+		display: flex;
+		align-items: center;
+		gap: var(--space-inline);
 		padding-block-end: max(var(--space-gutter), env(safe-area-inset-bottom));
 		background: var(--color-bg);
+	}
+
+	.field {
+		flex: 1;
 	}
 </style>

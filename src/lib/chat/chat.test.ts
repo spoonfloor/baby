@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { Baby, BabyEvent, BabyState, ReplyTrace } from '#lib/baby/index.ts';
-import type { Pack } from '#lib/library/index.ts';
+import type { Primer } from '#lib/library/index.ts';
 import { Chat } from './chat.svelte.ts';
 
-const pack: Pack = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
+const primer: Primer = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
 
 /**
  * A Baby that answers every request with `events`, then done, knowing `words`.
@@ -81,7 +81,7 @@ describe('Chat', () => {
 
 		release();
 		await chat.send('hi');
-		await chat.read(pack);
+		await chat.read(primer);
 
 		expect(chat.messages).toMatchObject([
 			{ role: 'user' },
@@ -149,13 +149,13 @@ describe('Chat', () => {
 		expect(chat.messages.map((message) => message.role)).toEqual(['user', 'baby']);
 	});
 
-	it('shows reading as a Baby message with no user message, then marks the pack read', async () => {
+	it('shows reading as a Baby message with no user message, then marks the primer read', async () => {
 		const { baby, release } = fakeBaby([{ type: 'status', text: 'Read 3 words' }], ['a']);
 		const chat = new Chat(baby);
 
-		const reading = chat.read(pack);
+		const reading = chat.read(primer);
 		await Promise.resolve();
-		expect(chat.readPacks.includes(pack.id)).toBe(false);
+		expect(chat.readSources.includes(primer.id)).toBe(false);
 
 		release();
 		await reading;
@@ -163,7 +163,7 @@ describe('Chat', () => {
 		expect(chat.messages).toMatchObject([
 			{ role: 'baby', text: '', status: 'Read 3 words', pending: false }
 		]);
-		expect(chat.readPacks.includes(pack.id)).toBe(true);
+		expect(chat.readSources.includes(primer.id)).toBe(true);
 	});
 
 	it('keeps a reading’s latest progress on its message', async () => {
@@ -176,21 +176,21 @@ describe('Chat', () => {
 		);
 		const chat = new Chat(baby);
 
-		const reading = chat.read(pack);
+		const reading = chat.read(primer);
 		release();
 		await reading;
 
 		expect(chat.messages).toMatchObject([{ role: 'baby', progress: { done: 50, total: 200 } }]);
 	});
 
-	it('refuses a second message while replying, and a second pack while reading', async () => {
+	it('refuses a second message while replying, and a second primer while reading', async () => {
 		const { baby, release } = fakeBaby([], ['moon']);
 		const chat = new Chat(baby);
 
 		const sending = chat.send('one');
-		const reading = chat.read(pack);
+		const reading = chat.read(primer);
 		await expect(chat.send('two')).rejects.toThrow();
-		await expect(chat.read(pack)).rejects.toThrow();
+		await expect(chat.read(primer)).rejects.toThrow();
 
 		release();
 		await Promise.all([sending, reading]);
@@ -200,7 +200,7 @@ describe('Chat', () => {
 		const { baby, release } = fakeBaby([], ['moon']);
 		const chat = new Chat(baby);
 
-		const reading = chat.read(pack);
+		const reading = chat.read(primer);
 		expect(chat.reading).toBe(true);
 		const sending = chat.send('still there?');
 		expect(chat.replying).toBe(true);
@@ -214,10 +214,10 @@ describe('Chat', () => {
 	it('ends a failed request instead of staying busy, and says so', async () => {
 		const chat = new Chat(failingBaby());
 
-		await chat.read(pack);
+		await chat.read(primer);
 
 		expect(chat.reading).toBe(false);
-		expect(chat.readPacks.includes(pack.id)).toBe(false);
+		expect(chat.readSources.includes(primer.id)).toBe(false);
 		expect(chat.messages).toMatchObject([
 			{ role: 'baby', status: 'Thinking', pending: false },
 			{ role: 'app', notice: 'failed' }
@@ -229,20 +229,20 @@ describe('Chat', () => {
 		const { baby, release } = fakeBaby([], ['a']);
 		const chat = new Chat(baby);
 		release();
-		await chat.read(pack);
+		await chat.read(primer);
 		await chat.send('hi');
 
 		await chat.reset();
 
 		expect(chat.messages).toEqual([]);
-		expect(chat.readPacks).toEqual([]);
+		expect(chat.readSources).toEqual([]);
 	});
 
 	it('refuses to reset while Baby is busy', async () => {
 		const { baby, release } = fakeBaby([], ['a']);
 		const chat = new Chat(baby);
 
-		const reading = chat.read(pack);
+		const reading = chat.read(primer);
 		await expect(chat.reset()).rejects.toThrow();
 
 		release();

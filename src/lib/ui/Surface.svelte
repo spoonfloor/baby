@@ -1,7 +1,7 @@
 <!--
 	The raised container for everything that sits "on" the page: the composer, the
-	user's message bubbles, menus and dialogs. Its look is defined once, here.
-	Dialogs are `roomy`: equal padding on every side, matching the corner radius.
+	user’s message bubbles, menus, dialogs and the sources panel. Its look is defined once,
+	here. Dialogs are `roomy`: equal padding on every side.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';

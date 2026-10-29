@@ -1,6 +1,6 @@
 <!-- Every UI part in every state, on one page, for design review. -->
 <script lang="ts">
-	import { describeReading, readingStats } from '#lib/baby/reading.ts';
+	import { describeKnowledge, describeReading, readingStats } from '#lib/baby/reading.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { chatbot101 } from '#lib/library/chatbot-101.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
@@ -10,12 +10,13 @@
 	import Button from '#lib/ui/Button.svelte';
 	import IconButton from '#lib/ui/IconButton.svelte';
 	import { icons, type IconName } from '#lib/ui/icons.ts';
-	import PackDialog from '#lib/ui/PackDialog.svelte';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ProgressBar from '#lib/ui/ProgressBar.svelte';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SettingsMenu from '#lib/ui/SettingsMenu.svelte';
 	import ScriptText from '#lib/ui/ScriptText.svelte';
+	import SourceDialog from '#lib/ui/SourceDialog.svelte';
+	import SourcesPanel from '#lib/ui/SourcesPanel.svelte';
 	import Spinner from '#lib/ui/Spinner.svelte';
 	import StatusLine from '#lib/ui/StatusLine.svelte';
 	import UserMessage from '#lib/ui/UserMessage.svelte';
@@ -27,21 +28,31 @@
 	const noop = () => {};
 	const iconNames = Object.keys(icons) as IconName[];
 
-	const pack = chatbot101[0];
-	if (!pack) throw new Error('Chatbot 101 has no packs');
-	// Two packs read, one shelf empty: every menu state at once.
-	const shelves = [
-		{
-			title: 'Chatbot 101',
-			ordered: true,
-			packs: chatbot101.map(({ id, title }, index) => ({ id, title, read: index < 2 }))
-		},
-		{ title: 'Subjects', ordered: false, packs: [] }
-	];
-	const unread = describeReading(readingStats(pack.documents, () => false));
-	const reread = describeReading(readingStats(pack.documents, () => true));
+	const primer = chatbot101[0];
+	if (!primer) throw new Error('Chatbot 101 has no primers');
+	const unread = describeReading(readingStats(primer.documents, () => false));
+	const reread = describeReading(readingStats(primer.documents, () => true));
 
-	/** Which pack preview is open: never read, or read before. */
+	/** Sources panel groups with the first `read` of Chatbot 101 read and nothing else. */
+	function panelGroups(read: number) {
+		return [
+			{
+				title: 'Chatbot 101',
+				sources: chatbot101.map(({ id, title }, index) => ({
+					id,
+					title,
+					read: index < read,
+					newWords: 40 + 10 * index
+				}))
+			},
+			{
+				title: 'Psychology',
+				sources: [{ id: 'eliza', title: 'ELIZA (1966)', read: false, newWords: 812 }]
+			}
+		];
+	}
+
+	/** Which source preview is open: never read, or read before. */
 	let previewing: 'unread' | 'read' | undefined = $state();
 	let confirmingReset = $state(false);
 </script>
@@ -51,29 +62,47 @@
 		<h2>Composer</h2>
 		<Composer placeholder="Say hi to Baby" onsend={noop}>
 			{#snippet start()}
-				<AddMenu {shelves} onopen={() => (previewing = 'unread')} />
+				<AddMenu />
 			{/snippet}
 		</Composer>
 		<Composer placeholder="Reply" value={short} onsend={noop} />
 		<Composer placeholder="Reply" value={multiline} onsend={noop} />
-		<Composer placeholder="Reply" value={long} ready={false} onsend={noop}>
-			{#snippet start()}
-				<AddMenu disabled {shelves} onopen={noop} />
-			{/snippet}
-		</Composer>
+		<Composer placeholder="Reply" value={long} ready={false} onsend={noop} />
 	</section>
 
 	<section>
-		<h2>Pack preview</h2>
+		<h2>Sources panel</h2>
+		<div class="panels">
+			<SourcesPanel
+				summary={describeKnowledge(0, 0)}
+				groups={panelGroups(0)}
+				onopen={() => (previewing = 'unread')}
+			/>
+			<SourcesPanel
+				summary={describeKnowledge(412, 3)}
+				groups={panelGroups(3)}
+				onopen={() => (previewing = 'unread')}
+			/>
+			<SourcesPanel
+				summary={describeKnowledge(412, 3)}
+				groups={panelGroups(3)}
+				disabled
+				onopen={noop}
+			/>
+		</div>
+	</section>
+
+	<section>
+		<h2>Source preview</h2>
 		<div class="row">
 			<Button onclick={() => (previewing = 'unread')}>Never read</Button>
 			<Button onclick={() => (previewing = 'read')}>Read before</Button>
 		</div>
 		{#if previewing}
-			<PackDialog
-				title={pack.title}
+			<SourceDialog
+				title={primer.title}
 				summary={previewing === 'read' ? reread : unread}
-				documents={pack.documents}
+				documents={primer.documents}
 				read={previewing === 'read'}
 				onread={() => (previewing = undefined)}
 				onclose={() => (previewing = undefined)}
@@ -104,7 +133,7 @@
 
 	<section>
 		<h2>Script text</h2>
-		<ScriptText documents={pack.documents.slice(7, 9)} />
+		<ScriptText documents={primer.documents.slice(7, 9)} />
 	</section>
 
 	<section>
@@ -214,5 +243,13 @@
 
 	.end {
 		justify-content: flex-end;
+	}
+
+	/* Each panel hangs over what's below it when open, so give them room side by side. */
+	.panels {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--space-inline);
+		min-block-size: var(--height-panel-max);
 	}
 </style>

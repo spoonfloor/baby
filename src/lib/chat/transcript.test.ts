@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { parseScripts } from '#lib/baby/script.ts';
-import type { Pack } from '#lib/library/index.ts';
+import type { Primer } from '#lib/library/index.ts';
 import type { BabyMessage, Message } from './chat.svelte.ts';
 import { transcript, type TranscriptOptions } from './transcript.ts';
 
-const aboutBaby: Pack = {
+const aboutBaby: Primer = {
 	id: 'about-baby',
 	title: 'About Baby',
 	documents: parseScripts(
 		'you: Hi!\nbaby: Hi!\n\nyou: Are you smart?\nbaby: Not yet. I am still learning.'
 	)
 };
-const unread: Pack = {
+const unread: Primer = {
 	id: 'unread',
 	title: 'Unread',
 	documents: parseScripts('you: Hey.\nbaby: Hello !')
@@ -19,7 +19,7 @@ const unread: Pack = {
 
 const options: TranscriptOptions = {
 	knowledge: { words: ['hi', '!', 'not', 'yet'], sources: ['about-baby'] },
-	packs: [unread, aboutBaby],
+	primers: [unread, aboutBaby],
 	noticeText: (notice) => `[${notice}]`,
 	at: new Date(2026, 9, 27, 14, 32)
 };
@@ -37,7 +37,7 @@ const reply = (text: string, extra: Partial<BabyMessage> = {}): BabyMessage => (
 const lines = (messages: Message[]) => transcript(messages, options).split('\n');
 
 describe('transcript', () => {
-	it('heads with what Baby knows, naming read packs', () => {
+	it('heads with what Baby knows, naming read primers', () => {
 		expect(lines([])[1]).toBe('Knows 4 words · read About Baby');
 		expect(transcript([], { ...options, knowledge: undefined }).split('\n')[1]).toBe(
 			'Knows 0 words · read nothing'
@@ -70,13 +70,13 @@ describe('transcript', () => {
 		]);
 	});
 
-	it('flags a reply recited from a read pack, with the turn it answered there', () => {
+	it('flags a reply recited from a read primer, with the turn it answered there', () => {
 		expect(lines([reply('not yet . i am still learning .')])).toContain(
 			'  verbatim: matches “About Baby” (reply to “are you smart ?”)'
 		);
 	});
 
-	it('ignores packs Baby hasn’t read, and partial turns', () => {
+	it('ignores primers Baby hasn’t read, and partial turns', () => {
 		const text = lines([reply('hello !'), reply('not yet .')]).join('\n');
 		expect(text).not.toContain('verbatim');
 	});

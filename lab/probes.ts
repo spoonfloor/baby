@@ -1,6 +1,6 @@
 import { TURN_START } from '#lib/baby/script.ts';
 import { EOS, tokenize } from '#lib/baby/vocabulary.ts';
-import type { Pack } from '#lib/library/pack.ts';
+import type { Primer } from '#lib/library/primer.ts';
 
 /**
  * What the lab asks Baby after each lesson, and what counts as a good answer.
@@ -128,7 +128,7 @@ function turns(document: string[]): [string, string[]][] {
 }
 
 /** Every probe for a pack: its trained openings plus any written ones. */
-export function probesFor(pack: Pack): Probe[] {
+export function probesFor(pack: Primer): Probe[] {
 	const trained = new Map<string, Set<string>>();
 	for (const document of pack.documents) {
 		const [[you, prompt] = [], [baby, reply] = []] = turns(document);
@@ -158,7 +158,7 @@ export function probesFor(pack: Pack): Probe[] {
 }
 
 /** Probes for each pack, refusing any written probe that a lesson teaches verbatim. */
-export function curriculumProbes(packs: readonly Pack[]): Probe[] {
+export function curriculumProbes(packs: readonly Primer[]): Probe[] {
 	const probes = packs.flatMap(probesFor);
 	const taught = new Set(probes.filter((p) => p.tier === 'trained').map((p) => p.prompt));
 	const leaked = probes.filter((p) => p.tier !== 'trained' && taught.has(p.prompt));

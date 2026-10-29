@@ -1,5 +1,5 @@
 import type { Baby, BabyEvent, BabyState, ReplyTrace } from '#lib/baby/index.ts';
-import type { Pack } from '#lib/library/index.ts';
+import type { Primer } from '#lib/library/index.ts';
 import type { Notice } from './notices.ts';
 
 export type UserMessage = { id: string; role: 'user'; text: string };
@@ -26,12 +26,12 @@ export class Chat {
 	messages: Message[] = $state([]);
 	/** Baby answers one message at a time. */
 	replying = $state(false);
-	/** Baby reads (and practices) one pack at a time, and can still chat meanwhile. */
+	/** Baby reads (and practices) one source at a time, and can still chat meanwhile. */
 	reading = $state(false);
 	/** What Baby knows, as last reported by Baby. */
 	knowledge: BabyState | undefined = $state();
-	/** Ids of the packs Baby has finished reading, as Baby reports them. */
-	readPacks: string[] = $derived(this.knowledge?.sources ?? []);
+	/** Ids of the sources Baby has finished reading, as Baby reports them. */
+	readSources: string[] = $derived(this.knowledge?.sources ?? []);
 
 	#baby: Baby;
 
@@ -56,10 +56,10 @@ export class Chat {
 		}
 	}
 
-	async read(pack: Pack) {
+	async read(primer: Primer) {
 		if (this.reading) throw new Error('Baby is already reading');
 		this.reading = true;
-		const { id: source, title, documents } = pack;
+		const { id: source, title, documents } = primer;
 		await this.#follow('read', this.#baby.read({ source, title, documents }));
 		this.reading = false;
 	}
