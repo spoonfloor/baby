@@ -94,3 +94,13 @@ A/B on Greetings + Thanks, 3 seeds, one casual 13-message chat each (`experiment
 Kept one reply per prompt. Length is a judgment call, with reading time reported and each lesson under about 40 seconds.
 
 Found along the way: bare “how are you?” is broken on every seed (“i am good afternoon !”); Greetings never asks it without a greeting or “Baby” attached.
+
+## 2026-10-28 · Experiment: learning from chat
+
+Does reading the user’s own messages help? Baby read Greetings + Thanks, then the user’s 17 messages from two real chats as plain text (one document per message, no turn markers), 3 seeds (`experiments/learning-from-chat.ts`).
+
+- **Words:** every unknown word became known (68 words, 20 new, ~10s of practice).
+- **Lessons:** no forgetting; trained + near 93–97% → 96–99%.
+- **Replies:** no better. Baby still answers with lesson replies (“thank you !”, “you’re welcome !”) because those are the only replies it has read. The chat’s words leak in as blends: “you’re little welcome !”, “thank you for talking with me that ?”.
+
+Knowing a word isn’t understanding it, and plain text can’t teach what to say back. It also hides the “didn’t recognize” notice for messages Baby still can’t follow. Not built as planned.
