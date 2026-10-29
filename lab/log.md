@@ -104,3 +104,19 @@ Does reading the user’s own messages help? Baby read Greetings + Thanks, then 
 - **Replies:** no better. Baby still answers with lesson replies (“thank you !”, “you’re welcome !”) because those are the only replies it has read. The chat’s words leak in as blends: “you’re little welcome !”, “thank you for talking with me that ?”.
 
 Knowing a word isn’t understanding it, and plain text can’t teach what to say back. It also hides the “didn’t recognize” notice for messages Baby still can’t follow. Recommendation: don’t build it as planned.
+
+## 2026-10-28 · Experiment: teaching replies from chat
+
+Can the user teach Baby a reply? Baby read Greetings + Thanks, then 5 corrections as a script (a message from a real chat, and the reply Baby should have given, e.g. “IDK” → “Me too!”), read 1, 3 or 10 times, 3 seeds × 10 samples (`experiments/corrections.ts`).
+
+| corrections read | exact message | near variant (“idk, Baby”, “this is repetitive”) | lesson probes |
+| ---------------- | ------------- | ------------------------------------------------ | ------------- |
+| none             | 0%            | 3%                                               | 93–96%        |
+| ×1               | 95%           | 14%                                              | 97–99%        |
+| ×3               | 95%           | 6%                                               | 88–96%        |
+| ×10              | 98%           | 8%                                               | 89–97%        |
+
+- **One correction is enough** for the exact message, and costs only the minimum 200 steps of practice.
+- **It doesn’t generalize:** one framing per correction is the Baseline problem again. Teaching a few phrasings would, as it did for the lessons.
+- **Repeating it doesn’t help** and starts to cost the lessons (one seed fell to 88%).
+- Correction phrases leak into other replies as blends (“you’re song no . i only know a few words .”), on character if not on topic.
