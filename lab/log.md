@@ -142,3 +142,20 @@ The cost to the lessons after it, 10 seeds each (trained / near):
 | about-baby | 92% / 80%     | 79% / 39%                  | 85% / 56%                 |
 
 Stopping early recovers about half the loss. Greetings’ first loss is still higher after Hello (2.17 vs 1.24): a Baby certain of one word unlearns that certainty slowly. About Baby misses its trained target.
+
+## 2026-10-30 · Diagnosis: does learning Hello first cost the lessons?
+
+Same 10 seeds, three curricula, scored after all of Chatbot 101 (`experiments/hello-first.ts`, 20 samples, trained / near):
+
+| pack       | no Hello  | Hello first (now) | Hello folded into Greetings |
+| ---------- | --------- | ----------------- | --------------------------- |
+| greetings  | 97% / 86% | 97% / 87%         | 94% / 83%                   |
+| thanks     | 99% / 91% | 98% / 92%         | 97% / 92%                   |
+| goodbyes   | 97% / 94% | 96% / 87%         | 96% / 91%                   |
+| about-baby | 88% / 77% | 87% / 72%         | 85% / 73%                   |
+
+- **Hello first costs little:** within a few points everywhere but Goodbyes near (−7) and About Baby near (−5).
+- **Folding Hello in is no better**, so over-certainty from reading Hello alone isn’t the cause. Label smoothing isn’t indicated.
+- **The earlier 56% was mostly noise:** the same comparison in `npm run lab` (which also asks probes between readings) gave About Baby near 80% → 56%. Near scores swing widely from seed to seed, so a single 10-seed lab run can’t separate a cost this small from luck.
+
+Kept Hello first. No model change.
