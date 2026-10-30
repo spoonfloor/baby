@@ -10,6 +10,7 @@
 	/* Tier 1: primitives */
 	--raw-gray-950: #191919;
 	--raw-gray-850: #2a2a2a;
+	--raw-gray-800: #363636;
 	--raw-gray-450: #8a8a8a;
 	--raw-gray-50: #f4f4f4;
 	--raw-pink-400: #ee6f97;
@@ -35,6 +36,7 @@
 	--color-app-voice: var(--color-accent); /* the app speaking, as distinct from Baby */
 	--color-progress: var(--color-accent); /* the done part of a progress bar, like the spinner */
 	--color-progress-track: var(--color-surface); /* the part still to do */
+	--color-progress-stripe: var(--raw-gray-800); /* moving through the track: still working */
 	--color-backdrop: var(--raw-black-60); /* behind modal dialogs */
 	--color-action: var(--raw-gray-50); /* primary button fill */
 	--color-on-action: var(--raw-gray-950); /* primary button text */
@@ -83,10 +85,12 @@
 	--width-panel: 280px; /* the sources panel, open or closed */
 	--height-panel-max: 70dvh; /* the open sources panel scrolls inside, up to this */
 	--height-progress: 4px; /* a progress bar under a status line */
+	--width-progress-stripe: 4px; /* each stripe in a progress bar’s track, measured across it */
 	--height-dialog-max: 80dvh; /* a modal scrolls inside, up to this */
 	--width-dialog-narrow: 400px; /* a confirmation: a title, a sentence or two, actions */
 	--width-dialog-wide: var(--width-content); /* a dialog showing content, e.g. a source preview */
 
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */
+	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
 }

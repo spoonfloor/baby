@@ -9,7 +9,7 @@
  */
 
 /** Files allowed to animate. Add one only after the animation has been agreed on. */
-const APPROVED_ANIMATIONS = ['src/lib/ui/Spinner.svelte'];
+const APPROVED_ANIMATIONS = ['src/lib/ui/Spinner.svelte', 'src/lib/ui/ProgressBar.svelte'];
 
 const rawValueRules = {
 	'color-no-hex': true,

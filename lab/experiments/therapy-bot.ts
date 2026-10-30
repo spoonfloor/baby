@@ -80,26 +80,25 @@ const SCRIPT: Script = {
 
 const CASUAL = [
 	'i am sleepy',
-	'I told you I am sad',
-	'My mom never calls me',
 	'my boss hates me',
-	'I want help with my problems',
-	'What? What does that mean?',
-	'You are the worst!',
-	'Terrible.',
-	'No. I said I AM feeling terrible.',
-	'I drive nails into boards',
-	'I love it',
 	'They don’t respect me',
-	'Because she’s a bitch',
-	'You probably killed someone',
-	'You heard me!',
-	'It’s too loud',
-	'Drugs',
-	'You are glitching',
-	'Thank you?',
-	'You said that already',
-	'Because you are a sociopath'
+	'I love it',
+	'bad',
+	'you are making no sense at all',
+	'I cry a lot',
+	'LOL',
+	'I want to talk about my mother',
+	'I don’t',
+	'Because eating makes me feel better',
+	'Eating gives me good vibes',
+	'I am sad almost all of the time',
+	'You must never call me.',
+	'You are sounding more and more like a robot.',
+	'I have been depressed a long time',
+	'It only hurts when I laugh',
+	'That doesn’t surprise me.',
+	'Your smell bothers me.',
+	'Trump killed a puppy'
 ];
 
 /**

@@ -279,6 +279,23 @@ const shapes: Shape[] = [
 		baby: 'Tell me more about your {person}.',
 		unknown: 'Tell me more about them.'
 	},
+	{ you: '{feeling}.', baby: 'Why do you feel {feeling}?', unknown: 'What do you mean?' },
+	{
+		you: 'I have been {feeling}.',
+		baby: 'How long have you been {feeling}?',
+		unknown: 'How long have you felt that way?'
+	},
+	{
+		you: 'I want to {action}.',
+		baby: 'Why do you want to {action}?',
+		unknown: 'Why do you want to do that?'
+	},
+	{ you: 'I don’t {action}.', baby: 'Why don’t you {action}?', unknown: 'Why not?' },
+	{
+		you: 'I want to talk about my {person}.',
+		baby: 'Tell me about your {person}.',
+		unknown: 'Tell me about them.'
+	},
 	{ you: 'I want {wanted}.', baby: 'Why do you want {wanted}?', unknown: 'Why do you want that?' },
 	{
 		you: 'I need {wanted}.',
@@ -339,7 +356,8 @@ const shapes: Shape[] = [
 const smallTalk: [said: string[], reply: string][] = [
 	[['Hello.', 'Hi.', 'Hey.', 'Good morning.'], 'Hello. How are you feeling today?'],
 	[['Yes.', 'Yeah.', 'Yes, a bit.', 'I think so.'], 'I see. Tell me more.'],
-	[['No.', 'Not really.', 'No, I don’t think so.', 'Nope.'], 'Why not?'],
+	[['No.', 'Not really.', 'No, I don’t think so.', 'Nope.', 'I don’t.'], 'Why not?'],
+	[['Haha.', 'Lol.', 'Ha.'], 'What’s funny?'],
 	[['I don’t know.', 'I’m not sure.', 'Maybe.'], 'That’s okay. Take your time.'],
 	[['What?', 'What do you mean?', 'What does that mean?', 'Why?'], 'Why do you ask?'],
 	[['Thank you.', 'Thanks.'], 'You’re welcome.'],
@@ -348,25 +366,32 @@ const smallTalk: [said: string[], reply: string][] = [
 
 /**
  * Sentences made mostly of words Baby never read: it can’t follow them, so it says
- * so and asks, rather than guessing at a reply.
+ * so, in a way that fits how the sentence starts, rather than guessing at a reply.
  */
-const unclear: string[] = [
-	'[UNK].',
-	'[UNK] [UNK].',
-	'[UNK] [UNK] [UNK].',
-	'I [UNK] it.',
-	'I [UNK] [UNK].',
-	'It [UNK] me.',
-	'It [UNK] [UNK].',
-	'The [UNK] is [UNK].',
-	'[UNK] is [UNK].',
-	'You [UNK] [UNK].',
-	'[UNK] you [UNK].',
-	'I [UNK] [UNK] [UNK].',
-	'[UNK] [UNK] a [UNK].',
-	'[UNK] the [UNK].'
+const unclear: [said: string[], reply: string][] = [
+	[['[UNK].', '[UNK] [UNK].', '[UNK] [UNK] [UNK].'], 'What do you mean?'],
+	[
+		['I [UNK] it.', 'I [UNK] [UNK].', 'I [UNK] [UNK] [UNK].', 'I [UNK] a [UNK].'],
+		'Tell me more about that.'
+	],
+	[['My [UNK] [UNK].', 'My [UNK] is [UNK].', 'My [UNK] [UNK] me.'], 'Tell me more about that.'],
+	[
+		['You [UNK] [UNK].', 'You are [UNK] [UNK].', '[UNK] you [UNK].', 'You [UNK] [UNK] [UNK].'],
+		'We were talking about you, not me.'
+	],
+	[
+		[
+			'It [UNK] me.',
+			'It [UNK] [UNK].',
+			'The [UNK] is [UNK].',
+			'[UNK] is [UNK].',
+			'[UNK] [UNK] a [UNK].',
+			'[UNK] the [UNK].'
+		],
+		'I’m not sure I follow. What do you mean?'
+	],
+	[['That [UNK] me.', 'That’s [UNK].', 'That [UNK] [UNK].'], 'Why do you say that?']
 ];
-const UNCLEAR_REPLY = 'I’m not sure I follow. What do you mean?';
 
 /**
  * How a sentence can end when you type it. Every line is read in turn with each, so
@@ -489,7 +514,9 @@ export const exchanges: Exchange[] = [
 		)
 	),
 	...read,
-	...unclear.flatMap((you) => ENDINGS.map((_, i) => framed([you, UNCLEAR_REPLY], i)))
+	...unclear.flatMap(([said, reply]) =>
+		said.flatMap((you) => ENDINGS.map((_, i) => framed([you, reply], i)))
+	)
 ];
 
 /**

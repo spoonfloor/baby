@@ -23,7 +23,8 @@
 
 <div class="baby">
 	{#if status}
-		<StatusLine text={status} active={pending} />
+		<!-- A progress bar shows activity itself, so the status line drops its spinner. -->
+		<StatusLine text={status} active={pending && !progress} />
 	{/if}
 	{#if progress && pending}
 		<ProgressBar done={progress.done} total={progress.total} />
