@@ -8,7 +8,7 @@
 	} from '#lib/baby/reading.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { chatbot101 } from '#lib/library/chatbot-101.ts';
-	import { eliza } from '#lib/library/eliza/index.ts';
+	import { therapyBot } from '#lib/library/therapy-bot/index.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
@@ -55,7 +55,12 @@
 			{
 				title: 'Psychology',
 				sources: [
-					{ id: eliza.id, title: eliza.title, read: false, newWords: describeNewWords(812) }
+					{
+						id: therapyBot.id,
+						title: therapyBot.title,
+						read: false,
+						newWords: describeNewWords(812)
+					}
 				]
 			}
 		];
@@ -63,7 +68,7 @@
 
 	/** Which source preview is open: never read, read before, or adapted from something. */
 	let previewing: 'unread' | 'read' | 'credited' | undefined = $state();
-	const previewed = $derived(previewing === 'credited' ? eliza : greetings);
+	const previewed = $derived(previewing === 'credited' ? therapyBot : greetings);
 	let confirmingReset = $state(false);
 </script>
 

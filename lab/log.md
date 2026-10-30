@@ -159,3 +159,22 @@ Same 10 seeds, three curricula, scored after all of Chatbot 101 (`experiments/he
 - **The earlier 56% was mostly noise:** the same comparison in `npm run lab` (which also asks probes between readings) gave About Baby near 80% → 56%. Near scores swing widely from seed to seed, so a single 10-seed lab run can’t separate a cost this small from luck.
 
 Kept Hello first. No model change.
+
+## 2026-10-30 · Therapy Bot: copy your words back
+
+ELIZA (1966) became Therapy Bot: inspired by DOCTOR, tuned for an enjoyable chat rather than faithful to it. The old script (600 exchanges, ~50 frames with absurd fill-ins, 4–6 rotating replies per rule) taught Baby DOCTOR’s openers but not its trick, reflecting your words: “i feel tired .” got “do you enjoy feeling silly ?”. The new script is 12 sentence shapes, each with exactly one reply that copies your words back pointed at you (“I hate my commute.” → “What do you hate about your commute?”), ordinary fill-ins, and small talk said several ways.
+
+`experiments/therapy-bot.ts`, 5 seeds × 10 samples, Hello read first. Held-out probes fill a shape with words read elsewhere in the script but never in that shape; echo is the reply containing your words.
+
+| script                                                   | words | trained | held-out | echo | salad |
+| -------------------------------------------------------- | ----- | ------- | -------- | ---- | ----- |
+| ELIZA (DOCTOR, before)                                   | 8715  | 18%     | 16%      | 4%   | 68%   |
+| 12 shapes × 50                                           | 3301  | 77%     | 43%      | 82%  | 53%   |
+| + endings (`.`, none, `!`), small talk said several ways | 3656  | 83%     | 35%      | 77%  | 57%   |
+| 12 shapes × 100 (kept)                                   | 4942  | 73%     | 56%      | 83%  | 37%   |
+| 12 shapes × 150                                          | 6224  | 70%     | 52%      | 81%  | 41%   |
+
+- **Copying works once the data forces it.** With many fill-ins per shape and one reply, Baby echoes your words 4 times in 5. Most remaining salad is a near miss: the right shape with a neighbor’s word (“why is your sister worries ?”, from “What worries you about”).
+- **Endings matter more than the numbers show.** Before them, a prompt typed without a period (“i am sleepy”) got “.”; after, it gets “how long have you been sleepy ?” about 2 times in 3. The held-out probes all end in a period, so their score doesn’t see it.
+- **150 per shape is no better than 100** and reads longer.
+- Still weak: two-blank shapes with an unread verb (“my boss hates me” → “why do you think your boss ?”), and anything in no shape (“You are the worst!”). Unknown words stay [UNK], as expected.
