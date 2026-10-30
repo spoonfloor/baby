@@ -30,12 +30,12 @@
 		groups: PanelGroup[];
 		/** Sources can't be opened (Baby is busy reading). */
 		disabled?: boolean;
+		/** Showing the sources, not just the title. Closed until the user opens it. */
+		open?: boolean;
 		onopen: (id: string) => void;
 	}
 
-	let { summary, groups, disabled = false, onopen }: Props = $props();
-
-	let open = $state(true);
+	let { summary, groups, disabled = false, open = $bindable(false), onopen }: Props = $props();
 
 	/** Groups the user has opened, once they've toggled one; until then, the first one not finished. */
 	let opened: string[] | undefined = $state();

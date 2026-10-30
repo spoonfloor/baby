@@ -15,10 +15,20 @@
 		note?: { text: string; oncancel: () => void } | undefined;
 		/** Controls shown before the field, e.g. the + menu. */
 		start?: Snippet;
+		/** Controls shown after Send, e.g. the settings gear. */
+		end?: Snippet;
 		onsend: (text: string) => void;
 	}
 
-	let { placeholder, ready = true, value = $bindable(''), note, start, onsend }: Props = $props();
+	let {
+		placeholder,
+		ready = true,
+		value = $bindable(''),
+		note,
+		start,
+		end,
+		onsend
+	}: Props = $props();
 
 	let field: HTMLTextAreaElement;
 	const canSend = $derived(ready && value.trim() !== '');
@@ -70,6 +80,9 @@
 			rows="1"
 			aria-label={placeholder}></textarea>
 		<IconButton icon="return" label="Send" type="submit" disabled={!canSend} />
+		{#if end}
+			<div class="end">{@render end()}</div>
+		{/if}
 	</div>
 </Surface>
 
@@ -78,6 +91,13 @@
 		display: flex;
 		align-items: flex-end;
 		gap: var(--space-inline);
+	}
+
+	/* Set further from Send, so a tap meant for Send doesn’t land on something else. */
+	.end {
+		display: flex;
+		gap: var(--space-inline);
+		margin-inline-start: var(--space-inline);
 	}
 
 	.note {

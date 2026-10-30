@@ -129,37 +129,37 @@
 
 		<!-- One composer for both states, so focus and draft text survive the first send. -->
 		<div class="composer">
-			<div class="field">
-				<Composer
-					bind:this={composer}
-					placeholder={chat.teaching !== undefined
-						? 'What should Baby say?'
-						: empty
-							? 'Say hi to Baby'
-							: 'Reply'}
-					ready={chat.teaching !== undefined ? !chat.reading : !chat.replying}
-					note={chat.teaching === undefined
-						? undefined
-						: {
-								text: `Teaching Baby a reply to “${chat.teaching}”`,
-								oncancel: () => chat.cancelTeaching()
-							}}
-					onsend={(text) => {
-						bottom.pin();
-						if (chat.teaching !== undefined) chat.teach(text);
-						else chat.send(text);
-					}}
-				>
-					{#snippet start()}
-						<AddMenu />
-					{/snippet}
-				</Composer>
-			</div>
-			<SettingsMenu
-				resetDisabled={chat.reading || chat.replying}
-				oncopytranscript={copyTranscript}
-				onreset={() => (confirmingReset = true)}
-			/>
+			<Composer
+				bind:this={composer}
+				placeholder={chat.teaching !== undefined
+					? 'What should Baby say?'
+					: empty
+						? 'Say hi to Baby'
+						: 'Reply'}
+				ready={chat.teaching !== undefined ? !chat.reading : !chat.replying}
+				note={chat.teaching === undefined
+					? undefined
+					: {
+							text: `Teaching Baby a reply to “${chat.teaching}”`,
+							oncancel: () => chat.cancelTeaching()
+						}}
+				onsend={(text) => {
+					bottom.pin();
+					if (chat.teaching !== undefined) chat.teach(text);
+					else chat.send(text);
+				}}
+			>
+				{#snippet start()}
+					<AddMenu />
+				{/snippet}
+				{#snippet end()}
+					<SettingsMenu
+						resetDisabled={chat.reading || chat.replying}
+						oncopytranscript={copyTranscript}
+						onreset={() => (confirmingReset = true)}
+					/>
+				{/snippet}
+			</Composer>
 		</div>
 	</main>
 </div>
@@ -225,18 +225,10 @@
 		list-style: none;
 	}
 
-	/* The settings gear sits beside the composer, at the bottom end. */
 	.composer {
 		position: sticky;
 		bottom: 0;
-		display: flex;
-		align-items: center;
-		gap: var(--space-inline);
 		padding-block-end: max(var(--space-gutter), env(safe-area-inset-bottom));
 		background: var(--color-bg);
-	}
-
-	.field {
-		flex: 1;
 	}
 </style>

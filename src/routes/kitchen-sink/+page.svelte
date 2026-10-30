@@ -78,6 +78,9 @@
 			{#snippet start()}
 				<AddMenu />
 			{/snippet}
+			{#snippet end()}
+				<SettingsMenu oncopytranscript={noop} onreset={() => (confirmingReset = true)} />
+			{/snippet}
 		</Composer>
 		<Composer placeholder="Reply" value={short} onsend={noop} />
 		<Composer placeholder="Reply" value={multiline} onsend={noop} />
@@ -98,13 +101,21 @@
 				onopen={() => (previewing = 'unread')}
 			/>
 			<SourcesPanel
-				summary={describeKnowledge(412)}
-				groups={panelGroups(3)}
+				summary={describeKnowledge(1)}
+				groups={panelGroups(1)}
+				open
 				onopen={() => (previewing = 'unread')}
 			/>
 			<SourcesPanel
 				summary={describeKnowledge(412)}
 				groups={panelGroups(3)}
+				open
+				onopen={() => (previewing = 'unread')}
+			/>
+			<SourcesPanel
+				summary={describeKnowledge(412)}
+				groups={panelGroups(3)}
+				open
 				disabled
 				onopen={noop}
 			/>
