@@ -30,6 +30,7 @@
 	 */
 	--color-bg: var(--raw-gray-950);
 	--color-surface: var(--raw-gray-850); /* composer + user bubble */
+	--color-surface-raised: var(--raw-gray-800); /* menus: a layer above the composer */
 	--color-text: var(--raw-gray-50); /* all message text */
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, counts, icons, labels */
 	--color-accent: var(--raw-pink-400);

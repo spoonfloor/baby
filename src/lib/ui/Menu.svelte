@@ -1,13 +1,15 @@
 <!--
 	An icon button that opens a menu. Uses the native popover, which gives light
 	dismiss and Escape for free. Rows are `Row`s in a list; `children` gets a function
-	that closes the menu.
+	that closes the menu. Inside a surface (the composer), it opens a gap above that
+	surface's edge rather than above the button, so the two never touch.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import IconButton from './IconButton.svelte';
 	import type { IconName } from './icons.ts';
 	import Surface from './Surface.svelte';
+	import { enclosingSurface } from './surface.ts';
 
 	interface Props {
 		icon: IconName;
@@ -21,12 +23,14 @@
 	let { icon, label, disabled = false, placement, children }: Props = $props();
 
 	const id = $props.id();
+	const surface = enclosingSurface();
 	let anchor: HTMLElement;
 	let menu: HTMLElement;
 
 	function onbeforetoggle(event: ToggleEvent) {
 		if (event.newState !== 'open') return;
-		const { left, right, top } = anchor.getBoundingClientRect();
+		const { left, right } = anchor.getBoundingClientRect();
+		const { top } = (surface?.() ?? anchor).getBoundingClientRect();
 		menu.style.bottom = `${window.innerHeight - top}px`;
 		if (placement === 'above-start') menu.style.left = `${left}px`;
 		else menu.style.right = `${document.documentElement.clientWidth - right}px`;
@@ -38,7 +42,7 @@
 </span>
 
 <div bind:this={menu} {id} popover="auto" {onbeforetoggle}>
-	<Surface>
+	<Surface raised>
 		{@render children(() => menu.hidePopover())}
 	</Surface>
 </div>
