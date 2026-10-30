@@ -100,16 +100,23 @@
 		margin-inline-start: var(--space-inline);
 	}
 
+	/* Label-sized and one line, so it reads as context for the field, not a second placeholder. */
 	.note {
 		display: flex;
+		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-inline);
 		margin-block-end: var(--space-tight);
 		color: var(--color-text-muted);
+		font-size: var(--font-size-label);
 	}
 
 	.note p {
+		min-width: 0;
 		margin: 0;
+		overflow: hidden;
+		white-space: nowrap;
+		text-overflow: ellipsis;
 	}
 
 	textarea {

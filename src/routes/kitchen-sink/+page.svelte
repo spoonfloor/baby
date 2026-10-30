@@ -95,6 +95,11 @@
 			note={{ text: 'Teaching Baby a reply to “IDK”', oncancel: noop }}
 			onsend={noop}
 		/>
+		<Composer
+			placeholder="What should Baby say?"
+			note={{ text: `Teaching Baby a reply to “${long}”`, oncancel: noop }}
+			onsend={noop}
+		/>
 	</section>
 
 	<section>
