@@ -235,7 +235,7 @@
 		<AppMessage text={noticeText('oneWord', pointerVerb())} />
 		<AppMessage text={noticeText('guess', pointerVerb())} />
 		<AppMessage text={noticeText('repertoire', pointerVerb())} />
-		<AppMessage text={noticeText('unrecognized', pointerVerb())} />
+		<AppMessage text={noticeText('unrecognized', pointerVerb())} actions={teachLink} />
 		<AppMessage text={noticeText('failed', pointerVerb())} />
 	</section>
 

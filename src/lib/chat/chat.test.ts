@@ -142,7 +142,9 @@ describe('Chat', () => {
 
 		release();
 		await chat.send('You are the best');
-		expect(chat.messages.at(-1)).toMatchObject({ role: 'app', notice: 'unrecognized' });
+		const notice = chat.messages.at(-1);
+		expect(notice).toMatchObject({ role: 'app', notice: 'unrecognized' });
+		expect(chat.teachable).toEqual({ prompt: 'You are the best', after: notice?.id });
 
 		await chat.send('You are the best');
 		expect(chat.messages.at(-1)).toMatchObject({ role: 'baby' });
@@ -253,7 +255,7 @@ describe('Chat', () => {
 		release();
 		await sending;
 		const reply = chat.messages.at(-1);
-		expect(chat.teachable).toEqual({ reply: reply?.id, prompt: 'IDK' });
+		expect(chat.teachable).toEqual({ prompt: 'IDK', after: reply?.id });
 
 		const reading = chat.read(primer);
 		expect(chat.teachable).toBeUndefined();

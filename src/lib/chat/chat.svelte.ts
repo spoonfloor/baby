@@ -45,11 +45,12 @@ export class Chat {
 		!this.reading && this.readSources.every((source) => source === firstWord.id)
 	);
 	/**
-	 * Baby’s latest reply and the message it answered, while the user can teach a
-	 * better one: the reply is finished, nothing has been said since, and Baby isn’t
-	 * reading (it reads one thing at a time).
+	 * The message Baby’s latest reply answered, while the user can teach a better
+	 * reply: the reply is finished, nothing has been said since, and Baby isn’t
+	 * reading (it reads one thing at a time). `after` is the message that ends the
+	 * turn, where the offer goes: the reply, or the last notice the app added after it.
 	 */
-	teachable: { reply: string; prompt: string } | undefined = $derived.by(() => {
+	teachable: { prompt: string; after: string } | undefined = $derived.by(() => {
 		if (this.reading) return undefined;
 		const index = this.messages.findLastIndex(
 			(message) => message.role === 'user' || message.role === 'baby'
@@ -58,7 +59,7 @@ export class Chat {
 		const prompt = this.messages[index - 1];
 		if (reply?.role !== 'baby' || reply.request !== 'reply' || reply.pending) return undefined;
 		if (prompt?.role !== 'user') return undefined;
-		return { reply: reply.id, prompt: prompt.text };
+		return { prompt: prompt.text, after: this.messages.at(-1)?.id ?? reply.id };
 	});
 	/** The message the user is teaching Baby a reply to; their next message is that reply. */
 	teaching: string | undefined = $state();

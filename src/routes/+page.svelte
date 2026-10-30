@@ -71,6 +71,11 @@
 		}
 	}
 
+	/** The offer to teach a reply ends the turn it’s for, under Baby’s reply or the app’s notice after it. */
+	function offersTeaching(id: string) {
+		return chat.teachable?.after === id && chat.teaching === undefined;
+	}
+
 	function startTeaching() {
 		chat.startTeaching();
 		composer.focus();
@@ -115,12 +120,13 @@
 								status={message.status}
 								pending={message.pending}
 								progress={message.progress}
-								actions={chat.teachable?.reply === message.id && chat.teaching === undefined
-									? teachLink
-									: undefined}
+								actions={offersTeaching(message.id) ? teachLink : undefined}
 							/>
 						{:else}
-							<AppMessage text={noticeText(message.notice, pointerVerb())} />
+							<AppMessage
+								text={noticeText(message.notice, pointerVerb())}
+								actions={offersTeaching(message.id) ? teachLink : undefined}
+							/>
 						{/if}
 					</li>
 				{/each}
