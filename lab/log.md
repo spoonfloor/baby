@@ -201,3 +201,20 @@ A first chat with Therapy Bot went mostly outside it: nearly every message had a
 - **Shape-specific unknown replies mostly lose to the general one.** “You are glitching” gets “i’m not sure i follow” more than “why do you think i am like that ?”; the unknown score counts that as a miss. Honest, but it could become a rut.
 - **100 per shape was no better than 70** and reads 15% longer. Runs swing several points from one to the next, so differences that small aren’t real.
 - Still open: Baby sees only your latest message, so “I told you I am sad” can’t connect to anything.
+
+## 2026-10-30 · Therapy Bot 3: fallbacks that fit, bare answers
+
+A second chat: “I’m not sure I follow. What do you mean?” answered 9 of 32 messages, a rut; and sentences of known words in no shape (“bad”, “I don’t”, “I want to talk about my mother”) got salad, now worse off than unknown words.
+
+- **The fallback fits how you started:** a bare unknown word → “What do you mean?”; “I [UNK]…” or “My [UNK]…” → “Tell me more about that.”; “You [UNK]…” → “We were talking about you, not me.”; “That [UNK]…” → “Why do you say that?”; anything else keeps “I’m not sure I follow.”
+- **Bare answers and common shapes:** a feeling on its own (“bad” → “Why do you feel bad?”), I have been…, I want to…, I don’t…, I want to talk about my…, plus “I don’t.” → “Why not?” and “Lol.” → “What’s funny?”.
+
+| script                         | words | trained | held-out | echo | unknown |
+| ------------------------------ | ----- | ------- | -------- | ---- | ------- |
+| Therapy Bot 2 (19 shapes × 70) | 6327  | 72%     | 40%      | 74%  | 18%     |
+| 24 shapes × 70 (kept)          | 7682  | 54%     | 28%      | 54%  | 22%     |
+| 24 shapes × 100                | 8446  | 55%     | 35%      | 58%  | 21%     |
+
+- **The chat is what improved.** Of 20 prompts from the two chats, about 17 now most often get a fitting reply: “LOL” → “what’s funny ?” 41/50, “I cry a lot” → “tell me more about that .” 41/50, “I want to talk about my mother” → “tell me about your mother .” 36/50, “bad” → “why do you feel bad ?”.
+- **Copying fell** (echo 74% → 54%): more shapes now share a model of the same size, and practice still stops around 1,100–1,700 steps. One seed stopped at loss 0.86, well short of the others, which suggests the plateau test stops early on a varied script. That’s a practice change, not a lesson one; noted, not changed.
+- Kept 70 per shape: 100 recovered little and reads 10% longer.
