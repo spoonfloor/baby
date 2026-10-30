@@ -178,3 +178,26 @@ ELIZA (1966) became Therapy Bot: inspired by DOCTOR, tuned for an enjoyable chat
 - **Endings matter more than the numbers show.** Before them, a prompt typed without a period (“i am sleepy”) got “.”; after, it gets “how long have you been sleepy ?” about 2 times in 3. The held-out probes all end in a period, so their score doesn’t see it.
 - **150 per shape is no better than 100** and reads longer.
 - Still weak: two-blank shapes with an unread verb (“my boss hates me” → “why do you think your boss ?”), and anything in no shape (“You are the worst!”). Unknown words stay [UNK], as expected.
+
+## 2026-10-30 · Therapy Bot 2: common words, more shapes, unknown words
+
+A first chat with Therapy Bot went mostly outside it: nearly every message had a word it had never read (“Terrible.”, “They don’t respect me”, “Because she’s a bitch”), and those got salad. Three changes:
+
+- **Lessons can write `[UNK]`** in your turn (`script.ts`), read as the same marker an unread word becomes in chat. Before, Baby never trained on [UNK], so it had no idea what to do with one.
+- **Unknown-word replies.** Each shape has a reply for when its blank is a word Baby never read (“I hate [UNK].” → “What do you hate about it?”), and sentences made mostly of unread words get “I’m not sure I follow. What do you mean?”.
+- **Wider coverage.** Common feelings (terrible, fine, okay, bad…), more topics (it, my life, people…), and 7 more shapes: I love…, You … me, She/He/They …, Because …, It’s ….
+
+5 seeds × 10 samples. Unknown probes fill each shape with a word no script has (“glitching”).
+
+| script                               | words | trained | held-out | echo | unknown | salad (held-out) |
+| ------------------------------------ | ----- | ------- | -------- | ---- | ------- | ---------------- |
+| Therapy Bot 1 (12 shapes × 100)      | 4942  | 73%     | 56%      | 83%  | –       | 37%              |
+| 19 shapes × 70, 12 unknown per shape | 6297  | 77%     | 42%      | 71%  | 24%     | 51%              |
+| 19 × 100, 20 unknown, “it” a topic   | 7249  | 73%     | 46%      | 72%  | 21%     | 48%              |
+| 19 × 70, 12 unknown, “it” (kept)     | 6327  | 72%     | 40%      | 74%  | 18%     | 54%              |
+
+- **Your chat is what improved.** Of the 21 casual prompts (mostly from that chat), the most common reply is now a whole, fitting sentence for about 16; in the chat itself, about 4 of 27 replies fit: “They don’t respect me” → “tell me more about them .” 49 of 50; “I drive nails into boards” → “i’m not sure i follow . what do you mean ?”; “I love it” → “what do you love about it ?”.
+- **The scores fell on the narrow tests**, since each shape gets fewer lines and more shapes compete: copying 83% → 74%. A fair trade for covering what people actually say.
+- **Shape-specific unknown replies mostly lose to the general one.** “You are glitching” gets “i’m not sure i follow” more than “why do you think i am like that ?”; the unknown score counts that as a miss. Honest, but it could become a rut.
+- **100 per shape was no better than 70** and reads 15% longer. Runs swing several points from one to the next, so differences that small aren’t real.
+- Still open: Baby sees only your latest message, so “I told you I am sad” can’t connect to anything.

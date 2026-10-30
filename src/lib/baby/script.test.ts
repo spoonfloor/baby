@@ -24,6 +24,27 @@ describe('parseScripts', () => {
 		]);
 	});
 
+	it('reads [UNK] in your turn as the marker for a word Baby never knows', () => {
+		expect(parseScripts('you: I hate [UNK].\nbaby: What do you hate about it?')[0]).toEqual([
+			'[YOU]',
+			'i',
+			'hate',
+			'[UNK]',
+			'.',
+			'[EOS]',
+			'[BABY]',
+			'what',
+			'do',
+			'you',
+			'hate',
+			'about',
+			'it',
+			'?',
+			'[EOS]'
+		]);
+		expect(() => parseScripts('you: Hi\nbaby: [UNK]')).toThrow(SyntaxError);
+	});
+
 	it('rejects lines that aren’t a known speaker’s turn', () => {
 		expect(() => parseScripts('you: Hi\nmom: Hello')).toThrow(SyntaxError);
 		expect(() => parseScripts('Hi there')).toThrow(SyntaxError);

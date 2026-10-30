@@ -13,6 +13,18 @@ export type Exchange = [you: string, baby: string];
 
 const fills = {
 	feeling: [
+		'terrible',
+		'awful',
+		'bad',
+		'good',
+		'fine',
+		'okay',
+		'great',
+		'sick',
+		'afraid',
+		'depressed',
+		'unhappy',
+		'exhausted',
 		'tired',
 		'sad',
 		'happy',
@@ -121,6 +133,15 @@ const fills = {
 		'leave the house'
 	],
 	topic: [
+		'it',
+		'my life',
+		'people',
+		'myself',
+		'my friends',
+		'the news',
+		'my body',
+		'my future',
+		'my past',
 		'my job',
 		'coffee',
 		'mornings',
@@ -155,28 +176,163 @@ const fills = {
 		'rude',
 		'funny',
 		'a good listener'
+	],
+	/** What they do, said of more than one person. */
+	doingThey: [
+		'ignore me',
+		'don’t respect me',
+		'never call me',
+		'judge me',
+		'don’t listen to me',
+		'yell at me',
+		'hate me',
+		'love me',
+		'understand me',
+		'laugh at me'
+	],
+	reason: [
+		'I am tired',
+		'my boss yells at me',
+		'it is too loud',
+		'I can’t sleep',
+		'nobody listens to me',
+		'I feel alone',
+		'it is too hard',
+		'I said so',
+		'they don’t respect me',
+		'she hates me',
+		'he never calls me',
+		'I love it',
+		'you are rude',
+		'I am afraid',
+		'it hurts',
+		'I have no time',
+		'my family is far away',
+		'I want a change'
+	],
+	quality: [
+		'too loud',
+		'too hard',
+		'too much',
+		'not fair',
+		'too late',
+		'boring',
+		'scary',
+		'awful',
+		'fine',
+		'hard to explain',
+		'complicated',
+		'a long story'
+	],
+	youDo: [
+		'confuse',
+		'annoy',
+		'scare',
+		'understand',
+		'help',
+		'ignore',
+		'judge',
+		'like',
+		'hate',
+		'frustrate'
 	]
 } satisfies Record<string, string[]>;
 
 type Slot = keyof typeof fills;
+type Values = Partial<Record<Slot, string>>;
+
+/** A sentence with blanks (`{slot}`), its one reply, and its reply when the first blank is a word Baby never read. */
+interface Shape {
+	you: string;
+	baby: string;
+	unknown: string;
+}
 
 /**
- * Sentences with blanks, `{slot}`, and the one reply to each. The reply’s blanks get
- * your words pointed back at you (`reflect`).
+ * Sentences with blanks and the one reply to each. The reply’s blanks get your words
+ * pointed back at you (`reflect`). When the first blank is a word Baby never read,
+ * it can’t copy it, so it asks about it without it.
  */
-const shapes: Exchange[] = [
-	['I am {feeling}.', 'How long have you been {feeling}?'],
-	['I feel {feeling}.', 'Why do you feel {feeling}?'],
-	['My {person} is {feeling}.', 'Why is your {person} {feeling}?'],
-	['My {person} {doing}.', 'Why do you think your {person} {doing}?'],
-	['I miss my {person}.', 'Tell me more about your {person}.'],
-	['I want {wanted}.', 'Why do you want {wanted}?'],
-	['I need {wanted}.', 'What would {wanted} do for you?'],
-	['I can’t {action}.', 'What makes it hard to {action}?'],
-	['I like {topic}.', 'What do you like about {topic}?'],
-	['I hate {topic}.', 'What do you hate about {topic}?'],
-	['I am worried about {topic}.', 'What worries you about {topic}?'],
-	['You are {trait}.', 'Why do you think I am {trait}?']
+const shapes: Shape[] = [
+	{
+		you: 'I am {feeling}.',
+		baby: 'How long have you been {feeling}?',
+		unknown: 'How long have you felt that way?'
+	},
+	{
+		you: 'I feel {feeling}.',
+		baby: 'Why do you feel {feeling}?',
+		unknown: 'Why do you feel that way?'
+	},
+	{
+		you: 'My {person} is {feeling}.',
+		baby: 'Why is your {person} {feeling}?',
+		unknown: 'Tell me more about them.'
+	},
+	{
+		you: 'My {person} {doing}.',
+		baby: 'Why do you think your {person} {doing}?',
+		unknown: 'Tell me more about them.'
+	},
+	{
+		you: 'I miss my {person}.',
+		baby: 'Tell me more about your {person}.',
+		unknown: 'Tell me more about them.'
+	},
+	{ you: 'I want {wanted}.', baby: 'Why do you want {wanted}?', unknown: 'Why do you want that?' },
+	{
+		you: 'I need {wanted}.',
+		baby: 'What would {wanted} do for you?',
+		unknown: 'What would that do for you?'
+	},
+	{
+		you: 'I can’t {action}.',
+		baby: 'What makes it hard to {action}?',
+		unknown: 'What makes that hard?'
+	},
+	{
+		you: 'I like {topic}.',
+		baby: 'What do you like about {topic}?',
+		unknown: 'What do you like about it?'
+	},
+	{
+		you: 'I love {topic}.',
+		baby: 'What do you love about {topic}?',
+		unknown: 'What do you love about it?'
+	},
+	{
+		you: 'I hate {topic}.',
+		baby: 'What do you hate about {topic}?',
+		unknown: 'What do you hate about it?'
+	},
+	{
+		you: 'I am worried about {topic}.',
+		baby: 'What worries you about {topic}?',
+		unknown: 'What worries you about it?'
+	},
+	{
+		you: 'You are {trait}.',
+		baby: 'Why do you think I am {trait}?',
+		unknown: 'Why do you think I am like that?'
+	},
+	{
+		you: 'You {youDo} me.',
+		baby: 'What makes you think I {youDo} you?',
+		unknown: 'What makes you think that?'
+	},
+	{ you: 'She {doing}.', baby: 'Tell me more about her.', unknown: 'Tell me more about her.' },
+	{ you: 'He {doing}.', baby: 'Tell me more about him.', unknown: 'Tell me more about him.' },
+	{
+		you: 'They {doingThey}.',
+		baby: 'Tell me more about them.',
+		unknown: 'Tell me more about them.'
+	},
+	{
+		you: 'Because {reason}.',
+		baby: 'Is that the real reason?',
+		unknown: 'Is that the real reason?'
+	},
+	{ you: 'It’s {quality}.', baby: 'Why is it {quality}?', unknown: 'Why do you say that?' }
 ];
 
 /** Things said without blanks: several ways to say each, with one reply. */
@@ -191,6 +347,28 @@ const smallTalk: [said: string[], reply: string][] = [
 ];
 
 /**
+ * Sentences made mostly of words Baby never read: it can’t follow them, so it says
+ * so and asks, rather than guessing at a reply.
+ */
+const unclear: string[] = [
+	'[UNK].',
+	'[UNK] [UNK].',
+	'[UNK] [UNK] [UNK].',
+	'I [UNK] it.',
+	'I [UNK] [UNK].',
+	'It [UNK] me.',
+	'It [UNK] [UNK].',
+	'The [UNK] is [UNK].',
+	'[UNK] is [UNK].',
+	'You [UNK] [UNK].',
+	'[UNK] you [UNK].',
+	'I [UNK] [UNK] [UNK].',
+	'[UNK] [UNK] a [UNK].',
+	'[UNK] the [UNK].'
+];
+const UNCLEAR_REPLY = 'I’m not sure I follow. What do you mean?';
+
+/**
  * How a sentence can end when you type it. Every line is read in turn with each, so
  * the reply never depends on whether you typed a period (lab/rubric.md).
  */
@@ -202,8 +380,10 @@ function framed([you, baby]: Exchange, index: number): Exchange {
 	return [`${you.slice(0, -1)}${ENDINGS[index % ENDINGS.length] ?? '.'}`, baby];
 }
 
-/** Lines per shape. 50 copied less reliably; 150 did no better and reads longer (lab/log.md). */
-const PER_SHAPE = 100;
+/** Lines per shape: with 19 shapes, 100 did no better than 70 and read longer (lab/log.md). */
+const PER_SHAPE = 70;
+/** Lines per shape whose first blank is a word Baby never read. */
+const UNKNOWN_PER_SHAPE = 12;
 /** One fill-in in this many is held out of each shape (still read elsewhere), for the lab. */
 const HOLD_OUT_EVERY = 5;
 const SEED = 1966;
@@ -229,31 +409,38 @@ const blank = /\{(\w+)\}/g;
 const slotsOf = (template: string) =>
 	[...template.matchAll(blank)].map((match) => match[1] as Slot);
 
-function fill([you, baby]: Exchange, values: Partial<Record<Slot, string>>): Exchange {
+function fill({ you, baby }: Shape, values: Values): Exchange {
 	const put = (template: string, turn: (words: string) => string) =>
 		template.replace(blank, (_, slot: Slot) => turn(values[slot] ?? ''));
 	return [put(you, (words) => words), put(baby, reflect)];
 }
 
 /** Every way to fill a shape, as slot values. */
-function combinations(slots: Slot[]): Partial<Record<Slot, string>>[] {
-	return slots.reduce<Partial<Record<Slot, string>>[]>(
+function combinations(slots: Slot[]): Values[] {
+	return slots.reduce<Values[]>(
 		(sets, slot) => sets.flatMap((set) => fills[slot].map((value) => ({ ...set, [slot]: value }))),
 		[{}]
 	);
 }
 
 /** Whether a shape’s first blank holds a fill-in this shape never trains on. */
-function heldOut(shape: number, values: Partial<Record<Slot, string>>): boolean {
-	const [slot] = slotsOf(shapes[shape]?.[0] ?? '');
+function heldOut(shape: number, values: Values): boolean {
+	const [slot] = slotsOf(shapes[shape]?.you ?? '');
 	if (!slot) return false;
 	return fills[slot].indexOf(values[slot] ?? '') % HOLD_OUT_EVERY === shape % HOLD_OUT_EVERY;
 }
 
-/** An exchange the script never has, and the words its reply should copy back. */
+/** A shape’s line with `words` in its first blank, and the reply for a word Baby never read. */
+function withUnknown(shape: Shape, words: string, values: Values): Exchange {
+	const [first] = slotsOf(shape.you);
+	const [you] = fill(shape, first ? { ...values, [first]: words } : values);
+	return [you, shape.unknown];
+}
+
+/** An exchange the script never has, and the words its reply should copy back, if any. */
 export interface HeldOut {
 	exchange: Exchange;
-	echo: string;
+	echo?: string;
 }
 
 /** Each shape’s fillings, split into what Therapy Bot reads and what it never sees there. */
@@ -262,14 +449,15 @@ function fillings(): { read: Exchange[]; unread: HeldOut[] } {
 	const read: Exchange[] = [];
 	const unread: HeldOut[] = [];
 	shapes.forEach((shape, index) => {
-		const slots = slotsOf(shape[0]);
+		const slots = slotsOf(shape.you);
 		const all = combinations(slots);
 		const kept = all.filter((values) => !heldOut(index, values));
 		for (const values of all.filter((values) => heldOut(index, values))) {
 			const [slot] = slots;
+			const copied = slot && shape.baby.includes(`{${slot}}`);
 			unread.push({
 				exchange: fill(shape, values),
-				echo: reflect(slot ? (values[slot] ?? '') : '')
+				...(copied && { echo: reflect(values[slot] ?? '') })
 			});
 		}
 		// A seeded shuffle, so the script is the same on every load.
@@ -278,13 +466,18 @@ function fillings(): { read: Exchange[]; unread: HeldOut[] } {
 			[kept[i], kept[j]] = [kept[j] ?? {}, kept[i] ?? {}];
 		}
 		kept.slice(0, PER_SHAPE).forEach((values, i) => read.push(framed(fill(shape, values), i)));
+		// An unread word is one [UNK] or a run of them, as an unread phrase would be.
+		kept.slice(PER_SHAPE, PER_SHAPE + UNKNOWN_PER_SHAPE).forEach((values, i) => {
+			const words = i % 3 === 2 ? '[UNK] [UNK]' : '[UNK]';
+			read.push(framed(withUnknown(shape, words, values), i));
+		});
 	});
 	return { read, unread };
 }
 
 const { read, unread } = fillings();
 
-/** Every exchange Therapy Bot’s script has, small talk first, then each shape’s. */
+/** Every exchange Therapy Bot’s script has: small talk, each shape’s, then unclear ones. */
 export const exchanges: Exchange[] = [
 	// A question has one framing, so it’s said once rather than three times the same.
 	...smallTalk.flatMap(([said, reply]) =>
@@ -295,7 +488,8 @@ export const exchanges: Exchange[] = [
 			])
 		)
 	),
-	...read
+	...read,
+	...unclear.flatMap((you) => ENDINGS.map((_, i) => framed([you, UNCLEAR_REPLY], i)))
 ];
 
 /**
@@ -303,3 +497,13 @@ export const exchanges: Exchange[] = [
  * never in that shape: what the lab asks to see whether Baby copies or recites.
  */
 export const heldOutExchanges: HeldOut[] = unread;
+
+/**
+ * Each shape with `words` in its first blank, and the reply it should get if Baby
+ * never read them: what the lab asks to see what Baby does with an unknown word.
+ */
+export function unknownExchanges(words: string): Exchange[] {
+	return shapes.map((shape) =>
+		withUnknown(shape, words, combinations(slotsOf(shape.you))[0] ?? {})
+	);
+}

@@ -5,7 +5,7 @@ import { seededRandom } from '#lib/baby/random.ts';
 import { tokenize } from '#lib/baby/vocabulary.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/primer.ts';
-import { heldOutExchanges } from '#lib/library/therapy-bot/script.ts';
+import { heldOutExchanges, unknownExchanges } from '#lib/library/therapy-bot/script.ts';
 import { therapyBot } from '#lib/library/therapy-bot/index.ts';
 
 /**
@@ -16,6 +16,8 @@ import { therapyBot } from '#lib/library/therapy-bot/index.ts';
  * - held-out: the script’s sentence shapes filled with words it read elsewhere but
  *             never in that shape. Acceptable is the reply the script would give;
  *             echo is the reply copying your words back, pointed at you.
+ * - unknown:  the shapes filled with words Baby never read. It can’t copy them, so
+ *             acceptable is the script’s reply for a word it doesn’t know.
  * - casual:   things a person might say, printed to read, not scored.
  *
  * Every reply also counts as recited (a whole reply from the script, just not the
@@ -37,6 +39,7 @@ interface Script {
 	primer: Primer;
 	trained: Probe[];
 	heldOut: Probe[];
+	unknown: Probe[];
 }
 
 const words = (text: string) => tokenize(text).join(' ');
@@ -67,27 +70,36 @@ const SCRIPT: Script = {
 	heldOut: heldOutExchanges.map(({ exchange: [you, baby], echo }) => ({
 		prompt: words(you),
 		accept: [words(baby)],
-		echo: words(echo)
-	}))
+		...(echo && { echo: words(echo) })
+	})),
+	// Words no script has, so they always reach Baby as [UNK].
+	unknown: ['glitching', 'zebras', 'skateboarding'].flatMap((word) =>
+		unknownExchanges(word).map(([you, baby]) => ({ prompt: words(you), accept: [words(baby)] }))
+	)
 };
 
 const CASUAL = [
 	'i am sleepy',
-	'i feel like the barber judges me',
-	'I am sad',
 	'I told you I am sad',
-	'I am tired today',
 	'My mom never calls me',
 	'my boss hates me',
-	'I hate mondays',
-	'I can’t sleep',
 	'I want help with my problems',
-	'No, I don’t think so',
 	'What? What does that mean?',
-	'Yes, a bit',
 	'You are the worst!',
-	'hello',
-	'I don’t know'
+	'Terrible.',
+	'No. I said I AM feeling terrible.',
+	'I drive nails into boards',
+	'I love it',
+	'They don’t respect me',
+	'Because she’s a bitch',
+	'You probably killed someone',
+	'You heard me!',
+	'It’s too loud',
+	'Drugs',
+	'You are glitching',
+	'Thank you?',
+	'You said that already',
+	'Because you are a sociopath'
 ];
 
 /**
@@ -101,6 +113,9 @@ function fair(script: Script): Script {
 		...script,
 		heldOut: script.heldOut.filter(
 			(probe) => !said.has(probe.prompt) && tokenize(probe.prompt).every((word) => read.has(word))
+		),
+		unknown: script.unknown.filter((probe) =>
+			tokenize(probe.prompt).some((word) => !read.has(word))
 		)
 	};
 }
@@ -119,6 +134,7 @@ interface Trial {
 	status: string;
 	trained: Asked[];
 	heldOut: Asked[];
+	unknown: Asked[];
 	casual: Asked[];
 }
 
@@ -154,6 +170,7 @@ async function trial({ seed, samples }: Request): Promise<Trial> {
 		status,
 		trained: await askAll(script.trained.map((probe) => probe.prompt)),
 		heldOut: await askAll(script.heldOut.map((probe) => probe.prompt)),
+		unknown: await askAll(script.unknown.map((probe) => probe.prompt)),
 		casual: await askAll(CASUAL)
 	};
 }
@@ -212,6 +229,7 @@ if (!isMainThread) {
 	console.log();
 	score('trained', script.trained, (trial) => trial.trained);
 	score('held-out', script.heldOut, (trial) => trial.heldOut);
+	score('unknown', script.unknown, (trial) => trial.unknown);
 
 	const shown = (asked: Asked[] | undefined, index: number) => {
 		const counts = new Map<string, number>();

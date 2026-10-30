@@ -26,7 +26,7 @@ src/lib/baby/     the model, behind the Baby protocol
   protocol.ts     the app ↔ model seam: reply/read requests → status/token/done events; pushed state
   client.ts       app side: createBaby(endpoint) → Baby
   vocabulary.ts   word-level tokenizer (punctuation marks are words); vocabulary starts with only the markers [UNK], [EOS], [YOU], [BABY]
-  script.ts       conversation format: `[YOU] … [EOS] [BABY] … [EOS]`, parsed from `you: …` lines
+  script.ts       conversation format: `[YOU] … [EOS] [BABY] … [EOS]`, parsed from `you: …` lines (a lesson’s `[UNK]` is the marker)
   reading.ts      documents (exact tokens Baby trains on) + reading stats, shared by preview and status
   model.ts        untrained model: mute until it reads, then uniform random picks
   worker/         worker entry, its own TS project (WebWorker globals, not DOM)

@@ -26,6 +26,8 @@ describe('Therapy Bot’s script', () => {
 	});
 
 	it('copies what the lab expects into each held-out reply', () => {
-		for (const { exchange, echo } of heldOutExchanges) expect(exchange[1]).toContain(echo);
+		for (const { exchange, echo } of heldOutExchanges) {
+			if (echo) expect(exchange[1]).toContain(echo);
+		}
 	});
 });

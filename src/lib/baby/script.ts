@@ -1,5 +1,5 @@
 import type { Document } from './reading.ts';
-import { BABY, EOS, tokenize, YOU } from './vocabulary.ts';
+import { BABY, EOS, tokenize, UNK, YOU } from './vocabulary.ts';
 
 /**
  * The conversation format: a script between two speakers who take turns. Each turn
@@ -15,13 +15,20 @@ export type Speaker = (typeof SPEAKERS)[number];
 export const TURN_START: Record<Speaker, string> = { you: YOU, baby: BABY };
 
 /** One turn, as Baby reads it. */
+const turn = (speaker: Speaker, words: string[]) => [TURN_START[speaker], ...words, EOS];
+
 export function turnTokens(speaker: Speaker, text: string): string[] {
-	return [TURN_START[speaker], ...tokenize(text), EOS];
+	return turn(speaker, tokenize(text));
 }
 
 /**
  * Parses conversations written one turn per line (`you: Hi Baby!`), with blank
  * lines between conversations. Each conversation becomes its own document.
+ *
+ * A lesson writes `[UNK]` in your turn for a word Baby will never know, to teach
+ * what to do with one (“you: I hate [UNK].”). It reads as the [UNK] marker, exactly
+ * as an unread word in a chat does. Baby’s own turns can’t have it: Baby never says
+ * [UNK].
  */
 export function parseScripts(source: string): Document[] {
 	return source
@@ -34,7 +41,11 @@ function parseTurn(line: string): string[] {
 	const colon = line.indexOf(':');
 	const speaker = line.slice(0, colon).trim();
 	if (colon < 0 || !isSpeaker(speaker)) throw new SyntaxError(`Not a script turn: ${line}`);
-	return turnTokens(speaker, line.slice(colon + 1));
+	const [first = '', ...rest] = line.slice(colon + 1).split(UNK);
+	if (speaker === 'baby' && rest.length > 0)
+		throw new SyntaxError(`Baby never says ${UNK}: ${line}`);
+	const words = [...tokenize(first), ...rest.flatMap((part) => [UNK, ...tokenize(part)])];
+	return turn(speaker, words);
 }
 
 function isSpeaker(name: string): name is Speaker {

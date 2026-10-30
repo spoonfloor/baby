@@ -61,6 +61,7 @@ you: what’s your name? → baby: Don’t you remember? It’s Baby! B-A-B-Y
 
 ## Writing lessons
 
+- **Teach what to do with a word Baby doesn’t know.** A lesson writes `[UNK]` in your turn where a word Baby will never read goes (“you: I hate [UNK].”), and Baby reads the same marker an unread word becomes in chat. Without it, Baby has never seen [UNK] and guesses; with it, Baby can ask honestly (“What do you hate about it?”, “I’m not sure I follow. What do you mean?”). Copying words from the prompt is allowed as a learned mechanism; [UNK] is what Baby can’t copy.
 - **Every prompt in several framings, one reply.** Bare, “…, Baby”, “Baby, …”, with `!` / `.` / `,`. If framings get different replies, the framing decides the reply instead of the words (Greetings 1 in the log).
 - **One reply per prompt, for now.** Two replies per prompt bought a little variety and many more blends (“hello there you’re welcome afternoon !”): Baby is too small to keep two answers apart. Retest once Baby sees the conversation history.
 - **Length is a judgment call.** Each addition is justified in the log. Reading time is what the user feels, so the lab reports it, and each lesson should read in about 40 seconds or less. That’s lab time (Node, several seeds in parallel); the browser can differ, so check it there before a lesson ships.
@@ -95,5 +96,4 @@ Then report with before/after conversations to read, alongside the numbers.
 Some qualities need more than lessons. Each is a product decision, not a script change:
 
 - **Memory.** Baby sees only the latest message, though the README specifies the whole labeled history. Needed for reacting to repetition and for using what you told it.
-- **Unknown words.** Baby never trains on `[UNK]`, so it can’t learn what to do with a word it doesn’t know. Hiding some words during training would let lessons teach “what is ‘X’?”. Copying words from the prompt (“hi there !”) is allowed as a learned mechanism.
 - **The app noticing a rut.** When Baby’s replies repeat or its confidence stays low, the app (in its own voice) could suggest more reading: “Baby seems a bit stuck. Try giving it more to read.”
