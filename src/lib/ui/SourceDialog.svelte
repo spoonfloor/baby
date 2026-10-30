@@ -10,6 +10,8 @@
 
 	interface Props {
 		title: string;
+		/** Where it comes from, when it’s adapted: “Inspired by ELIZA (1966)”. */
+		credit?: string | undefined;
 		/** What reading would add, e.g. “412 words · 38 new”. */
 		summary: string;
 		documents: Document[];
@@ -19,10 +21,10 @@
 		onclose: () => void;
 	}
 
-	let { title, summary, documents, read, onread, onclose }: Props = $props();
+	let { title, credit, summary, documents, read, onread, onclose }: Props = $props();
 </script>
 
-<Dialog {title} size="wide" line={{ meta: summary }} {onclose}>
+<Dialog {title} size="wide" line={{ meta: credit ? `${credit} · ${summary}` : summary }} {onclose}>
 	<ScriptText {documents} />
 	{#snippet actions(close)}
 		<Button onclick={close}>Cancel</Button>

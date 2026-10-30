@@ -8,6 +8,7 @@
 	} from '#lib/baby/reading.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { chatbot101 } from '#lib/library/chatbot-101.ts';
+	import { eliza } from '#lib/library/eliza/index.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
@@ -33,10 +34,8 @@
 	const noop = () => {};
 	const iconNames = Object.keys(icons) as IconName[];
 
-	const primer = chatbot101.find(({ id }) => id === 'greetings');
-	if (!primer) throw new Error('Chatbot 101 has no Greetings');
-	const unread = describeReading(readingStats(primer.documents, () => false));
-	const reread = describeReading(readingStats(primer.documents, () => true));
+	const greetings = chatbot101.find(({ id }) => id === 'greetings');
+	if (!greetings) throw new Error('Chatbot 101 has no Greetings');
 
 	/** New-word counts for the sources panel, covering every way a count reads. */
 	const newWordCounts = [1, 27, 0, 10_940, 45];
@@ -56,14 +55,15 @@
 			{
 				title: 'Psychology',
 				sources: [
-					{ id: 'eliza', title: 'ELIZA (1966)', read: false, newWords: describeNewWords(812) }
+					{ id: eliza.id, title: eliza.title, read: false, newWords: describeNewWords(812) }
 				]
 			}
 		];
 	}
 
-	/** Which source preview is open: never read, or read before. */
-	let previewing: 'unread' | 'read' | undefined = $state();
+	/** Which source preview is open: never read, read before, or adapted from something. */
+	let previewing: 'unread' | 'read' | 'credited' | undefined = $state();
+	const previewed = $derived(previewing === 'credited' ? eliza : greetings);
 	let confirmingReset = $state(false);
 </script>
 
@@ -116,12 +116,14 @@
 		<div class="row">
 			<Button onclick={() => (previewing = 'unread')}>Never read</Button>
 			<Button onclick={() => (previewing = 'read')}>Read before</Button>
+			<Button onclick={() => (previewing = 'credited')}>Inspired by</Button>
 		</div>
 		{#if previewing}
 			<SourceDialog
-				title={primer.title}
-				summary={previewing === 'read' ? reread : unread}
-				documents={primer.documents}
+				title={previewed.title}
+				credit={previewed.credit}
+				summary={describeReading(readingStats(previewed.documents, () => previewing === 'read'))}
+				documents={previewed.documents}
 				read={previewing === 'read'}
 				onread={() => (previewing = undefined)}
 				onclose={() => (previewing = undefined)}
@@ -152,7 +154,7 @@
 
 	<section>
 		<h2>Script text</h2>
-		<ScriptText documents={primer.documents.slice(7, 9)} />
+		<ScriptText documents={greetings.documents.slice(7, 9)} />
 	</section>
 
 	<section>

@@ -5,6 +5,8 @@ import { parseScripts } from '#lib/baby/script.ts';
 export interface Primer {
 	id: string;
 	title: string;
+	/** Where it comes from, when it’s adapted from something: “Inspired by ELIZA (1966)”. */
+	credit?: string;
 	/** The exact tokens Baby trains on, also what the preview shows. */
 	documents: Document[];
 }
@@ -16,6 +18,6 @@ export interface Group {
 }
 
 /** A primer of conversation scripts (see `parseScripts` for the format). */
-export function scriptPrimer(id: string, title: string, source: string): Primer {
-	return { id, title, documents: parseScripts(source) };
+export function scriptPrimer(id: string, title: string, source: string, credit?: string): Primer {
+	return { id, title, ...(credit && { credit }), documents: parseScripts(source) };
 }

@@ -172,6 +172,7 @@
 	{@const primer = previewing}
 	<SourceDialog
 		title={primer.title}
+		credit={primer.credit}
 		summary={describeReading(readingStats(primer.documents, (word) => known.has(word)))}
 		documents={primer.documents}
 		read={chat.readSources.includes(primer.id)}

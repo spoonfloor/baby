@@ -7,6 +7,6 @@ export type { Group, Primer } from './primer.ts';
 /** Every primer, in sources-panel order: Chatbot 101 first, then subjects A–Z. */
 export const groups: Group[] = [
 	{ title: 'Chatbot 101', primers: chatbot101 },
-	// ELIZA imitates a therapist.
+	// Therapy Bot imitates a therapist.
 	{ title: 'Psychology', primers: [eliza] }
 ];
