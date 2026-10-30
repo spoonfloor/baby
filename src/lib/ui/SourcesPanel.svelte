@@ -63,12 +63,12 @@
 			</button>
 			{#if open}
 				<div class="body">
-					<p class="mark">{summary}</p>
+					<p class="mark label-size">{summary}</p>
 					{#each groups as group (group.title)}
 						{@const expanded = shown.includes(group.title)}
 						<section>
 							<Row muted aria-expanded={expanded} onclick={() => toggle(group.title)}>
-								<span class="label">
+								<span class="label label-size">
 									{group.title}
 									<Icon name={expanded ? 'collapse' : 'expand'} small />
 								</span>
@@ -126,14 +126,16 @@
 		padding: 0;
 		border: none;
 		background: none;
+		font-weight: var(--font-weight-strong);
 		cursor: pointer;
 	}
 
+	/* The summary hugs the title as its subtitle; groups stand apart as sections. */
 	.body {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-tight);
-		margin-block-start: var(--space-tight);
+		gap: var(--space-section);
+		margin-block-start: var(--space-subtitle);
 		max-block-size: var(--height-panel-max);
 		overflow-y: auto;
 	}
@@ -146,6 +148,11 @@
 		display: flex;
 		align-items: center;
 		gap: var(--space-inline-tight);
+		font-weight: var(--font-weight-strong);
+	}
+
+	.label-size {
+		font-size: var(--font-size-label);
 	}
 
 	.mark {

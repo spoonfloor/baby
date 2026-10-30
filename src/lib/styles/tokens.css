@@ -39,9 +39,13 @@
 	--color-action: var(--raw-gray-50); /* primary button fill */
 	--color-on-action: var(--raw-gray-950); /* primary button text */
 
-	/* Type: one family, one size; hierarchy comes from weight, color and space */
+	/* Type: one family; hierarchy comes from weight, color and space, and a smaller size only for labels */
 	--font-family: 'Inter Variable', system-ui, sans-serif;
 	--font-size-body: 1.0625rem;
+	--font-size-small: 0.875rem;
+
+	/* Section labels and subtitles, e.g. the sources panel’s groups */
+	--font-size-label: var(--font-size-small);
 	--line-height-body: 1.45;
 	--font-weight-body: 400;
 	--font-weight-strong: 600; /* titles */
@@ -62,6 +66,7 @@
 	--space-stack: var(--raw-space-32); /* between conversation blocks */
 	--space-section: var(--raw-space-24); /* between groups inside a surface, e.g. text → actions */
 	--space-heading: var(--raw-space-12); /* title → its text */
+	--space-subtitle: var(--raw-space-4); /* title → its one-line subtitle */
 	--space-tight: var(--raw-space-8); /* between related lines, e.g. status line → reply */
 	--space-inline: var(--raw-space-8); /* icon ↔ text */
 	--space-inline-tight: var(--raw-space-4); /* a small icon right after its label */
