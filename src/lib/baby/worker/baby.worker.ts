@@ -1,3 +1,4 @@
+import { firstWord } from '#lib/library/chatbot-101.ts';
 import { Model, type ModelSnapshot } from '../model.ts';
 import type { BabyEvent, BabyRequest, BabyResponse } from '../protocol.ts';
 import { seededRandom } from '../random.ts';
@@ -14,6 +15,15 @@ function createModel(snapshot?: ModelSnapshot): Model {
 	});
 }
 
+/** A new Baby that has read its first word, saved so it reads it only once. */
+async function newborn(): Promise<Model> {
+	const model = createModel();
+	const { id: source, title, documents } = firstWord;
+	for await (const event of model.read({ source, title, documents })) void event;
+	await saveSnapshot(model.snapshot());
+	return model;
+}
+
 /** The saved Baby if there is one that fits, otherwise a newborn. */
 async function start(): Promise<Model> {
 	try {
@@ -22,7 +32,7 @@ async function start(): Promise<Model> {
 	} catch (error) {
 		console.warn('Starting a new Baby: the saved one couldn’t be restored.', error);
 	}
-	return createModel();
+	return newborn();
 }
 
 /** The current Baby; a reset swaps in a new one. */
@@ -31,10 +41,10 @@ let current = start().then((model) => {
 	return model;
 });
 
-/** Forgets the saved Baby, then starts over with a blank one. */
+/** Forgets the saved Baby, then starts over with a newborn. */
 async function* reset(): AsyncGenerator<BabyEvent> {
 	await clearSnapshot();
-	const model = createModel();
+	const model = await newborn();
 	current = Promise.resolve(model);
 	post({ type: 'state', state: model.state });
 	yield { type: 'done' };

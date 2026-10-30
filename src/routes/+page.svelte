@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { spawnBaby } from '#lib/baby/index.ts';
-	import { describeKnowledge, describeReading, readingStats } from '#lib/baby/reading.ts';
+	import {
+		describeKnowledge,
+		describeNewWords,
+		describeReading,
+		readingStats
+	} from '#lib/baby/reading.ts';
 	import { typeset } from '#lib/baby/typeset.ts';
 	import { Chat } from '#lib/chat/chat.svelte.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
@@ -33,7 +38,7 @@
 				id,
 				title,
 				read: chat.readSources.includes(id),
-				newWords: readingStats(documents, (word) => known.has(word)).newWords
+				newWords: describeNewWords(readingStats(documents, (word) => known.has(word)).newWords)
 			}))
 		}))
 	);
@@ -84,7 +89,7 @@
 <div class="page">
 	<header class="toolbar">
 		<SourcesPanel
-			summary={describeKnowledge(known.size, chat.readSources.length)}
+			summary={describeKnowledge(known.size)}
 			groups={panelGroups}
 			disabled={chat.reading}
 			onopen={(id) => (previewing = primers.get(id))}

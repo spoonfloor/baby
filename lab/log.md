@@ -124,3 +124,21 @@ Can the user teach Baby a reply? Baby read Greetings + Thanks, then 5 correction
 ## 2026-10-29 · Rubric: the goal is enjoyable
 
 The goal of a chat was stated four ways: the README’s “supposed to be bad”, the rubric’s “fun to poke at”, `CLAUDE.md`’s “how chatting feels”, and a private note’s “enjoyable”. Now the rubric is the one definition and the others point to it. A good chat is **enjoyable**: the six qualities, and never boring, confusing, frustrating (several replies in a row ignore you) or broken (no sentence to find). Word salad is judged by quality, not amount. Primitive comes free and is never a goal.
+
+## 2026-10-29 · Experiment: born knowing Hello
+
+Every new Baby now reads a first lesson, Hello (`you: Hello` / `baby: Hello`, twice), before anything else, so it answers from the first message (`experiments/first-word.ts`, 8 seeds × 20 samples).
+
+- **One exchange vs two:** with one, a seed said nothing to “Hello!” / “Hello?” / “Hello.” 25–50% of the time. With two, every seed shows “Hello” to everything (~8% end on a turn marker instead of [EOS], which doesn’t show). Kept two.
+- **Practice stops when learned:** practice now also stops once a block averages under 0.05 loss. Hello takes 100 steps instead of the minimum 200 (about 4s in Node, down from 9s). Lessons never get that low, so nothing else changes.
+
+The cost to the lessons after it, 10 seeds each (trained / near):
+
+| pack       | without Hello | Hello, 200 steps (5 seeds) | Hello, stops when learned |
+| ---------- | ------------- | -------------------------- | ------------------------- |
+| greetings  | 97% / 91%     | 92% / 79%                  | 94% / 87%                 |
+| thanks     | 98% / 93%     | 92% / 79%                  | 98% / 86%                 |
+| goodbyes   | 94% / 91%     | 90% / 82%                  | 93% / 84%                 |
+| about-baby | 92% / 80%     | 79% / 39%                  | 85% / 56%                 |
+
+Stopping early recovers about half the loss. Greetings’ first loss is still higher after Hello (2.17 vs 1.24): a Baby certain of one word unlearns that certainty slowly. About Baby misses its trained target.

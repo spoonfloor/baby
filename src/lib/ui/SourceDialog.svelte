@@ -26,6 +26,6 @@
 	<ScriptText {documents} />
 	{#snippet actions(close)}
 		<Button onclick={close}>Cancel</Button>
-		<Button primary onclick={onread}>{read ? 'Read again' : 'Read'}</Button>
+		<Button primary onclick={onread}>{read ? 'Train again' : 'Train'}</Button>
 	{/snippet}
 </Dialog>

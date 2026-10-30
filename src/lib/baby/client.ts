@@ -5,7 +5,7 @@ export interface Baby {
 	reply(prompt: string): AsyncIterable<BabyEvent>;
 	/** Reads, then practices on everything read so far. */
 	read(reading: Reading): AsyncIterable<BabyEvent>;
-	/** Forgets everything Baby has ever read, leaving a blank model. */
+	/** Forgets everything Baby has ever read, leaving a newborn that knows only its first word. */
 	reset(): AsyncIterable<BabyEvent>;
 	/** Calls `listener` with Baby's state now (once known) and on every change. Returns an unsubscribe. */
 	subscribe(listener: (state: BabyState) => void): () => void;

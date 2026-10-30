@@ -1,7 +1,8 @@
 import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace } from '#lib/baby/index.ts';
 import { turnTokens } from '#lib/baby/script.ts';
+import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
-import type { Notice } from './notices.ts';
+import { nudge, type Notice } from './notices.ts';
 
 export type UserMessage = {
 	id: string;
@@ -39,6 +40,10 @@ export class Chat {
 	knowledge: BabyState | undefined = $state();
 	/** Ids of the sources Baby has finished reading, as Baby reports them. */
 	readSources: string[] = $derived(this.knowledge?.sources ?? []);
+	/** Baby knows only the first word it was born knowing, and isn’t reading anything else yet. */
+	untrained: boolean = $derived(
+		!this.reading && this.readSources.every((source) => source === firstWord.id)
+	);
 	/**
 	 * Baby’s latest reply and the message it answered, while the user can teach a
 	 * better one: the reply is finished, nothing has been said since, and Baby isn’t
@@ -74,11 +79,8 @@ export class Chat {
 		this.replying = false;
 
 		if (!reply) return;
-		if (reply.text === '' && this.knowledge?.words.length === 0) {
-			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'newborn' });
-		} else if (reply.trace && mostlyUnknown(reply.trace)) {
-			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'unrecognized' });
-		}
+		const notice = this.#noticeAfterReply(reply);
+		if (notice) this.messages.push({ id: crypto.randomUUID(), role: 'app', notice });
 	}
 
 	async read(primer: Primer) {
@@ -127,6 +129,25 @@ export class Chat {
 			console.error(error);
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
 		}
+	}
+
+	/**
+	 * While Baby knows only its first word, the app nudges toward training on a
+	 * schedule. Once it has read more, the app points out a message Baby couldn’t
+	 * follow, the first time only: its status line says so every time after.
+	 */
+	#noticeAfterReply(reply: BabyMessage): Notice | undefined {
+		if (this.untrained) {
+			const turns = this.messages.filter(
+				(message) => message.role === 'user' && message.replyTo === undefined
+			).length;
+			return nudge(turns);
+		}
+		const pointedOut = this.messages.some(
+			(message) => message.role === 'app' && message.notice === 'unrecognized'
+		);
+		if (!pointedOut && reply.trace && mostlyUnknown(reply.trace)) return 'unrecognized';
+		return undefined;
 	}
 
 	async #read(reading: Reading) {

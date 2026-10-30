@@ -85,7 +85,7 @@ describe('transcript', () => {
 		const messages: Message[] = [
 			reply('', { request: 'read', status: 'Read “About Baby”: 9 words · 9 new' }),
 			reply(''),
-			{ id: '2', role: 'app', notice: 'newborn' }
+			{ id: '2', role: 'app', notice: 'oneWord' }
 		];
 
 		expect(lines(messages).slice(3)).toEqual([
@@ -93,7 +93,7 @@ describe('transcript', () => {
 			'reading: Read “About Baby”: 9 words · 9 new',
 			'baby: (nothing)',
 			'  status:   Picked some words',
-			'app: [newborn]',
+			'app: [oneWord]',
 			''
 		]);
 	});

@@ -1,7 +1,7 @@
 /**
  * How Baby practices: over and over, it guesses each next word of random stretches
- * of everything it has read, until its guesses stop getting better or it reaches
- * the budget set before it started.
+ * of everything it has read, until its guesses stop getting better, it gets nearly
+ * all of them right, or it reaches the budget set before it started.
  */
 
 /** Steps averaged together before deciding whether practice is still paying off. */
@@ -10,6 +10,12 @@ const BLOCK_STEPS = 50;
 const MIN_IMPROVEMENT = 0.02;
 /** Blocks in a row without progress before Baby stops. */
 const PATIENCE = 3;
+/**
+ * A block averaging under this loss means Baby guesses nearly every word right, so
+ * it stops. Practicing on past that makes it certain, and certainty is hard to
+ * unlearn: a Baby drilled on Hello alone then learned every lesson after it worse.
+ */
+const LEARNED_LOSS = 0.05;
 /**
  * Practice steps budgeted per word read. Measured on Chatbot 101: readings of 190 to
  * 260 words stopped improving after 300 to 700 steps, so most finish before the budget.
@@ -75,6 +81,7 @@ export class Plateau {
 	#blockTotal = 0;
 	#best = Infinity;
 	#stalls = 0;
+	#learned = false;
 	/** The first and latest block averages, or undefined before the first block. */
 	first: number | undefined;
 	latest: number | undefined;
@@ -93,7 +100,7 @@ export class Plateau {
 	}
 
 	get reached(): boolean {
-		return this.#stalls >= PATIENCE || this.#steps >= this.budget;
+		return this.#learned || this.#stalls >= PATIENCE || this.#steps >= this.budget;
 	}
 
 	add(loss: number) {
@@ -105,6 +112,7 @@ export class Plateau {
 		this.#blockTotal = 0;
 		this.first ??= average;
 		this.latest = average;
+		this.#learned = average < LEARNED_LOSS;
 		if (average < this.#best * (1 - MIN_IMPROVEMENT)) {
 			this.#best = average;
 			this.#stalls = 0;

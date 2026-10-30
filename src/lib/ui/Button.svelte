@@ -27,8 +27,14 @@
 		cursor: pointer;
 	}
 
+	/* An action within text, so it stands out from the muted text around it (a status line). */
 	.inline {
 		padding: 0;
+		color: var(--color-text);
+	}
+
+	.inline:hover {
+		text-decoration: underline;
 	}
 
 	.primary {

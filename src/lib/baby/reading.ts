@@ -25,12 +25,24 @@ export function describeReading({ words, newWords }: ReadingStats): string {
 	return `${count(words, 'word')} · ${newWords} new`;
 }
 
-/** “412 words · 13 sources”: what Baby knows, in the sources panel. */
-export function describeKnowledge(words: number, sources: number): string {
-	return words === 0 ? 'No words yet' : `${count(words, 'word')} · ${count(sources, 'source')}`;
+/** “Baby knows 10.9K words”: what Baby knows, in the sources panel. */
+export function describeKnowledge(words: number): string {
+	return words === 0 ? 'Baby knows no words' : `Baby knows ${countRounded(words, 'word')}`;
+}
+
+/** “10.9K new words”: what reading a source would add, in the sources panel. */
+export function describeNewWords(newWords: number): string {
+	return newWords === 0 ? 'No new words' : countRounded(newWords, 'new word');
 }
 
 /** “3 words”, “1 word”. */
 export function count(n: number, noun: string): string {
 	return `${n} ${noun}${n === 1 ? '' : 's'}`;
+}
+
+const rounded = new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 });
+
+/** “8 words”, “10.9K words”, “123M words”: a count to take in at a glance. */
+function countRounded(n: number, noun: string): string {
+	return `${rounded.format(n)} ${noun}${n === 1 ? '' : 's'}`;
 }

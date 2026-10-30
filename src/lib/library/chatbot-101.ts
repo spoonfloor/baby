@@ -1,7 +1,24 @@
 import { scriptPrimer } from './primer.ts';
 
+/**
+ * The one word every Baby is born knowing, so it can answer from the first message.
+ * Every new Baby reads it before anything else, the same way it reads any lesson.
+ * Two exchanges, not one: with one, some seeds said nothing to “Hello!” (lab/log.md).
+ */
+export const firstWord = scriptPrimer(
+	'hello',
+	'Hello',
+	`
+	you: Hello
+	baby: Hello
+	you: Hello
+	baby: Hello
+	`
+);
+
 /** Conversation lessons: short scripts that teach Baby to take turns, in curriculum order. */
 export const chatbot101 = [
+	firstWord,
 	scriptPrimer(
 		'greetings',
 		'Greetings',

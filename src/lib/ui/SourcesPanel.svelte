@@ -1,6 +1,7 @@
 <!--
 	What Baby has read and what it could read next, pinned to the top corner. Closed,
-	it's a one-line summary; open, it lists sources in groups that each open and close.
+	it's a one-line title; open, it sums up what Baby knows and lists sources in groups
+	that each open and close.
 	It's the same width either way, and opening only grows it downward, over the page,
 	so nothing under it moves. Clicking a source opens it (its preview).
 -->
@@ -14,8 +15,8 @@
 		title: string;
 		/** Baby has read it, so it's marked. */
 		read: boolean;
-		/** Words reading it would add; shown until it's read. */
-		newWords: number;
+		/** What reading it would add, e.g. “28 new words”; shown until it's read. */
+		newWords: string;
 	}
 
 	interface PanelGroup {
@@ -24,7 +25,7 @@
 	}
 
 	interface Props {
-		/** One line on what Baby knows, e.g. “412 words · 13 sources”. */
+		/** One line on what Baby knows, e.g. “Baby knows 412 words”. */
 		summary: string;
 		groups: PanelGroup[];
 		/** Sources can't be opened (Baby is busy reading). */
@@ -57,11 +58,12 @@
 	<div class="sheet">
 		<Surface>
 			<button class="summary" type="button" aria-expanded={open} onclick={() => (open = !open)}>
-				{summary}
+				Sources
 				<span class="mark"><Icon name={open ? 'collapse' : 'expand'} /></span>
 			</button>
 			{#if open}
 				<div class="body">
+					<p class="mark">{summary}</p>
 					{#each groups as group (group.title)}
 						{@const expanded = shown.includes(group.title)}
 						<section>
@@ -81,7 +83,7 @@
 												{#if source.read}
 													<span class="mark" aria-label="Read"><Icon name="check" /></span>
 												{:else}
-													<span class="mark">{source.newWords} new</span>
+													<span class="mark">{source.newWords}</span>
 												{/if}
 											</Row>
 										</li>
@@ -134,6 +136,10 @@
 		margin-block-start: var(--space-tight);
 		max-block-size: var(--height-panel-max);
 		overflow-y: auto;
+	}
+
+	p {
+		margin: 0;
 	}
 
 	.label {

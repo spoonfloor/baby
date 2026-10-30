@@ -1,6 +1,11 @@
 <!-- Every UI part in every state, on one page, for design review. -->
 <script lang="ts">
-	import { describeKnowledge, describeReading, readingStats } from '#lib/baby/reading.ts';
+	import {
+		describeKnowledge,
+		describeNewWords,
+		describeReading,
+		readingStats
+	} from '#lib/baby/reading.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { chatbot101 } from '#lib/library/chatbot-101.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
@@ -28,10 +33,13 @@
 	const noop = () => {};
 	const iconNames = Object.keys(icons) as IconName[];
 
-	const primer = chatbot101[0];
-	if (!primer) throw new Error('Chatbot 101 has no primers');
+	const primer = chatbot101.find(({ id }) => id === 'greetings');
+	if (!primer) throw new Error('Chatbot 101 has no Greetings');
 	const unread = describeReading(readingStats(primer.documents, () => false));
 	const reread = describeReading(readingStats(primer.documents, () => true));
+
+	/** New-word counts for the sources panel, covering every way a count reads. */
+	const newWordCounts = [1, 27, 0, 10_940, 45];
 
 	/** Sources panel groups with the first `read` of Chatbot 101 read and nothing else. */
 	function panelGroups(read: number) {
@@ -42,12 +50,14 @@
 					id,
 					title,
 					read: index < read,
-					newWords: 40 + 10 * index
+					newWords: describeNewWords(newWordCounts[index % newWordCounts.length] ?? 0)
 				}))
 			},
 			{
 				title: 'Psychology',
-				sources: [{ id: 'eliza', title: 'ELIZA (1966)', read: false, newWords: 812 }]
+				sources: [
+					{ id: 'eliza', title: 'ELIZA (1966)', read: false, newWords: describeNewWords(812) }
+				]
 			}
 		];
 	}
@@ -83,17 +93,17 @@
 		<h2>Sources panel</h2>
 		<div class="panels">
 			<SourcesPanel
-				summary={describeKnowledge(0, 0)}
-				groups={panelGroups(0)}
+				summary={describeKnowledge(1)}
+				groups={panelGroups(1)}
 				onopen={() => (previewing = 'unread')}
 			/>
 			<SourcesPanel
-				summary={describeKnowledge(412, 3)}
+				summary={describeKnowledge(412)}
 				groups={panelGroups(3)}
 				onopen={() => (previewing = 'unread')}
 			/>
 			<SourcesPanel
-				summary={describeKnowledge(412, 3)}
+				summary={describeKnowledge(412)}
 				groups={panelGroups(3)}
 				disabled
 				onopen={noop}
@@ -204,7 +214,9 @@
 
 	<section>
 		<h2>App message</h2>
-		<AppMessage text={noticeText('newborn', pointerVerb())} />
+		<AppMessage text={noticeText('oneWord', pointerVerb())} />
+		<AppMessage text={noticeText('guess', pointerVerb())} />
+		<AppMessage text={noticeText('repertoire', pointerVerb())} />
 		<AppMessage text={noticeText('unrecognized', pointerVerb())} />
 		<AppMessage text={noticeText('failed', pointerVerb())} />
 	</section>

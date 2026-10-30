@@ -5,15 +5,20 @@ import { Chat } from './chat.svelte.ts';
 
 const primer: Primer = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
 
+/** What a newborn has read: its first word. */
+const born = ['hello'];
+/** What a Baby that has started training has read. */
+const trained = ['hello', 'greetings'];
+
 /**
- * A Baby that answers every request with `events`, then done, knowing `words`.
- * Like the real one, it reports a finished reading’s source just before done.
+ * A Baby that answers every request with `events`, then done, knowing `words` from
+ * `sources`. Like the real one, it reports a finished reading’s source just before done.
  */
-function fakeBaby(events: BabyEvent[], words: string[]) {
+function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) {
 	let release = () => {};
 	const released = new Promise<void>((resolve) => (release = resolve));
 	const listeners = new Set<(state: BabyState) => void>();
-	let state: BabyState = { words, sources: [] };
+	let state: BabyState = { words, sources };
 	async function* respond(source?: string): AsyncGenerator<BabyEvent> {
 		yield* events;
 		await released;
@@ -90,28 +95,35 @@ describe('Chat', () => {
 		]);
 	});
 
-	it('adds the newborn notice when a Baby that knows nothing says nothing', async () => {
-		const { baby, release } = fakeBaby([], []);
+	it('nudges toward training on turns 2, 3 and 6 while Baby knows only its first word', async () => {
+		const { baby, release } = fakeBaby([{ type: 'token', text: 'hello' }], ['hello'], born);
+		const chat = new Chat(baby);
+
+		release();
+		for (const text of ['Hi!', 'How are you?', 'Hm', 'Hm', 'Hm', 'Hm']) await chat.send(text);
+
+		expect(
+			chat.messages.flatMap((message) => (message.role === 'app' ? [message.notice] : []))
+		).toEqual(['oneWord', 'guess', 'repertoire']);
+		expect(chat.messages.slice(0, 3).map((message) => message.role)).toEqual([
+			'user',
+			'baby',
+			'user'
+		]);
+	});
+
+	it('stops nudging once Baby has read more than its first word', async () => {
+		const { baby, release } = fakeBaby([{ type: 'token', text: 'hi' }], ['hello', 'hi'], trained);
 		const chat = new Chat(baby);
 
 		release();
 		await chat.send('Hi!');
-
-		expect(chat.messages.map((message) => message.role)).toEqual(['user', 'baby', 'app']);
-		expect(chat.messages.at(-1)).toMatchObject({ role: 'app', notice: 'newborn' });
-	});
-
-	it('adds no notice when a Baby that knows words happens to say nothing', async () => {
-		const { baby, release } = fakeBaby([], ['moon']);
-		const chat = new Chat(baby);
-
-		release();
 		await chat.send('Hi!');
 
-		expect(chat.messages.map((message) => message.role)).toEqual(['user', 'baby']);
+		expect(chat.messages.map((message) => message.role)).toEqual(['user', 'baby', 'user', 'baby']);
 	});
 
-	it('adds the unrecognized notice when most of the message was words Baby never read', async () => {
+	it('points out a message Baby mostly couldn’t read, the first time only', async () => {
 		const trace: ReplyTrace = {
 			prompt: ['you', 'are', 'the', 'best'],
 			unknown: ['the', 'best', 'are'],
@@ -123,14 +135,17 @@ describe('Chat', () => {
 				{ type: 'token', text: 'hey' },
 				{ type: 'trace', trace }
 			],
-			['you', 'hey']
+			['you', 'hey'],
+			trained
 		);
 		const chat = new Chat(baby);
 
 		release();
 		await chat.send('You are the best');
-
 		expect(chat.messages.at(-1)).toMatchObject({ role: 'app', notice: 'unrecognized' });
+
+		await chat.send('You are the best');
+		expect(chat.messages.at(-1)).toMatchObject({ role: 'baby' });
 	});
 
 	it('adds no notice when Baby knew at least half the message', async () => {
@@ -140,7 +155,11 @@ describe('Chat', () => {
 			context: [],
 			stop: 'eos'
 		};
-		const { baby, release } = fakeBaby([{ type: 'trace', trace }], ['good', 'morning', 'you']);
+		const { baby, release } = fakeBaby(
+			[{ type: 'trace', trace }],
+			['good', 'morning', 'you'],
+			trained
+		);
 		const chat = new Chat(baby);
 
 		release();

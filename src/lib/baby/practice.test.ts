@@ -66,6 +66,10 @@ describe('Plateau', () => {
 	});
 
 	it('ends at its budget, even if the loss falls forever', () => {
-		expect(run((step) => 1 / (step + 1), 300).steps).toBe(300);
+		expect(run((step) => 100 / (step + 1), 300).steps).toBe(300);
+	});
+
+	it('stops at the end of the first block with nearly every guess right', () => {
+		expect(run((step) => (step < 50 ? 0.5 : 0.01)).steps).toBe(100);
 	});
 });

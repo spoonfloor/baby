@@ -16,7 +16,7 @@
 	size="narrow"
 	line={{
 		description:
-			'Baby will forget everything it has ever read and start from a blank slate. This can’t be undone.'
+			'Baby will forget everything it has ever read and start over knowing only “Hello”. This can’t be undone.'
 	}}
 	{onclose}
 >

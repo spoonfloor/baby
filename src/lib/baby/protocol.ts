@@ -55,7 +55,7 @@ export interface Reading {
 export type BabyRequest =
 	| { type: 'reply'; id: string; prompt: string }
 	| { type: 'read'; id: string; reading: Reading }
-	/** Forgets everything, saved Baby included, leaving a blank model. */
+	/** Forgets everything, saved Baby included, leaving a newborn that knows only its first word. */
 	| { type: 'reset'; id: string };
 
 /**
