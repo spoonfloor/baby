@@ -73,7 +73,7 @@
 </script>
 
 {#snippet teachLink()}
-	<Button inline>Teach a reply</Button>
+	<Button inline icon="personEdit">Teach a reply</Button>
 {/snippet}
 
 <main>
@@ -178,7 +178,7 @@
 		<div class="row">
 			<Button>Cancel</Button>
 			<Button primary>Read</Button>
-			<Button inline>Teach a reply</Button>
+			<Button inline icon="personEdit">Teach a reply</Button>
 		</div>
 	</section>
 

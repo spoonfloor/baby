@@ -83,7 +83,7 @@
 </script>
 
 {#snippet teachLink()}
-	<Button inline onclick={startTeaching}>Teach a reply</Button>
+	<Button inline icon="personEdit" onclick={startTeaching}>Teach a reply</Button>
 {/snippet}
 
 <div class="page">
