@@ -218,3 +218,23 @@ A second chat: “I’m not sure I follow. What do you mean?” answered 9 of 32
 - **The chat is what improved.** Of 20 prompts from the two chats, about 17 now most often get a fitting reply: “LOL” → “what’s funny ?” 41/50, “I cry a lot” → “tell me more about that .” 41/50, “I want to talk about my mother” → “tell me about your mother .” 36/50, “bad” → “why do you feel bad ?”.
 - **Copying fell** (echo 74% → 54%): more shapes now share a model of the same size, and practice still stops around 1,100–1,700 steps. One seed stopped at loss 0.86, well short of the others, which suggests the plateau test stops early on a varied script. That’s a practice change, not a lesson one; noted, not changed.
 - Kept 70 per shape: 100 recovered little and reads 10% longer.
+
+## 2026-10-30 · Baby sees the exchange before your message
+
+Chat now sends the conversation so far with each message (`protocol.ts` `Turn`), and Baby reads the latest exchange in front of yours. On its own that made things worse: practice read every conversation alone, from position 0, so a message with anything before it was something Baby had never seen. Therapy Bot’s held-out probes after one earlier exchange: **0% acceptable, 4% echo**, against 28% / 54% with nothing before them.
+
+The fix is in practice, so it holds for every source: a window now reads up to two whole conversations back to back (`CHAINED_DOCUMENTS`), so Baby learns to answer a message that follows an exchange. Patience also went from 3 to 6 blocks: chained practice is noisier, and at 3 it stopped while replies were still improving.
+
+| practice                    | Therapy Bot trained | held-out | echo | after an exchange | echo after | Chatbot 101 readings  |
+| --------------------------- | ------------------- | -------- | ---- | ----------------- | ---------- | --------------------- |
+| alone, patience 3 (before)  | 54%                 | 28%      | 54%  | 0%                | 4%         | 33s / 19s / 24s / 30s |
+| fill the window, patience 3 | 16%                 | 3%       | 28%  | 4%                | 26%        | –                     |
+| fill the window, patience 6 | 70%                 | 44%      | 78%  | 37%               | 75%        | 73s / 57s / 57s / 78s |
+| two at a time, patience 3   | 61%                 | 37%      | 66%  | 28%               | 61%        | 40s / 29s / 26s / 32s |
+| two at a time, patience 6 ✓ | 77%                 | 50%      | 82%  | 43%               | 79%        | 40s / 31s / 31s / 43s |
+
+- **Filling the window was too costly:** steps took about twice as long, and Chatbot 101 lessons learned worse within their budget (Goodbyes trained 95% → 74%).
+- **Two at a time keeps Chatbot 101 where it was:** Greetings 97% / 93% near, Thanks 99% / 90%, Goodbyes 95% / 93%, About Baby 90% / 83%, within a few points of before.
+- **Patience 6 costs time:** Chatbot 101 lessons now run to their budget, up to 13 seconds longer (About Baby 43s), at the edge of the 40-second rule. Kept for Therapy Bot’s gain: echo after an exchange 79% against 61%.
+- **A taught reply stays quick:** the fewest steps budgeted is no longer tied to patience, so it’s still 200.
+- Therapy Bot’s conversations are still one exchange each, so nothing yet teaches Baby to _use_ the earlier exchange (“I told you I am sad”). That needs lessons whose conversations refer back.

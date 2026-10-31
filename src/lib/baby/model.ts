@@ -1,5 +1,5 @@
-import { Plateau, practiceBudget, sampleBatch } from './practice.ts';
-import type { BabyEvent, BabyState, Reading, ReplyTrace } from './protocol.ts';
+import { CHAINED_DOCUMENTS, Plateau, practiceBudget, sampleBatch } from './practice.ts';
+import type { BabyEvent, BabyState, Reading, ReplyTrace, Turn } from './protocol.ts';
 import { count, describeReading, readingStats } from './reading.ts';
 import { TURN_START, turnTokens } from './script.ts';
 import {
@@ -137,7 +137,8 @@ export class Model {
 		}
 	}
 
-	async *reply(prompt: string): AsyncGenerator<BabyEvent> {
+	/** Replies to `prompt`, seeing as much of `history` (oldest first) as fits before it. */
+	async *reply(prompt: string, history: readonly Turn[] = []): AsyncGenerator<BabyEvent> {
 		yield { type: 'status', text: 'Reading your message…' };
 		await this.#idle();
 
@@ -148,10 +149,8 @@ export class Model {
 			text: `Recognized ${words.length - unknown.length} of ${count(words.length, 'word')}`
 		};
 
-		// The script format: Baby sees `[YOU] … [EOS] [BABY]` and continues from there.
-		const ids = [...turnTokens('you', prompt), TURN_START.baby].map((word) =>
-			this.#vocabulary.id(word)
-		);
+		// The script format: Baby sees `… [YOU] … [EOS] [BABY]` and continues from there.
+		const ids = this.#seen(prompt, history).map((word) => this.#vocabulary.id(word));
 		const context = ids.map((id) => this.#vocabulary.word(id));
 		let picked = 0;
 		let stop: ReplyTrace['stop'] = 'limit';
@@ -176,6 +175,27 @@ export class Model {
 			trace: { prompt: words, unknown: [...new Set(unknown)], context, stop }
 		};
 		yield { type: 'done' };
+	}
+
+	/**
+	 * What Baby reads before replying: your message after the latest exchange of the
+	 * conversation, as much of it as fits with room for the longest reply. Practice
+	 * reads conversations at most `CHAINED_DOCUMENTS` at a time, so one exchange
+	 * before yours is what Baby has learned to make use of. It opens on one of your
+	 * turns, as every conversation Baby practices on does.
+	 */
+	#seen(prompt: string, history: readonly Turn[]): string[] {
+		const room = this.#transformer.config.context - MAX_REPLY_TOKENS;
+		const earlier = history.slice(-2 * (CHAINED_DOCUMENTS - 1));
+		let seen = [...turnTokens('you', prompt), TURN_START.baby];
+		let opening = seen;
+		for (const { speaker, text } of [...earlier].reverse()) {
+			const turn = turnTokens(speaker, text);
+			if (seen.length + turn.length > room) break;
+			seen = [...turn, ...seen];
+			if (speaker === 'you') opening = seen;
+		}
+		return opening;
 	}
 
 	/**

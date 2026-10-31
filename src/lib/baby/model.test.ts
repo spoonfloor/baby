@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Model } from './model.ts';
-import type { BabyEvent, Reading } from './protocol.ts';
+import type { BabyEvent, Reading, Turn } from './protocol.ts';
 import { seededRandom } from './random.ts';
 import { parseScripts } from './script.ts';
 import type { TransformerConfig } from './transformer.ts';
@@ -123,6 +123,47 @@ describe('Model', () => {
 				stop: 'eos'
 			}
 		});
+	});
+
+	it('sees the latest exchange before your message, opening on your turn', async () => {
+		const model = new Model({
+			random: seededRandom(1),
+			idle: async () => {},
+			config: { ...SMALL, context: 64 }
+		});
+		await collect(model.read(hi));
+		const seen = async (history: Turn[]) => {
+			const events = await collect(model.reply('Hi', history));
+			const trace = events.find((event) => event.type === 'trace');
+			return trace?.type === 'trace' ? trace.trace.context : [];
+		};
+
+		expect(
+			await seen([
+				{ speaker: 'you', text: 'Hi Baby!' },
+				{ speaker: 'baby', text: 'hello there !' },
+				{ speaker: 'you', text: 'Hi' },
+				{ speaker: 'baby', text: 'hello' }
+			])
+		).toEqual([
+			'[YOU]',
+			'hi',
+			'[EOS]',
+			'[BABY]',
+			'hello',
+			'[EOS]',
+			'[YOU]',
+			'hi',
+			'[EOS]',
+			'[BABY]'
+		]);
+		// A reply with no message before it in view isn’t where a conversation opens.
+		expect(await seen([{ speaker: 'baby', text: 'hello' }])).toEqual([
+			'[YOU]',
+			'hi',
+			'[EOS]',
+			'[BABY]'
+		]);
 	});
 
 	it('ends a reply at a turn start, as if its turn were over', async () => {

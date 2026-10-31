@@ -95,5 +95,5 @@ Then report with before/after conversations to read, alongside the numbers.
 
 Some qualities need more than lessons. Each is a product decision, not a script change:
 
-- **Memory.** Baby sees only the latest message, though the README specifies the whole labeled history. Needed for reacting to repetition and for using what you told it.
+- **Longer memory.** Baby sees the exchange before your message, not the whole conversation: practice reads at most two conversations back to back, and filling the window cost too much reading time. Reacting to repetition and using what you told it several turns ago need more, and lessons whose conversations refer back to an earlier turn.
 - **The app noticing a rut.** When Baby’s replies repeat or its confidence stays low, the app (in its own voice) could suggest more reading: “Baby seems a bit stuck. Try giving it more to read.”

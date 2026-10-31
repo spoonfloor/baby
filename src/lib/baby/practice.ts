@@ -8,8 +8,13 @@
 const BLOCK_STEPS = 50;
 /** A block must beat the best so far by this fraction to count as progress. */
 const MIN_IMPROVEMENT = 0.02;
-/** Blocks in a row without progress before Baby stops. */
-const PATIENCE = 3;
+/**
+ * Blocks in a row without progress before Baby stops. Practice on conversations
+ * back to back is noisy, and at 3 it stopped Therapy Bot at about 1,500 steps while
+ * its replies were still improving; 6 costs Chatbot 101 lessons up to 10 seconds
+ * each (lab/log.md).
+ */
+const PATIENCE = 6;
 /**
  * A block averaging under this loss means Baby guesses nearly every word right, so
  * it stops. Practicing on past that makes it certain, and certainty is hard to
@@ -21,8 +26,11 @@ const LEARNED_LOSS = 0.05;
  * 260 words stopped improving after 300 to 700 steps, so most finish before the budget.
  */
 const STEPS_PER_WORD = 3;
-/** The fewest steps budgeted: enough blocks for practice to notice it has stalled. */
-const MIN_STEPS = BLOCK_STEPS * (PATIENCE + 1);
+/**
+ * The fewest steps budgeted. A short reading, like a taught reply, ends here rather
+ * than waiting out its patience, so teaching Baby a reply stays quick.
+ */
+const MIN_STEPS = BLOCK_STEPS * 4;
 /** The most steps budgeted, however long the reading, so practice always ends soon enough. */
 const MAX_STEPS = 5000;
 
@@ -35,6 +43,13 @@ export function practiceBudget(words: number): number {
 	return Math.min(MAX_STEPS, Math.max(MIN_STEPS, blocks * BLOCK_STEPS));
 }
 
+/**
+ * Most documents read back to back in one window. Two is enough for Baby to answer
+ * a message that follows an exchange; filling the whole window made each step about
+ * twice as slow, and lessons learned worse in their budget (lab/log.md).
+ */
+export const CHAINED_DOCUMENTS = 2;
+
 export interface Window {
 	inputs: number[];
 	/** The word after each input: what Baby should have guessed. */
@@ -46,9 +61,11 @@ export interface Window {
  * often), until there are about `context` words to guess. Reading everything again,
  * not just the newest, is what keeps Baby from forgetting earlier lessons.
  *
- * A window never spans two documents, and one that fits starts at its beginning,
- * just as a chat does, so Baby learns that a conversation opens at the first word.
- * Longer documents give a random stretch.
+ * Documents that fit are read whole, from their first word, and up to
+ * `CHAINED_DOCUMENTS` of them one after another in the same window, as a chat goes
+ * on from one exchange to the next. So Baby learns to answer a message that follows
+ * an earlier exchange: without this, every such reply was salad. Longer documents
+ * give a random stretch of their own.
  */
 export function sampleBatch(
 	documents: readonly (readonly number[])[],
@@ -59,17 +76,30 @@ export function sampleBatch(
 	const total = usable.reduce((sum, document) => sum + document.length, 0);
 	if (total === 0) throw new RangeError('Need a document of at least two words to practice on');
 
+	const pick = () => {
+		let remaining = random() * total;
+		return usable.find((candidate) => (remaining -= candidate.length) < 0) ?? usable[0] ?? [];
+	};
+
 	const windows: Window[] = [];
 	let targets = 0;
 	while (targets < context) {
-		let remaining = random() * total;
-		const document = usable.find((candidate) => (remaining -= candidate.length) < 0) ?? usable[0];
-		if (!document) break;
-		const length = Math.min(context, document.length - 1);
-		const start = Math.floor(random() * (document.length - length));
-		const stretch = document.slice(start, start + length + 1);
+		const document = pick();
+		let stretch: readonly number[];
+		if (document.length > context + 1) {
+			const start = Math.floor(random() * (document.length - context));
+			stretch = document.slice(start, start + context + 1);
+		} else {
+			const chain = [...document];
+			for (let chained = 1; chained < CHAINED_DOCUMENTS; chained++) {
+				const next = pick();
+				if (chain.length + next.length > context + 1) break;
+				chain.push(...next);
+			}
+			stretch = chain;
+		}
 		windows.push({ inputs: stretch.slice(0, -1), targets: stretch.slice(1) });
-		targets += length;
+		targets += stretch.length - 1;
 	}
 	return windows;
 }

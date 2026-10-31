@@ -61,7 +61,7 @@ A conversation is a script between two speakers who take turns:
 - **The `[BABY]` marker signals Baby’s turn,** not a question mark. Punctuation is ordinary words, so questions and statements both work with or without it.
 - **Turn markers are tokens, not words,** as in real chat templates. No text can produce one, so a reply that says “thank you” or “i am baby” never looks like the start of a turn. If Baby picks a turn marker mid-reply, it thinks its turn is over, and the reply ends there.
 - **One shared normalizer** (lowercasing, punctuation split into words) for reading text and chat input, so the two never drift apart.
-- **Chat sends the whole labeled history,** not just the latest message: a miniature chat template.
+- **Chat sends the whole labeled history,** not just the latest message: a miniature chat template. Baby sees as much of it as it has practiced on: the exchange before your message, since practice reads conversations two at a time.
 - **Three diets:** stories teach words and grammar; scripts teach turn-taking; scripts covering many turn types teach what to say back. Story-only Baby continues your sentence; scripted Baby replies. That switch is the pretraining → instruction-tuning lesson.
 - **Turn types:** greetings and goodbyes, thanks, statements about yourself → a reaction (“i am sad” → “oh no”), yes/no questions, what-questions, requests (“tell me a story”), “i do not know,” facts about Baby itself, turns that refer back to an earlier one.
 - **Generated from templates** with slots (“i like \_\_\_” → “i like \_\_\_ too”), each phrased several ways, over a closed ~400-word vocabulary.

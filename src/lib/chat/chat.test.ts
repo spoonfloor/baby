@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace } from '#lib/baby/index.ts';
+import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace, Turn } from '#lib/baby/index.ts';
 import type { Primer } from '#lib/library/index.ts';
 import { Chat } from './chat.svelte.ts';
 
@@ -19,6 +19,8 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 	const released = new Promise<void>((resolve) => (release = resolve));
 	const listeners = new Set<(state: BabyState) => void>();
 	let state: BabyState = { words, sources };
+	/** Each reply request: the message, and the conversation before it. */
+	const asked: [prompt: string, history: readonly Turn[]][] = [];
 	async function* respond(source?: string): AsyncGenerator<BabyEvent> {
 		yield* events;
 		await released;
@@ -29,7 +31,10 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 		yield { type: 'done' };
 	}
 	const baby: Baby = {
-		reply: () => respond(),
+		reply: (prompt, history = []) => {
+			asked.push([prompt, history]);
+			return respond();
+		},
 		read: ({ source }) => respond(source),
 		async *reset() {
 			state = { words: [], sources: [] };
@@ -42,7 +47,7 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 			return () => listeners.delete(listener);
 		}
 	};
-	return { baby, release };
+	return { baby, release, asked };
 }
 
 /** A Baby whose every request fails partway, after one status. */
@@ -76,6 +81,26 @@ describe('Chat', () => {
 		expect(chat.messages).toMatchObject([
 			{ role: 'user', text: 'hello' },
 			{ role: 'baby', text: 'moon spoon', status: 'Thinking', pending: false }
+		]);
+	});
+
+	it('sends Baby the conversation before each message: your turns and its replies, not the app’s', async () => {
+		const { baby, release, asked } = fakeBaby([{ type: 'token', text: 'hi' }], trained);
+		release();
+		const chat = new Chat(baby);
+		await chat.send('Hello');
+		chat.messages.push({ id: 'notice', role: 'app', notice: 'failed' });
+		await chat.send('How are you?');
+
+		expect(asked).toEqual([
+			['Hello', []],
+			[
+				'How are you?',
+				[
+					{ speaker: 'you', text: 'Hello' },
+					{ speaker: 'baby', text: 'hi' }
+				]
+			]
 		]);
 	});
 

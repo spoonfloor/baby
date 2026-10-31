@@ -1,4 +1,4 @@
-import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace } from '#lib/baby/index.ts';
+import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace, Turn } from '#lib/baby/index.ts';
 import { turnTokens } from '#lib/baby/script.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
@@ -74,9 +74,10 @@ export class Chat {
 	async send(text: string) {
 		if (this.replying) throw new Error('Baby is already replying');
 		this.replying = true;
+		const history = this.#history();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
-		const reply = await this.#follow('reply', this.#baby.reply(text));
+		const reply = await this.#follow('reply', this.#baby.reply(text, history));
 		this.replying = false;
 
 		if (!reply) return;
@@ -130,6 +131,22 @@ export class Chat {
 			console.error(error);
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
 		}
+	}
+
+	/**
+	 * The conversation so far as Baby’s turns and yours: what you said and what Baby
+	 * replied, nothing the app said, and not a taught reply, which Baby reads instead.
+	 */
+	#history(): Turn[] {
+		return this.messages.flatMap((message): Turn[] => {
+			if (message.role === 'user' && message.replyTo === undefined) {
+				return [{ speaker: 'you', text: message.text }];
+			}
+			if (message.role === 'baby' && message.request === 'reply' && !message.pending) {
+				return [{ speaker: 'baby', text: message.text }];
+			}
+			return [];
+		});
 	}
 
 	/**

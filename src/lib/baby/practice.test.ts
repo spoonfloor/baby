@@ -3,7 +3,7 @@ import { Plateau, practiceBudget, sampleBatch } from './practice.ts';
 import { seededRandom } from './random.ts';
 
 describe('sampleBatch', () => {
-	it('reads short documents whole, from their first word, never across two', () => {
+	it('reads short documents whole, up to two back to back', () => {
 		const documents = [
 			[10, 11, 12],
 			[20, 21, 22, 23]
@@ -13,12 +13,19 @@ describe('sampleBatch', () => {
 		expect(windows.reduce((sum, { targets }) => sum + targets.length, 0)).toBeGreaterThanOrEqual(
 			16
 		);
-		for (const window of windows) {
-			expect([
-				{ inputs: [10, 11], targets: [11, 12] },
-				{ inputs: [20, 21, 22], targets: [21, 22, 23] }
-			]).toContainEqual(window);
+		for (const { inputs, targets } of windows) {
+			const read = [...inputs, ...targets.slice(-1)];
+			expect(targets).toEqual(read.slice(1));
+			// Whole documents, back to back, from the first word of the first.
+			let rest = read;
+			while (rest.length > 0) {
+				const document = documents.find((candidate) => candidate[0] === rest[0]);
+				expect(document).toBeDefined();
+				expect(rest.slice(0, document?.length)).toEqual(document);
+				rest = rest.slice(document?.length);
+			}
 		}
+		expect(windows.some(({ inputs }) => inputs.length > 4)).toBe(true);
 	});
 
 	it('takes a context-long stretch of a longer document', () => {
@@ -54,14 +61,14 @@ describe('Plateau', () => {
 	};
 
 	it('stops soon once the loss is flat', () => {
-		expect(run(() => 1).steps).toBeLessThanOrEqual(250);
+		expect(run(() => 1).steps).toBeLessThanOrEqual(350);
 	});
 
 	it('keeps going while the loss keeps falling, and stops after it levels off', () => {
 		const plateau = run((step) => Math.max(0.5, 3 - step / 200));
 
 		expect(plateau.steps).toBeGreaterThan(500);
-		expect(plateau.steps).toBeLessThan(800);
+		expect(plateau.steps).toBeLessThan(900);
 		expect(plateau.latest).toBeCloseTo(0.5);
 	});
 

@@ -1,4 +1,5 @@
 import type { Document } from './reading.ts';
+import type { Speaker } from './script.ts';
 
 /**
  * The seam between the app and the model. The app asks Baby to reply or to read,
@@ -24,13 +25,22 @@ export interface ReplyTrace {
 	prompt: string[];
 	/** Words in `prompt` Baby had never read, so saw as [UNK]; each once, in order. */
 	unknown: string[];
-	/** Exactly what Baby continued from: the script around the message, unknown words as [UNK]. */
+	/**
+	 * Exactly what Baby continued from: the latest turns of the conversation and the
+	 * message, as a script, unknown words as [UNK].
+	 */
 	context: string[];
 	/**
 	 * Baby picked [EOS]; picked a turn start ([YOU] or [BABY]), thinking its turn was
 	 * over; or reached the longest reply it will give.
 	 */
 	stop: 'eos' | 'turn' | 'limit';
+}
+
+/** One turn of the conversation so far, as it was said: yours, or Baby’s reply. */
+export interface Turn {
+	speaker: Speaker;
+	text: string;
 }
 
 /** What Baby knows, for the app to react to (e.g. its notices, a reading preview). */
@@ -53,7 +63,8 @@ export interface Reading {
 
 /** App → worker. */
 export type BabyRequest =
-	| { type: 'reply'; id: string; prompt: string }
+	/** `history` is the conversation before `prompt`, oldest first; Baby sees what fits of it. */
+	| { type: 'reply'; id: string; prompt: string; history: Turn[] }
 	| { type: 'read'; id: string; reading: Reading }
 	/** Forgets everything, saved Baby included, leaving a newborn that knows only its first word. */
 	| { type: 'reset'; id: string };

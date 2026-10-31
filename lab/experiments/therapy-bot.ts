@@ -4,6 +4,7 @@ import { Model } from '#lib/baby/model.ts';
 import { seededRandom } from '#lib/baby/random.ts';
 import { tokenize } from '#lib/baby/vocabulary.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
+import type { Turn } from '#lib/baby/index.ts';
 import type { Primer } from '#lib/library/primer.ts';
 import { heldOutExchanges, unknownExchanges } from '#lib/library/therapy-bot/script.ts';
 import { therapyBot } from '#lib/library/therapy-bot/index.ts';
@@ -16,6 +17,9 @@ import { therapyBot } from '#lib/library/therapy-bot/index.ts';
  * - held-out: the script’s sentence shapes filled with words it read elsewhere but
  *             never in that shape. Acceptable is the reply the script would give;
  *             echo is the reply copying your words back, pointed at you.
+ * - after:    the held-out probes again, each after another exchange from the
+ *             script, as a chat would have it: does the conversation so far help
+ *             or get in the way?
  * - unknown:  the shapes filled with words Baby never read. It can’t copy them, so
  *             acceptable is the script’s reply for a word it doesn’t know.
  * - casual:   things a person might say, printed to read, not scored.
@@ -121,6 +125,8 @@ function fair(script: Script): Script {
 
 interface Request {
 	seed: number;
+	/** How many times Baby reads the script, each followed by practice. */
+	reads: number;
 	samples: number;
 }
 
@@ -133,26 +139,37 @@ interface Trial {
 	status: string;
 	trained: Asked[];
 	heldOut: Asked[];
+	after: Asked[];
 	unknown: Asked[];
 	casual: Asked[];
 }
 
 const script = fair(SCRIPT);
 
-async function trial({ seed, samples }: Request): Promise<Trial> {
+async function trial({ seed, samples, reads }: Request): Promise<Trial> {
 	const model = new Model({ random: seededRandom(seed), idle: async () => {} });
 	let status = '';
-	for (const { id: source, title, documents } of [firstWord, script.primer]) {
+	const readings = [firstWord, ...Array.from({ length: reads }, () => script.primer)];
+	for (const { id: source, title, documents } of readings) {
 		for await (const event of model.read({ source, title, documents })) {
 			if (event.type === 'status') status = event.text;
 		}
 	}
-	const ask = async (prompt: string): Promise<Asked> => {
+	// Some earlier exchange of the script, a different one for each probe.
+	const said = turns(script.primer);
+	const before = (index: number): Turn[] => {
+		const [you = '', baby = ''] = said[(index * 7 + 3) % said.length] ?? [];
+		return [
+			{ speaker: 'you', text: you },
+			{ speaker: 'baby', text: baby }
+		];
+	};
+	const ask = async (prompt: string, history: Turn[] = []): Promise<Asked> => {
 		const replies: string[] = [];
 		for (let i = 0; i < samples; i++) {
 			const said: string[] = [];
 			let stop = '';
-			for await (const event of model.reply(prompt)) {
+			for await (const event of model.reply(prompt, history)) {
 				if (event.type === 'token') said.push(event.text.trim());
 				if (event.type === 'trace') stop = event.trace.stop;
 			}
@@ -169,6 +186,13 @@ async function trial({ seed, samples }: Request): Promise<Trial> {
 		status,
 		trained: await askAll(script.trained.map((probe) => probe.prompt)),
 		heldOut: await askAll(script.heldOut.map((probe) => probe.prompt)),
+		after: await (async () => {
+			const all: Asked[] = [];
+			for (const [index, probe] of script.heldOut.entries()) {
+				all.push(await ask(probe.prompt, before(index)));
+			}
+			return all;
+		})(),
 		unknown: await askAll(script.unknown.map((probe) => probe.prompt)),
 		casual: await askAll(CASUAL)
 	};
@@ -180,6 +204,7 @@ if (!isMainThread) {
 	const { values: options } = parseArgs({
 		options: {
 			seeds: { type: 'string', default: '5' },
+			reads: { type: 'string', default: '1' },
 			samples: { type: 'string', default: '10' }
 		}
 	});
@@ -191,7 +216,9 @@ if (!isMainThread) {
 		});
 	const seeds = Array.from({ length: Number(options.seeds) }, (_, i) => i + 1);
 	const trials = await Promise.all(
-		seeds.map((seed) => run({ seed, samples: Number(options.samples) }))
+		seeds.map((seed) =>
+			run({ seed, samples: Number(options.samples), reads: Number(options.reads) })
+		)
 	);
 
 	const recitable = new Set(turns(script.primer).map(([, reply]) => reply));
@@ -228,6 +255,7 @@ if (!isMainThread) {
 	console.log();
 	score('trained', script.trained, (trial) => trial.trained);
 	score('held-out', script.heldOut, (trial) => trial.heldOut);
+	score('after', script.heldOut, (trial) => trial.after);
 	score('unknown', script.unknown, (trial) => trial.unknown);
 
 	const shown = (asked: Asked[] | undefined, index: number) => {

@@ -55,7 +55,7 @@ self.addEventListener('message', async ({ data: request }: MessageEvent<BabyRequ
 		const model = await current;
 		const events =
 			request.type === 'reply'
-				? model.reply(request.prompt)
+				? model.reply(request.prompt, request.history)
 				: request.type === 'read'
 					? model.read(request.reading)
 					: reset();

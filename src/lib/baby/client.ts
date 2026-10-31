@@ -1,8 +1,9 @@
-import type { BabyEvent, BabyRequest, BabyResponse, BabyState, Reading } from './protocol.ts';
+import type { BabyEvent, BabyRequest, BabyResponse, BabyState, Reading, Turn } from './protocol.ts';
 
 /** The app's view of Baby. */
 export interface Baby {
-	reply(prompt: string): AsyncIterable<BabyEvent>;
+	/** Replies to `prompt`, said after `history` (the conversation so far, oldest first). */
+	reply(prompt: string, history?: readonly Turn[]): AsyncIterable<BabyEvent>;
 	/** Reads, then practices on everything read so far. */
 	read(reading: Reading): AsyncIterable<BabyEvent>;
 	/** Forgets everything Baby has ever read, leaving a newborn that knows only its first word. */
@@ -65,7 +66,8 @@ export function createBaby(endpoint: Endpoint): Baby {
 	}
 
 	return {
-		reply: (prompt) => stream((id) => ({ type: 'reply', id, prompt })),
+		reply: (prompt, history = []) =>
+			stream((id) => ({ type: 'reply', id, prompt, history: [...history] })),
 		read: (reading) => stream((id) => ({ type: 'read', id, reading })),
 		reset: () => stream((id) => ({ type: 'reset', id })),
 		subscribe(listener) {
