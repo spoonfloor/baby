@@ -357,6 +357,7 @@ const smallTalk: [said: string[], reply: string][] = [
 	[['Hello.', 'Hi.', 'Hey.', 'Good morning.'], 'Hello. How are you feeling today?'],
 	[['Yes.', 'Yeah.', 'Yes, a bit.', 'I think so.'], 'I see. Tell me more.'],
 	[['No.', 'Not really.', 'No, I don’t think so.', 'Nope.', 'I don’t.'], 'Why not?'],
+	[['Not good.', 'Not great.', 'Not so good.'], 'I’m sorry to hear that. What’s wrong?'],
 	[['Haha.', 'Lol.', 'Ha.'], 'What’s funny?'],
 	[['I don’t know.', 'I’m not sure.', 'Maybe.'], 'That’s okay. Take your time.'],
 	[['What?', 'What do you mean?', 'What does that mean?', 'Why?'], 'Why do you ask?'],
@@ -376,7 +377,7 @@ const unclear: [said: string[], reply: string][] = [
 	],
 	[['My [UNK] [UNK].', 'My [UNK] is [UNK].', 'My [UNK] [UNK] me.'], 'Tell me more about that.'],
 	[
-		['You [UNK] [UNK].', 'You are [UNK] [UNK].', '[UNK] you [UNK].', 'You [UNK] [UNK] [UNK].'],
+		['You [UNK] [UNK].', '[UNK] you [UNK].', 'You [UNK] [UNK] [UNK].'],
 		'We were talking about you, not me.'
 	],
 	[
@@ -492,10 +493,12 @@ function fillings(): { read: Exchange[]; unread: HeldOut[] } {
 		}
 		kept.slice(0, PER_SHAPE).forEach((values, i) => read.push(framed(fill(shape, values), i)));
 		// An unread word is one [UNK] or a run of them, as an unread phrase would be.
-		kept.slice(PER_SHAPE, PER_SHAPE + UNKNOWN_PER_SHAPE).forEach((values, i) => {
+		// A shape with fewer fillings than that goes round them again.
+		for (let i = 0; i < UNKNOWN_PER_SHAPE; i++) {
 			const words = i % 3 === 2 ? '[UNK] [UNK]' : '[UNK]';
+			const values = kept[(PER_SHAPE + i) % kept.length] ?? {};
 			read.push(framed(withUnknown(shape, words, values), i));
-		});
+		}
 	});
 	return { read, unread };
 }

@@ -238,3 +238,23 @@ The fix is in practice, so it holds for every source: a window now reads up to t
 - **Patience 6 costs time:** Chatbot 101 lessons now run to their budget, up to 13 seconds longer (About Baby 43s), at the edge of the 40-second rule. Kept for Therapy Bot’s gain: echo after an exchange 79% against 61%.
 - **A taught reply stays quick:** the fewest steps budgeted is no longer tied to patience, so it’s still 200.
 - Therapy Bot’s conversations are still one exchange each, so nothing yet teaches Baby to _use_ the earlier exchange (“I told you I am sad”). That needs lessons whose conversations refer back.
+
+## 2026-11-04 · Therapy Bot 4: follow-ups that refer back (tried, not kept)
+
+Conversations of two exchanges, the second using the first: “I am lonely.” → “How long have you been lonely?” → “A long time.” → “What do you think makes you lonely?”, or “I told you.” → “You said you are lonely. Tell me more.” Eight kinds (I am, I feel, My … , I have been, I want, I like / love / hate), held out by their first exchange like the others, and scored as a new `follow-up` probe group with that exchange as history.
+
+| script                               | words | trained | held-out | echo | after | follow-up | unknown |
+| ------------------------------------ | ----- | ------- | -------- | ---- | ----- | --------- | ------- |
+| before (last round)                  | –     | 77%     | 50%      | 82%  | 43%   | –         | –       |
+| every shape gets its unknown lines ✓ | 10163 | 73%     | 43%      | 76%  | 35%   | 0%        | 88%     |
+| + 8 follow-ups per kind              | 12156 | 60%     | 40%      | 74%  | 31%   | 10%       | 87%     |
+| + 24 follow-ups per kind             | 16171 | 57%     | 35%      | 73%  | 24%   | 14%       | 78%     |
+| + 24 follow-ups per kind, read twice | 16171 | 65%     | 41%      | 77%  | 31%   | 18%       | 83%     |
+
+(Trained probes differ by row as the script changes.)
+
+- **Follow-ups don’t land at this size.** Baby learns the shape (“you said you are … tell me more .”) but fills it with the wrong feeling about half the time: “I am lonely.” … “I told you.” → “you said you are overwhelmed . tell me more .” A confident wrong memory is confusing, worse than a reply that doesn’t try. And every other group pays 4–11 points. Reading twice recovers only some of it, so it’s capacity, not practice.
+- **Kept: every shape gets its unknown lines.** Shapes with one blank had fewer fillings than the 70 lines asked for, so their [UNK] lines came out empty; they now go round their fillings again. Unknown 88%: “You are glitching” → “Why do you think I am like that?”. Held-out lost a few points, about the swing between runs plus the shapes now sharing more lines. Kept, since unread words are common in real chats.
+- **Kept: “Not good.” → “I’m sorry to hear that. What’s wrong?”**, an answer to “How are you?” the script lacked.
+- Dropped the unclear line “You are [UNK] [UNK].”: the You are… shape now owns it, and two replies to one line broke the one-reply rule.
+- Using what you said a turn ago needs a bigger model, not more lessons: noted under Longer memory in the rubric.
