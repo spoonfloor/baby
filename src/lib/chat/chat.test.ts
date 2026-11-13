@@ -21,6 +21,8 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 	let state: BabyState = { words, sources };
 	/** Each reply request: the message, and the conversation before it. */
 	const asked: [prompt: string, history: readonly Turn[]][] = [];
+	/** Each guess request, the same way. */
+	const guessed: [prompt: string, history: readonly Turn[]][] = [];
 	async function* respond(source?: string): AsyncGenerator<BabyEvent> {
 		yield* events;
 		await released;
@@ -35,6 +37,11 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 			asked.push([prompt, history]);
 			return respond();
 		},
+		async *guess(prompt, history = []) {
+			guessed.push([prompt, history]);
+			yield { type: 'guesses', guesses: [{ word: 'hi', chance: 1 }] };
+			yield { type: 'done' };
+		},
 		read: ({ source }) => respond(source),
 		async *reset() {
 			state = { words: [], sources: [] };
@@ -47,7 +54,7 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 			return () => listeners.delete(listener);
 		}
 	};
-	return { baby, release, asked };
+	return { baby, release, asked, guessed };
 }
 
 /** A Baby whose every request fails partway, after one status. */
@@ -56,7 +63,13 @@ function failingBaby(): Baby {
 		yield { type: 'status', text: 'Thinking' };
 		throw new Error('Baby broke');
 	}
-	return { reply: respond, read: respond, reset: respond, subscribe: () => () => {} };
+	return {
+		reply: respond,
+		guess: respond,
+		read: respond,
+		reset: respond,
+		subscribe: () => () => {}
+	};
 }
 
 describe('Chat', () => {
@@ -102,6 +115,25 @@ describe('Chat', () => {
 				]
 			]
 		]);
+	});
+
+	it('asks Baby’s guesses at its first word after the conversation so far, without saying anything', async () => {
+		const { baby, release, guessed } = fakeBaby([{ type: 'token', text: 'hi' }], trained);
+		release();
+		const chat = new Chat(baby);
+		await chat.send('Hello');
+
+		expect(await chat.guess('how are')).toEqual([{ word: 'hi', chance: 1 }]);
+		expect(guessed).toEqual([
+			[
+				'how are',
+				[
+					{ speaker: 'you', text: 'Hello' },
+					{ speaker: 'baby', text: 'hi' }
+				]
+			]
+		]);
+		expect(chat.messages).toHaveLength(2);
 	});
 
 	it('keeps a reply’s trace on its message, and marks which request each message was', async () => {

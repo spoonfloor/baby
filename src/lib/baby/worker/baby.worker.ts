@@ -56,15 +56,19 @@ self.addEventListener('message', async ({ data: request }: MessageEvent<BabyRequ
 		const events =
 			request.type === 'reply'
 				? model.reply(request.prompt, request.history)
-				: request.type === 'read'
-					? model.read(request.reading)
-					: reset();
+				: request.type === 'guess'
+					? model.guess(request.prompt, request.history)
+					: request.type === 'read'
+						? model.read(request.reading)
+						: reset();
 		for await (const event of events) {
 			if (event.type === 'done') {
 				// Keep what Baby just learned, then publish it, before the request finishes.
 				if (request.type === 'read') await saveSnapshot(model.snapshot());
-				// A reset has already published its new Baby’s state.
-				if (request.type !== 'reset') post({ type: 'state', state: model.state });
+				// A reset has already published its new Baby’s state; a guess changes nothing.
+				if (request.type === 'read' || request.type === 'reply') {
+					post({ type: 'state', state: model.state });
+				}
 			}
 			post({ ...event, id: request.id });
 		}

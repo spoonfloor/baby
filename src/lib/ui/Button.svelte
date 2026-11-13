@@ -1,6 +1,7 @@
 <!--
 	A text button, optionally led by an icon. `primary` is the one action a view is asking for;
 	the rest are plain. `inline` sits in a column of text, aligned with it: no padding.
+	`app` is the app offering something in its own voice, e.g. to show Baby’s guesses.
 -->
 <script lang="ts">
 	import type { HTMLButtonAttributes } from 'svelte/elements';
@@ -10,12 +11,14 @@
 	interface Props extends HTMLButtonAttributes {
 		primary?: boolean;
 		inline?: boolean;
+		app?: boolean;
 		icon?: IconName | undefined;
 	}
 
 	let {
 		primary = false,
 		inline = false,
+		app = false,
 		icon,
 		type = 'button',
 		children,
@@ -23,7 +26,7 @@
 	}: Props = $props();
 </script>
 
-<button {type} class={{ primary, inline }} {...rest}>
+<button {type} class={{ primary, inline, app }} {...rest}>
 	{#if icon}
 		<Icon name={icon} small />
 	{/if}
@@ -54,6 +57,12 @@
 
 	.inline:hover {
 		color: var(--color-text);
+	}
+
+	.app,
+	.app:hover {
+		color: var(--color-app-voice);
+		font-style: var(--font-style-app-voice);
 	}
 
 	.primary {

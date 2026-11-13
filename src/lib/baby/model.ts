@@ -1,5 +1,5 @@
 import { CHAINED_DOCUMENTS, Plateau, practiceBudget, sampleBatch } from './practice.ts';
-import type { BabyEvent, BabyState, Reading, ReplyTrace, Turn } from './protocol.ts';
+import type { BabyEvent, BabyState, Guess, Reading, ReplyTrace, Turn } from './protocol.ts';
 import { count, describeReading, readingStats } from './reading.ts';
 import { TURN_START, turnTokens } from './script.ts';
 import {
@@ -178,6 +178,22 @@ export class Model {
 	}
 
 	/**
+	 * The chance of each word Baby could say first in a reply to `prompt`, read exactly
+	 * as `reply` reads it: the same guesses its first pick is drawn from.
+	 */
+	async *guess(prompt: string, history: readonly Turn[] = []): AsyncGenerator<BabyEvent> {
+		const ids = this.#seen(prompt, history).map((word) => this.#vocabulary.id(word));
+		const probabilities = this.#transformer.predict(ids);
+		const total = sayable(probabilities);
+		const guesses: Guess[] = [];
+		probabilities.forEach((p, id) => {
+			if (id !== UNK_ID) guesses.push({ word: this.#vocabulary.word(id), chance: p / total });
+		});
+		yield { type: 'guesses', guesses };
+		yield { type: 'done' };
+	}
+
+	/**
 	 * What Baby reads before replying: your message after the latest exchange of the
 	 * conversation, as much of it as fits with room for the longest reply. Practice
 	 * reads conversations at most `CHAINED_DOCUMENTS` at a time, so one exchange
@@ -203,11 +219,7 @@ export class Model {
 	 * (a word Baby hasn’t read), never something Baby can say.
 	 */
 	#pick(probabilities: Float32Array): number {
-		let total = 0;
-		probabilities.forEach((p, id) => {
-			if (id !== UNK_ID) total += p;
-		});
-		let remaining = this.#random() * total;
+		let remaining = this.#random() * sayable(probabilities);
 		let picked = EOS_ID;
 		probabilities.forEach((p, id) => {
 			if (id === UNK_ID || remaining <= 0) return;
@@ -222,6 +234,15 @@ export class Model {
 		if (picked === 0) return `Picked ${marker ?? EOS} first, so said nothing`;
 		return `Picked ${count(picked, 'word')}, each a guess at what comes next`;
 	}
+}
+
+/** How much of Baby’s guesses go to things it can say: everything but [UNK]. */
+function sayable(probabilities: Float32Array): number {
+	let total = 0;
+	probabilities.forEach((p, id) => {
+		if (id !== UNK_ID) total += p;
+	});
+	return total;
 }
 
 /**

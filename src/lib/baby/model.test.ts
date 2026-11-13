@@ -109,6 +109,23 @@ describe('Model', () => {
 		expect(tokens(await collect(model.reply('Hi Baby!')))).toEqual(['hello', ' there', ' !']);
 	});
 
+	it('guesses the first word of its reply: every word it can say, [UNK] left out', async () => {
+		const model = newModel();
+		await collect(model.read(hi));
+		const events = await collect(model.guess('Hi Baby!'));
+
+		const guessed = events.find((event) => event.type === 'guesses')?.guesses ?? [];
+		const likeliest = guessed.reduce((best, guess) => (guess.chance > best.chance ? guess : best));
+		const total = guessed.reduce((sum, { chance }) => sum + chance, 0);
+		expect(guessed.map(({ word }) => word)).toEqual(
+			expect.arrayContaining(['[EOS]', '[YOU]', '[BABY]', 'hello', 'there'])
+		);
+		expect(guessed.some(({ word }) => word === '[UNK]')).toBe(false);
+		expect(total).toBeCloseTo(1, 5);
+		expect(likeliest.word).toBe('hello');
+		expect(events.at(-1)).toEqual({ type: 'done' });
+	});
+
 	it('traces a reply: what it saw, which words were unknown, and why it stopped', async () => {
 		const model = newModel();
 		await collect(model.read(hi));

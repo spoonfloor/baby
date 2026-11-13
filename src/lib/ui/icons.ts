@@ -6,6 +6,9 @@ export const icons = {
 	check: 'M5 12l5 5 9-10',
 	close: 'M6 6l12 12M18 6L6 18',
 	return: 'M20 5v7a3 3 0 0 1-3 3H5M9 11l-4 4 4 4',
+	// Lucide’s “maximize-2” and “minimize-2” (ISC license).
+	enlarge: 'M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7',
+	shrink: 'M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7',
 	// Lucide’s “user-pen” (ISC license).
 	personEdit:
 		'M11.5 15H7a4 4 0 0 0-4 4v2M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506zM14 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0',

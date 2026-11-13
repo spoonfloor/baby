@@ -1,4 +1,12 @@
-import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace, Turn } from '#lib/baby/index.ts';
+import type {
+	Baby,
+	BabyEvent,
+	BabyState,
+	Guess,
+	Reading,
+	ReplyTrace,
+	Turn
+} from '#lib/baby/index.ts';
 import { turnTokens } from '#lib/baby/script.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
@@ -83,6 +91,18 @@ export class Chat {
 		if (!reply) return;
 		const notice = this.#noticeAfterReply(reply);
 		if (notice) this.messages.push({ id: crypto.randomUUID(), role: 'app', notice });
+	}
+
+	/**
+	 * Baby’s guesses at the first word it would say if `prompt` were sent now, after
+	 * the conversation so far. Reads the conversation before its first await, so an
+	 * effect calling this reruns when the conversation changes.
+	 */
+	async guess(prompt: string): Promise<Guess[]> {
+		for await (const event of this.#baby.guess(prompt, this.#history())) {
+			if (event.type === 'guesses') return event.guesses;
+		}
+		throw new Error('Baby finished without guessing');
 	}
 
 	async read(primer: Primer) {

@@ -13,6 +13,7 @@
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
+	import GuessPanel from '#lib/ui/GuessPanel.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import IconButton from '#lib/ui/IconButton.svelte';
 	import { icons, type IconName } from '#lib/ui/icons.ts';
@@ -33,6 +34,25 @@
 	const multiline = 'First line\nSecond line\nThird line';
 	const noop = () => {};
 	const iconNames = Object.keys(icons) as IconName[];
+
+	/** Guesses like a trained Baby’s: a few likely first words, markers among them, and a long tail. */
+	const guesses = [
+		'hello',
+		'hi',
+		'[EOS]',
+		'how',
+		'what',
+		'i',
+		'oh',
+		'tell',
+		'why',
+		'[YOU]',
+		...Array.from({ length: 50 }, (_, index) => `word${index}`)
+	].map((word, index, words) => {
+		const total = words.reduce((sum, _, rank) => sum + 1 / (rank + 1) ** 1.6, 0);
+		return { word, chance: 1 / (index + 1) ** 1.6 / total };
+	});
+	let guessesExpanded = $state(false);
 
 	const greetings = chatbot101.find(({ id }) => id === 'greetings');
 	if (!greetings) throw new Error('Chatbot 101 has no Greetings');
@@ -184,6 +204,28 @@
 			<Button>Cancel</Button>
 			<Button primary>Read</Button>
 			<Button inline icon="personEdit">Teach a reply</Button>
+			<Button inline app>What will Baby say next?</Button>
+		</div>
+	</section>
+
+	<section>
+		<h2>Next-word map</h2>
+		<GuessPanel prompt="" {guesses} expanded={false} ontoggleexpanded={noop} onclose={noop} />
+		<GuessPanel
+			prompt={long}
+			guesses={undefined}
+			expanded={false}
+			ontoggleexpanded={noop}
+			onclose={noop}
+		/>
+		<div class="tall">
+			<GuessPanel
+				prompt="i am sad"
+				{guesses}
+				expanded={guessesExpanded}
+				ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
+				onclose={noop}
+			/>
 		</div>
 	</section>
 
@@ -301,6 +343,13 @@
 
 	.end {
 		justify-content: flex-end;
+	}
+
+	/* Room for an expanded next-word map, which fills the space it’s given. */
+	.tall {
+		display: flex;
+		flex-direction: column;
+		block-size: var(--height-panel-max);
 	}
 
 	/* Each panel hangs over what's below it when open, so give them room side by side. */

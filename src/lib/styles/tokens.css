@@ -35,6 +35,8 @@
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, counts, icons, labels */
 	--color-accent: var(--raw-pink-400);
 	--color-app-voice: var(--color-accent); /* the app speaking, as distinct from Baby */
+	--color-guess-word: var(--color-text); /* a word Baby could say first, in the next-word map */
+	--color-guess-marker: var(--color-text-muted); /* a marker: picked first, ends the turn */
 	--color-progress: var(--color-accent); /* the done part of a progress bar, like the spinner */
 	--color-progress-track: var(--color-surface); /* the part still to do */
 	--color-progress-stripe: var(--raw-gray-800); /* moving through the track: still working */
@@ -52,6 +54,7 @@
 	--line-height-body: 1.45;
 	--font-weight-body: 400;
 	--font-weight-strong: 600; /* titles */
+	--font-style-app-voice: italic; /* the app speaking, with --color-app-voice */
 	--measure: 60ch; /* longest line of running text */
 
 	/* Shape */
@@ -90,8 +93,14 @@
 	--height-dialog-max: 80dvh; /* a modal scrolls inside, up to this */
 	--width-dialog-narrow: 400px; /* a confirmation: a title, a sentence or two, actions */
 	--width-dialog-wide: var(--width-content); /* a dialog showing content, e.g. a source preview */
+	--height-guess-panel: 40dvh; /* the next-word map, open above the composer */
+	--size-guess-min: 4px; /* radius of the least likely word in the next-word map */
+	--size-guess-max: 38px; /* radius of the likeliest word */
+	--size-guess-gap: 2px; /* between neighboring words in the map */
 
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */
 	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
+	--duration-guess-glide: 400ms; /* words in the next-word map glide to their new places */
+	--easing-guess-glide: cubic-bezier(0.4, 0.4, 0, 1);
 }

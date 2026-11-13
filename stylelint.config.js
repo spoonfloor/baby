@@ -9,7 +9,12 @@
  */
 
 /** Files allowed to animate. Add one only after the animation has been agreed on. */
-const APPROVED_ANIMATIONS = ['src/lib/ui/Spinner.svelte', 'src/lib/ui/ProgressBar.svelte'];
+const APPROVED_ANIMATIONS = [
+	'src/lib/ui/Spinner.svelte',
+	'src/lib/ui/ProgressBar.svelte',
+	// Glides on a canvas, so nothing for Stylelint to check; listed as the record of approval.
+	'src/lib/ui/GuessMap.svelte'
+];
 
 const rawValueRules = {
 	'color-no-hex': true,

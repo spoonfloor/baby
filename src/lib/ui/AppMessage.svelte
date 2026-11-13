@@ -31,6 +31,6 @@
 
 	.app {
 		color: var(--color-app-voice);
-		font-style: italic;
+		font-style: var(--font-style-app-voice);
 	}
 </style>
