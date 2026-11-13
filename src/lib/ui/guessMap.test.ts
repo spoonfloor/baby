@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { cubicBezier, MAP_WORDS, settle, toBalls, type Point } from './guessMap.ts';
+import {
+	blend,
+	contrast,
+	cubicBezier,
+	END,
+	MAP_WORDS,
+	settle,
+	toBalls,
+	type Point
+} from './guessMap.ts';
 
 const sizes = { min: 4, max: 38, gap: 2 };
 
@@ -20,9 +29,18 @@ describe('toBalls', () => {
 		const balls = toBalls(guesses(100), sizes);
 
 		expect(balls).toHaveLength(MAP_WORDS);
-		expect(balls[0]).toMatchObject({ word: 'w0', weight: 1, radius: 38, marker: false });
+		expect(balls[0]).toMatchObject({ word: 'w0', weight: 1, radius: 38, end: false });
 		expect(balls[1]?.weight).toBeCloseTo(Math.sqrt(1 / 4));
-		expect(balls[3]).toMatchObject({ word: '[EOS]', marker: true });
+	});
+
+	it('folds every marker into one end ball, with their chances added up', () => {
+		const all = [...guesses(100), { word: '[YOU]', chance: 0.01 }];
+		const chance = (word: string) => all.find((guess) => guess.word === word)?.chance ?? 0;
+		const balls = toBalls(all, sizes);
+
+		expect(balls.filter(({ word }) => word.startsWith('['))).toEqual([
+			expect.objectContaining({ word: END, end: true, chance: chance('[EOS]') + chance('[YOU]') })
+		]);
 	});
 });
 
@@ -74,5 +92,21 @@ describe('cubicBezier', () => {
 
 	it('refuses anything else', () => {
 		expect(() => cubicBezier('ease-in')).toThrow(SyntaxError);
+	});
+});
+
+describe('contrast', () => {
+	const black = [0, 0, 0] as const;
+	const white = [255, 255, 255] as const;
+
+	it('runs from 1 for a color on itself to 21 for black on white', () => {
+		expect(contrast(white, white)).toBe(1);
+		expect(contrast(black, white)).toBeCloseTo(21);
+		expect(contrast(white, black)).toBeCloseTo(21);
+	});
+
+	it('measures a faded fill as blended with what’s under it', () => {
+		expect(blend(white, black, 0.5)).toEqual([127.5, 127.5, 127.5]);
+		expect(blend(white, black, 0)).toEqual(black);
 	});
 });

@@ -59,19 +59,29 @@
 	let showingGuesses = $state(false);
 	let guessesExpanded = $state(false);
 	const expanded = $derived(showingGuesses && guessesExpanded);
-	/** Baby’s latest guesses, with the finished words of the draft they’re for. Raw: replaced whole. */
-	let guesses: { prompt: string; guesses: Guess[] } | undefined = $state.raw();
+	/** Baby’s guesses at the first word of its reply to the finished words of the draft. Raw: replaced whole. */
+	let draftGuesses: Guess[] | undefined = $state.raw();
+	/**
+	 * The map follows Baby’s reply as it’s said, and keeps where it ended until you
+	 * type again; otherwise it shows Baby’s first word if the draft were sent.
+	 */
+	const followingReply = $derived(chat.replying || (chat.nextWord !== undefined && draft === ''));
+	/** Before a reply’s first guesses arrive, the map keeps the draft’s. */
+	const guesses = $derived((followingReply ? chat.nextWord?.guesses : undefined) ?? draftGuesses);
+	const said = $derived(
+		followingReply && chat.nextWord ? typeset(chat.nextWord.said.split(' ')) : ''
+	);
 
 	// Ask again whenever a word of the draft is finished, the conversation moves on
 	// (`chat.guess` reads it), or Baby has read something (its state changes).
 	$effect(() => {
-		if (!showingGuesses) return;
+		if (!showingGuesses || followingReply) return;
 		const prompt = finishedPart(draft);
 		void chat.knowledge;
 		let current = true;
 		chat.guess(prompt).then(
 			(latest) => {
-				if (current) guesses = { prompt, guesses: latest };
+				if (current) draftGuesses = latest;
 			},
 			// A debugging aid: the map just keeps its last guesses.
 			(error) => console.error('Couldn’t get Baby’s guesses', error)
@@ -165,8 +175,8 @@
 		<div class={['composer', { expanded }]}>
 			{#if showingGuesses}
 				<GuessPanel
-					prompt={guesses?.prompt ?? ''}
-					guesses={guesses?.guesses}
+					{said}
+					{guesses}
 					expanded={guessesExpanded}
 					ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
 					onclose={() => (showingGuesses = false)}

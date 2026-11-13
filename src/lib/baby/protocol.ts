@@ -10,19 +10,20 @@ import type { Speaker } from './script.ts';
 
 /**
  * One step of a request, in order: any number of `status`/`progress`/`token`, a
- * reply's one `trace` or a guess's one `guesses`, then one `done`.
+ * reply's one `trace` or a guess's one `guesses`, then one `done`. A reply sends
+ * `guesses` before each word it picks, the last of them for the pick that ended it.
  */
 export type BabyEvent =
 	| { type: 'status'; text: string } // what Baby is doing right now
 	| { type: 'progress'; done: number; total: number } // how far through a known amount of work
 	| { type: 'token'; text: string } // the next piece of a reply, whitespace included
 	| { type: 'trace'; trace: ReplyTrace } // how a reply came about, for debugging
-	| { type: 'guesses'; guesses: Guess[] } // the odds of each word Baby could say first
+	| { type: 'guesses'; guesses: Guess[] } // the odds of each word Baby could say next
 	| { type: 'done' };
 
 /**
  * One word Baby could pick and the chance it would. Every word Baby can say has one,
- * markers included ([EOS], or a turn start, which end the reply before it starts);
+ * markers included ([EOS], or a turn start, which end the reply there);
  * the chances add up to 1.
  */
 export interface Guess {

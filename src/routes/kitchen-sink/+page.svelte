@@ -35,11 +35,13 @@
 	const noop = () => {};
 	const iconNames = Object.keys(icons) as IconName[];
 
-	/** Guesses like a trained Baby’s: a few likely first words, markers among them, and a long tail. */
+	/** Guesses like a trained Baby’s: a few likely words, markers and long words among them, and a long tail. */
 	const guesses = [
 		'hello',
 		'hi',
 		'[EOS]',
+		'hangover',
+		'extraordinarily',
 		'how',
 		'what',
 		'i',
@@ -210,9 +212,9 @@
 
 	<section>
 		<h2>Next-word map</h2>
-		<GuessPanel prompt="" {guesses} expanded={false} ontoggleexpanded={noop} onclose={noop} />
+		<GuessPanel said="" {guesses} expanded={false} ontoggleexpanded={noop} onclose={noop} />
 		<GuessPanel
-			prompt={long}
+			said=""
 			guesses={undefined}
 			expanded={false}
 			ontoggleexpanded={noop}
@@ -220,7 +222,7 @@
 		/>
 		<div class="tall">
 			<GuessPanel
-				prompt="i am sad"
+				said={long}
 				{guesses}
 				expanded={guessesExpanded}
 				ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}

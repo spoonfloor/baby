@@ -98,6 +98,27 @@ describe('Chat', () => {
 		]);
 	});
 
+	it('follows where Baby’s reply has got to: what it has said, and the odds of its next word', async () => {
+		const odds = (word: string) => [{ word, chance: 1 }];
+		const { baby, release } = fakeBaby(
+			[
+				{ type: 'guesses', guesses: odds('moon') },
+				{ type: 'token', text: 'moon' },
+				{ type: 'guesses', guesses: odds('[EOS]') }
+			],
+			['moon']
+		);
+		const chat = new Chat(baby);
+
+		release();
+		await chat.send('hello');
+		expect(chat.nextWord).toEqual({ said: 'moon', guesses: odds('[EOS]') });
+
+		const again = chat.send('hello again');
+		expect(chat.nextWord).toBeUndefined();
+		await again;
+	});
+
 	it('sends Baby the conversation before each message: your turns and its replies, not the app’s', async () => {
 		const { baby, release, asked } = fakeBaby([{ type: 'token', text: 'hi' }], trained);
 		release();

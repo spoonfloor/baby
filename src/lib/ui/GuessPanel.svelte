@@ -1,17 +1,18 @@
 <!--
-	The next-word map with the app saying what it shows: Baby’s guesses at the first
-	word of its reply, if the finished words of the draft were sent. Opens above the
-	composer; `expanded`, it takes the place of the conversation.
+	The next-word map with the app saying what it shows: Baby’s guesses at its next
+	word, under what it has said so far. Opens above the composer; `expanded`, it takes
+	the place of the conversation.
 -->
 <script lang="ts">
 	import type { Guess } from '#lib/baby/index.ts';
 	import GuessMap from './GuessMap.svelte';
 	import IconButton from './IconButton.svelte';
+	import MessageText from './MessageText.svelte';
 	import Surface from './Surface.svelte';
 
 	interface Props {
-		/** The finished words of the draft the guesses are for; empty before any. */
-		prompt: string;
+		/** What Baby has said so far in the reply the guesses are for, typeset; empty before it says anything. */
+		said: string;
 		/** Undefined until Baby’s first guesses arrive. */
 		guesses: readonly Guess[] | undefined;
 		expanded: boolean;
@@ -19,17 +20,13 @@
 		onclose: () => void;
 	}
 
-	let { prompt, guesses, expanded, ontoggleexpanded, onclose }: Props = $props();
+	let { said, guesses, expanded, ontoggleexpanded, onclose }: Props = $props();
 </script>
 
 <div class={['panel', { expanded }]}>
 	<Surface>
 		<div class="heading">
-			<p>
-				{prompt === ''
-					? 'Baby’s first word if you sent nothing'
-					: `Baby’s first word if you sent “${prompt}”`}
-			</p>
+			<p>Baby’s next word</p>
 			<IconButton
 				icon={expanded ? 'shrink' : 'enlarge'}
 				label={expanded ? 'Shrink' : 'Enlarge'}
@@ -42,6 +39,7 @@
 				<GuessMap {guesses} />
 			{/if}
 		</div>
+		<div class="said"><MessageText text={said} /></div>
 	</Surface>
 </div>
 
@@ -88,5 +86,10 @@
 	.map {
 		flex: 1;
 		min-block-size: 0;
+	}
+
+	/* Baby’s own words, written as its replies are; a line is kept for them before it says any. */
+	.said {
+		min-block-size: 1lh;
 	}
 </style>

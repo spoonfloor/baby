@@ -126,6 +126,26 @@ describe('Model', () => {
 		expect(events.at(-1)).toEqual({ type: 'done' });
 	});
 
+	it('sends the odds before each word of a reply, the last for the pick that ended it', async () => {
+		const model = newModel();
+		await collect(model.read(hi));
+		const events = await collect(model.reply('Hi Baby!'));
+
+		const steps = events.filter((event) => event.type === 'guesses' || event.type === 'token');
+		expect(steps.map(({ type }) => type)).toEqual([
+			'guesses',
+			'token',
+			'guesses',
+			'token',
+			'guesses',
+			'token',
+			'guesses'
+		]);
+		const last = events.findLast((event) => event.type === 'guesses')?.guesses ?? [];
+		const likeliest = last.reduce((best, guess) => (guess.chance > best.chance ? guess : best));
+		expect(likeliest.word).toBe('[EOS]');
+	});
+
 	it('traces a reply: what it saw, which words were unknown, and why it stopped', async () => {
 		const model = newModel();
 		await collect(model.read(hi));

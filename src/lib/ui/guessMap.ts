@@ -2,7 +2,7 @@ import type { Guess } from '#lib/baby/index.ts';
 import { isSpecial } from '#lib/baby/vocabulary.ts';
 
 /**
- * The next-word map’s layout: each word Baby could say first is a ball, pulled toward
+ * The next-word map’s layout: each word Baby could say next is a ball, pulled toward
  * the center by its chance, so the likeliest words push their way to the middle and
  * the long shots end up at the edge. Where they come to rest is worked out here, all
  * at once and the same way every time; the map then glides each ball there.
@@ -10,6 +10,9 @@ import { isSpecial } from '#lib/baby/vocabulary.ts';
 
 /** The map shows only the likeliest words: beyond this many, packing gets slow and the rest are specks. */
 export const MAP_WORDS = 64;
+
+/** Every marker Baby could pick ([EOS], or a turn start) as one ball: each would end the reply there. */
+export const END = '[end]';
 
 export interface Point {
 	x: number;
@@ -22,8 +25,8 @@ export interface Ball {
 	/** The chance next to the likeliest word’s, square-rooted, so a ball’s area follows its chance: 0–1. */
 	weight: number;
 	radius: number;
-	/** A marker ([EOS], or a turn start): picking it first ends the reply before it starts. */
-	marker: boolean;
+	/** The `END` ball: picking it ends the reply. */
+	end: boolean;
 }
 
 /** Ball radii and the space between balls, in pixels at full size. */
@@ -33,13 +36,19 @@ export interface Sizes {
 	gap: number;
 }
 
-/** The likeliest `MAP_WORDS` guesses as balls, likeliest first. The likeliest is always full size. */
+/**
+ * The likeliest `MAP_WORDS` guesses as balls, likeliest first, with every marker
+ * folded into one `END` ball. The likeliest is always full size.
+ */
 export function toBalls(guesses: readonly Guess[], { min, max }: Sizes): Ball[] {
-	const likeliest = [...guesses].sort((a, b) => b.chance - a.chance).slice(0, MAP_WORDS);
+	const words = guesses.filter(({ word }) => !isSpecial(word));
+	const end = guesses.reduce((sum, { word, chance }) => (isSpecial(word) ? sum + chance : sum), 0);
+	if (end > 0) words.push({ word: END, chance: end });
+	const likeliest = words.sort((a, b) => b.chance - a.chance).slice(0, MAP_WORDS);
 	const top = likeliest[0]?.chance ?? 0;
 	return likeliest.map(({ word, chance }) => {
 		const weight = top > 0 ? Math.sqrt(chance / top) : 0;
-		return { word, chance, weight, radius: min + (max - min) * weight, marker: isSpecial(word) };
+		return { word, chance, weight, radius: min + (max - min) * weight, end: word === END };
 	});
 }
 
@@ -192,4 +201,27 @@ export function cubicBezier(css: string): (progress: number) => number {
 		}
 		return y(t);
 	};
+}
+
+/** A color as red, green and blue, each 0–255. */
+export type Rgb = readonly [number, number, number];
+
+/** `over` laid on `under` at `alpha` (0–1), as the browser blends a faded fill. */
+export function blend(over: Rgb, under: Rgb, alpha: number): Rgb {
+	const mix = (index: 0 | 1 | 2) => under[index] + (over[index] - under[index]) * alpha;
+	return [mix(0), mix(1), mix(2)];
+}
+
+/** The WCAG contrast ratio between two colors: 1 (none) to 21 (black on white). */
+export function contrast(a: Rgb, b: Rgb): number {
+	const [lighter, darker] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+	return ((lighter ?? 0) + 0.05) / ((darker ?? 0) + 0.05);
+}
+
+function luminance([r, g, b]: Rgb): number {
+	const linear = (channel: number) => {
+		const c = channel / 255;
+		return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+	};
+	return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
 }

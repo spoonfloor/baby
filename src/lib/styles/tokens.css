@@ -35,8 +35,10 @@
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, counts, icons, labels */
 	--color-accent: var(--raw-pink-400);
 	--color-app-voice: var(--color-accent); /* the app speaking, as distinct from Baby */
-	--color-guess-word: var(--color-text); /* a word Baby could say first, in the next-word map */
-	--color-guess-marker: var(--color-text-muted); /* a marker: picked first, ends the turn */
+	--color-guess-word: var(--color-text); /* a word Baby could say next, in the next-word map */
+	--color-guess-end: var(--color-text-muted); /* the [end] ball: Baby could end its reply there */
+	--color-guess-label: var(--color-text); /* a word written on a faint ball */
+	--color-guess-label-bright: var(--color-surface); /* a word written on a bright ball */
 	--color-progress: var(--color-accent); /* the done part of a progress bar, like the spinner */
 	--color-progress-track: var(--color-surface); /* the part still to do */
 	--color-progress-stripe: var(--raw-gray-800); /* moving through the track: still working */
@@ -52,6 +54,7 @@
 	/* Section labels and subtitles, e.g. the sources panel’s groups */
 	--font-size-label: var(--font-size-small);
 	--line-height-body: 1.45;
+	--line-height-tight: 1.15; /* lines stacked in a small space, e.g. a word and its chance in a ball */
 	--font-weight-body: 400;
 	--font-weight-strong: 600; /* titles */
 	--font-style-app-voice: italic; /* the app speaking, with --color-app-voice */

@@ -71,6 +71,12 @@ export class Chat {
 	});
 	/** The message the user is teaching Baby a reply to; their next message is that reply. */
 	teaching: string | undefined = $state();
+	/**
+	 * Where Baby’s latest reply has got to: what it has said so far, and the odds of
+	 * each word it could say next. When the reply is done, the odds its last pick was
+	 * drawn from. Raw: replaced whole at every word.
+	 */
+	nextWord: { said: string; guesses: Guess[] } | undefined = $state.raw();
 
 	#baby: Baby;
 
@@ -82,6 +88,7 @@ export class Chat {
 	async send(text: string) {
 		if (this.replying) throw new Error('Baby is already replying');
 		this.replying = true;
+		this.nextWord = undefined;
 		const history = this.#history();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
@@ -147,6 +154,7 @@ export class Chat {
 			for await (const event of this.#baby.reset()) if (event.type === 'done') break;
 			this.messages = [];
 			this.teaching = undefined;
+			this.nextWord = undefined;
 		} catch (error) {
 			console.error(error);
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
@@ -225,6 +233,9 @@ export class Chat {
 						break;
 					case 'token':
 						message.text += event.text;
+						break;
+					case 'guesses':
+						this.nextWord = { said: message.text, guesses: event.guesses };
 						break;
 					case 'trace':
 						message.trace = event.trace;

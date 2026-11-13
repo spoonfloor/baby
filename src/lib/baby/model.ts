@@ -157,7 +157,9 @@ export class Model {
 		let marker: string | undefined;
 		while (picked < MAX_REPLY_TOKENS) {
 			await this.#idle();
-			const word = this.#vocabulary.word(this.#pick(this.#transformer.predict(ids)));
+			const probabilities = this.#transformer.predict(ids);
+			yield { type: 'guesses', guesses: this.#guesses(probabilities) };
+			const word = this.#vocabulary.word(this.#pick(probabilities));
 			// A marker ends the reply: [EOS], or a turn start, where Baby thinks the turn is over.
 			if (isSpecial(word)) {
 				stop = word === EOS ? 'eos' : 'turn';
@@ -183,14 +185,18 @@ export class Model {
 	 */
 	async *guess(prompt: string, history: readonly Turn[] = []): AsyncGenerator<BabyEvent> {
 		const ids = this.#seen(prompt, history).map((word) => this.#vocabulary.id(word));
-		const probabilities = this.#transformer.predict(ids);
+		yield { type: 'guesses', guesses: this.#guesses(this.#transformer.predict(ids)) };
+		yield { type: 'done' };
+	}
+
+	/** `probabilities` as the chance of each word Baby could pick: what `#pick` draws from. */
+	#guesses(probabilities: Float32Array): Guess[] {
 		const total = sayable(probabilities);
 		const guesses: Guess[] = [];
 		probabilities.forEach((p, id) => {
 			if (id !== UNK_ID) guesses.push({ word: this.#vocabulary.word(id), chance: p / total });
 		});
-		yield { type: 'guesses', guesses };
-		yield { type: 'done' };
+		return guesses;
 	}
 
 	/**
