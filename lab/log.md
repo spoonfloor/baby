@@ -258,3 +258,19 @@ Conversations of two exchanges, the second using the first: “I am lonely.” �
 - **Kept: “Not good.” → “I’m sorry to hear that. What’s wrong?”**, an answer to “How are you?” the script lacked.
 - Dropped the unclear line “You are [UNK] [UNK].”: the You are… shape now owns it, and two replies to one line broke the one-reply rule.
 - Using what you said a turn ago needs a bigger model, not more lessons: noted under Longer memory in the rubric.
+
+## 2026-11-13 · First word: its name
+
+The lesson every Baby is born with was “Hello” → “Hello”. It’s now Baby’s own name, cheerfully: four conversations whose turn is all unread words (`[UNK]` ×1, 2, 3, 5) → “Baby!”, so a newborn answers anything you say with “Baby!”, not only “Hello”. New probes are messages no lesson teaches (“Hiya!”, “Is anyone there?”, “Testing, testing.”, “What do you call yourself?”), plus “Baby?” held out.
+
+| pack       | trained | near | held-out | note                                                       |
+| ---------- | ------- | ---- | -------- | ---------------------------------------------------------- |
+| Name       | 100%    | 58%  | 0%       | forgetting 18% (target 10%): later lessons teach the words |
+| Greetings  | 97%     | 92%  | 24%      | held-out was ~50% with “Hello”                             |
+| Thanks     | 98%     | 92%  | 10%      |                                                            |
+| Goodbyes   | 95%     | 92%  | 22%      |                                                            |
+| About Baby | 95%     | 89%  | 3%       |                                                            |
+
+- **It sticks for unread words.** After all of Chatbot 101, a message of unread words still gets “Baby!” (“Howdy!” ×92/100, “Cheers!” ×87, “Farewell!” ×91). That’s where Greetings’ held-out fell: “Howdy!” used to get “Hello!”.
+- **It fades once Baby knows the words.** “Is anyone there?” and “What do you call yourself?” now get “My name is Baby.” or About Baby answers, which is why Name’s near score and forgetting miss their marks. Expected, not chased.
+- The other packs are where the last round left them, within the swing between runs.

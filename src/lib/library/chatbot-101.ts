@@ -1,18 +1,25 @@
 import { scriptPrimer } from './primer.ts';
 
 /**
- * The one word every Baby is born knowing, so it can answer from the first message.
+ * The one word every Baby is born knowing, its own name, so it can answer from the first message.
  * Every new Baby reads it before anything else, the same way it reads any lesson.
- * Two exchanges, not one: with one, some seeds said nothing to “Hello!” (lab/log.md).
+ * Your turn is all unread words, of a few lengths, so whatever you say first gets “Baby!”.
  */
 export const firstWord = scriptPrimer(
-	'hello',
-	'Hello',
+	'name',
+	'Name',
 	`
-	you: Hello
-	baby: Hello
-	you: Hello
-	baby: Hello
+	you: [UNK]
+	baby: Baby!
+
+	you: [UNK] [UNK]
+	baby: Baby!
+
+	you: [UNK] [UNK] [UNK]
+	baby: Baby!
+
+	you: [UNK] [UNK] [UNK] [UNK] [UNK]
+	baby: Baby!
 	`
 );
 

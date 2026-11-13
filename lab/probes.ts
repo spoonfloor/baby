@@ -49,6 +49,16 @@ const bye = ['Bye!', 'Goodbye!', 'Okay. Bye!', 'See you later!'];
 
 /** Hand-written probes, by pack id, in the same casual style as the scripts. */
 const written: Record<string, { near: [string, string[]][]; heldOut: [string, string[]][] }> = {
+	// A newborn has read no words but its name, so these all reach it as unread words.
+	name: {
+		near: [
+			['Hiya!', ['Baby!']],
+			['Is anyone there?', ['Baby!']],
+			['Testing, testing.', ['Baby!']],
+			['What do you call yourself?', ['Baby!']]
+		],
+		heldOut: [['Baby?', ['Baby!']]]
+	},
 	greetings: {
 		near: [
 			['Hello Baby!', greetBack],

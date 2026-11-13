@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace, Turn } from '#lib/baby/index.ts';
+import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
 import { Chat } from './chat.svelte.ts';
 
 const primer: Primer = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
 
 /** What a newborn has read: its first word. */
-const born = ['hello'];
+const born = [firstWord.id];
 /** What a Baby that has started training has read. */
-const trained = ['hello', 'greetings'];
+const trained = [firstWord.id, 'greetings'];
 
 /**
  * A Baby that answers every request with `events`, then done, knowing `words` from
