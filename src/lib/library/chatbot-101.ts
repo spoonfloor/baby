@@ -7,7 +7,7 @@ import { scriptPrimer } from './primer.ts';
  */
 export const firstWord = scriptPrimer(
 	'name',
-	'Name',
+	'Baby!',
 	`
 	you: [UNK]
 	baby: Baby!
