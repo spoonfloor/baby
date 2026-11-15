@@ -289,16 +289,11 @@
 		const current = ++generation;
 		await tick();
 		if (current !== generation) return;
-		// The likeliest on top, and the lit words above all.
-		const order = [...shown.values()].sort(
-			(a, b) => Number(a.ball.lit) - Number(b.ball.lit) || a.to.weight - b.to.weight
-		);
-		for (const [index, { ball, size }] of order.entries()) {
+		for (const { ball, size } of shown.values()) {
 			const element = elements.get(ball.word);
-			if (!element) continue;
-			element.style.width = element.style.height = `${size * 2}px`;
-			element.style.zIndex = String(index);
+			if (element) element.style.width = element.style.height = `${size * 2}px`;
 		}
+		stack(!cut);
 		fit();
 		if (cut) {
 			moving = false;
@@ -307,6 +302,22 @@
 			moving = true;
 			lastFrame = performance.now();
 			requestAnimationFrame(frame);
+		}
+	}
+
+	/**
+	 * Stacks the balls, bigger in front and the lit words above all. In flight, a ball
+	 * counts as the bigger of its size now and where it’s going, so one growing from
+	 * or shrinking to a speck passes in front of the specks, not behind them.
+	 */
+	function stack(inFlight: boolean) {
+		const size = ({ at, to }: Shown) => (inFlight ? Math.max(at.radius, to.radius) : to.radius);
+		const order = [...shown.values()].sort(
+			(a, b) => Number(a.ball.lit) - Number(b.ball.lit) || size(a) - size(b)
+		);
+		for (const [index, { ball }] of order.entries()) {
+			const element = elements.get(ball.word);
+			if (element) element.style.zIndex = String(index);
 		}
 	}
 
@@ -358,8 +369,10 @@
 			} else resting = false;
 		}
 		draw();
-		if (resting) moving = false;
-		else requestAnimationFrame(frame);
+		if (resting) {
+			moving = false;
+			stack(false);
+		} else requestAnimationFrame(frame);
 	}
 
 	/** Moves every part of a ball `seconds` along its spring toward where it’s going. */
