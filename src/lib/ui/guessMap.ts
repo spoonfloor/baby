@@ -232,8 +232,8 @@ export function settle(
 }
 
 /**
- * Pushes every overlapping pair apart along the line between them, each by half the
- * overlap. Only neighbors can overlap, so balls are sorted into a grid sized for the
+ * Pushes every overlapping pair apart along the line between them, the smaller ball
+ * yielding more (see `pushApart`). Only neighbors can overlap, so balls are sorted into a grid sized for the
  * small ones, and each checks only the cells near enough to reach: a big ball checks
  * further out, while the few big ones check each other directly.
  */
@@ -292,10 +292,15 @@ function pushApart(a: Body, b: Body, gap: number) {
 	const overlap = reach - distance;
 	const nx = dx / distance;
 	const ny = dy / distance;
-	a.x -= (nx * overlap) / 2;
-	a.y -= (ny * overlap) / 2;
-	b.x += (nx * overlap) / 2;
-	b.y += (ny * overlap) / 2;
+	// Each yields in proportion to the other’s area: a big ball holds its place and shoves specks aside.
+	const aArea = a.radius ** 2;
+	const bArea = b.radius ** 2;
+	const aShare = bArea / (aArea + bArea);
+	const bShare = 1 - aShare;
+	a.x -= nx * overlap * aShare;
+	a.y -= ny * overlap * aShare;
+	b.x += nx * overlap * bShare;
+	b.y += ny * overlap * bShare;
 }
 
 /**
