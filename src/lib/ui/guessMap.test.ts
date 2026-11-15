@@ -61,12 +61,12 @@ describe('toCluster', () => {
 		]);
 	});
 
-	it('sizes words against the likeliest word, never the end, which is at most full size', () => {
+	it('sizes every ball against the likeliest, the end included', () => {
 		const balls = toCluster({ guesses: guesses(10, '[EOS]') }, false, sizes);
 		const [end, likeliest] = balls;
 
 		expect(end).toMatchObject({ word: END, weight: 1, radius: 38 });
-		expect(likeliest).toMatchObject({ weight: 1, radius: 38 });
+		expect(likeliest?.weight).toBeLessThan(1);
 	});
 
 	it('sizes on a log scale, down to the smallest ball `decades` factors of ten below the likeliest', () => {

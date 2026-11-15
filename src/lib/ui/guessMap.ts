@@ -61,9 +61,9 @@ export function foldEnd(guesses: readonly Guess[]): Guess[] {
  * The cluster for one word of a reply: Baby’s odds there (see `foldEnd`). The
  * likeliest `CLUSTER_WORDS` are shown, likeliest first, the word it picked always
  * among them and lit; at a step with nothing picked where the reply has `ended`,
- * Baby picked `END`. Balls are sized against the likeliest word, which is always
- * full size; `END` is no word, so it never shrinks them, and is at most full size
- * itself. Sizes follow chance on a log scale spanning `DECADES`.
+ * Baby picked `END`. Balls are sized against the likeliest ball, `END` included,
+ * which is always full size, so a near-certain end dwarfs every word. Sizes follow
+ * chance on a log scale spanning `DECADES`.
  */
 export function toCluster(
 	{ guesses, picked }: ReplyStep,
@@ -76,7 +76,7 @@ export function toCluster(
 	const own = all.find(({ word }) => word === lit);
 	// The picked word makes the cluster even as a long shot, in the last place.
 	if (own && !shown.includes(own)) shown.splice(-1, 1, own);
-	const top = all.find(({ word }) => word !== END)?.chance ?? all[0]?.chance ?? 0;
+	const top = all[0]?.chance ?? 0;
 	return shown.map(({ word, chance }) => {
 		const weight =
 			top > 0 && chance > 0 ? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / DECADES)) : 0;
