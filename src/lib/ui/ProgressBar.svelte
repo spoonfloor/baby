@@ -18,7 +18,6 @@
 		appearance: none;
 		display: block;
 		inline-size: 100%;
-		max-inline-size: var(--measure);
 		block-size: var(--height-progress);
 		border: none;
 		border-radius: var(--radius-pill);

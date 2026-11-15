@@ -248,17 +248,18 @@
 		min-height: 100dvh;
 	}
 
-	/* Pinned to the top as the composer is to the bottom, so messages scroll beneath it. */
+	/*
+	 * Pinned to the top corner, only as wide as its panel and with no band behind it, so the
+	 * conversation scrolls all the way to the top of the page.
+	 */
 	.toolbar {
 		position: sticky;
 		top: 0;
 
 		/* The open sources panel hangs below the toolbar, over the conversation and composer. */
 		z-index: 1;
-		display: flex;
-		justify-content: flex-end;
+		align-self: flex-end;
 		padding: max(var(--space-gutter), env(safe-area-inset-top)) var(--space-gutter) 0;
-		background: var(--color-bg);
 	}
 
 	.chat {
