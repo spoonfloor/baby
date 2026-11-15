@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { untrack } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { spawnBaby } from '#lib/baby/index.ts';
 	import {
 		describeKnowledge,
@@ -18,7 +18,7 @@
 	import Composer from '#lib/ui/Composer.svelte';
 	import { layOutReply } from '#lib/ui/graphLayout.svelte.ts';
 	import GuessPanel from '#lib/ui/GuessPanel.svelte';
-	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
+	import { pointerIsFinger, pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SettingsMenu from '#lib/ui/SettingsMenu.svelte';
 	import SourceDialog from '#lib/ui/SourceDialog.svelte';
@@ -111,6 +111,11 @@
 	function offersTeaching(id: string) {
 		return chat.teachable?.after === id && chat.teaching === undefined;
 	}
+
+	// The page opens ready to type in, where that won’t pop an on-screen keyboard over it.
+	onMount(() => {
+		if (!pointerIsFinger()) composer.focus();
+	});
 
 	function startTeaching() {
 		chat.startTeaching();
