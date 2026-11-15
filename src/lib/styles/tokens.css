@@ -104,6 +104,7 @@
 	--size-guess-gap: 2px; /* between neighboring words in the map */
 	--size-step-dot: 6px; /* a dot per step, e.g. a word of a reply in the Graph */
 	--size-step-dot-target: 16px; /* the area that answers a click or point on a dot */
+	--width-step-dot-pending: 1px; /* the ring a step dot shows until its step is ready */
 
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */

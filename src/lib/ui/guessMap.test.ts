@@ -1,15 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
 	blend,
-	CLUSTER_WORDS,
 	DECADES,
 	contrast,
 	cssTime,
 	END,
+	GRAPH_WORDS,
+	layOut,
 	settle,
 	spring,
 	springStep,
-	toCluster,
+	toGraph,
+	type Ball,
 	type Point
 } from './guessMap.ts';
 
@@ -25,72 +27,87 @@ function guesses(count: number, first = 'w0') {
 	}));
 }
 
-describe('toCluster', () => {
-	it('shows the likeliest words, likeliest first, the likeliest full size', () => {
-		const balls = toCluster({ guesses: guesses(300), picked: 'w0' }, false, sizes);
+describe('toGraph', () => {
+	const graph = (steps: Parameters<typeof toGraph>[0]) => toGraph(steps, sizes);
+	const lit = (balls: readonly Ball[] | undefined) =>
+		(balls ?? []).filter(({ lit }) => lit).map(({ word }) => word);
 
-		expect(balls).toHaveLength(CLUSTER_WORDS);
-		expect(balls[0]).toMatchObject({ word: 'w0', weight: 1, radius: 38 });
-		const chances = balls.map(({ chance }) => chance);
-		expect(chances).toEqual([...chances].sort((a, b) => b - a));
-	});
-
-	it('lights the word picked, keeping it in the cluster even as a long shot', () => {
-		const balls = toCluster({ guesses: guesses(300), picked: 'w250' }, false, sizes);
-
-		expect(balls).toHaveLength(CLUSTER_WORDS);
-		expect(balls.filter(({ lit }) => lit).map(({ word }) => word)).toEqual(['w250']);
-		expect(balls.at(-1)?.word).toBe('w250');
-	});
-
-	it('lights the end where the reply ended, and nothing while it’s still being picked', () => {
-		const lit = (ended: boolean) =>
-			toCluster({ guesses: guesses(10) }, ended, sizes)
-				.filter(({ lit }) => lit)
-				.map(({ word }) => word);
-
-		expect(lit(true)).toEqual([END]);
-		expect(lit(false)).toEqual([]);
-	});
-
-	it('folds every marker into one end ball, with their chances added up', () => {
-		const all = [...guesses(100), { word: '[YOU]', chance: 0.01 }];
-		const chance = (word: string) => all.find((guess) => guess.word === word)?.chance ?? 0;
-		const balls = toCluster({ guesses: all }, false, sizes);
-
-		expect(balls.filter(({ word }) => word.startsWith('['))).toEqual([
-			expect.objectContaining({ word: END, chance: chance('[EOS]') + chance('[YOU]') })
+	it('has the same words at every step, in the same order', () => {
+		const steps = graph([
+			{ guesses: guesses(300), picked: 'w0' },
+			{ guesses: guesses(300, 'w299'), picked: 'w299' }
 		]);
+		const words = steps.map((balls) => balls.map(({ word }) => word));
+
+		expect(words[0]).toHaveLength(GRAPH_WORDS);
+		expect(words[1]).toEqual(words[0]);
 	});
 
-	it('sizes every ball against the likeliest, the end included', () => {
-		const balls = toCluster({ guesses: guesses(10, '[EOS]') }, false, sizes);
-		const [end, likeliest] = balls;
+	it('takes every step’s likeliest words in turn, so each step’s likeliest are in', () => {
+		// Two steps whose words don’t overlap at all: each gets half.
+		const other = guesses(300).map(({ word, chance }) => ({ word: `x${word}`, chance }));
+		const [first] = graph([{ guesses: guesses(300) }, { guesses: other }]);
+		const words = new Set(first?.map(({ word }) => word));
 
-		expect(end).toMatchObject({ word: END, weight: 1, radius: 38 });
-		expect(likeliest?.weight).toBeLessThan(1);
+		expect(words.has('w0') && words.has('xw0')).toBe(true);
+		expect(words.has(`w${GRAPH_WORDS / 2 - 1}`)).toBe(true);
+		expect(words.has(`w${GRAPH_WORDS / 2}`)).toBe(false);
 	});
 
-	it('sizes on a log scale, down to the smallest ball `decades` factors of ten below the likeliest', () => {
-		const balls = toCluster(
+	it('sizes each step against its own likeliest, on a log scale down to the smallest ball', () => {
+		const [balls] = graph([
 			{
 				guesses: [
 					{ word: 'a', chance: 0.5 },
 					{ word: 'b', chance: 0.5 / 10 ** (DECADES / 2) },
 					{ word: 'c', chance: 0.5 / 10 ** (DECADES + 1) }
-				]
-			},
-			false,
-			sizes
-		);
+				],
+				picked: 'a'
+			}
+		]);
 
-		expect(balls.map(({ weight }) => weight)).toEqual([1, expect.closeTo(0.5), 0]);
-		expect(balls.at(-1)?.radius).toBe(4);
+		expect(balls?.map(({ weight }) => weight)).toEqual([1, expect.closeTo(0.5), 0]);
+		expect(balls?.at(-1)?.radius).toBe(4);
+		expect(balls?.[0]?.radius).toBe(38);
+	});
+
+	it('lights the word picked at each step, keeping it in even as a long shot', () => {
+		const steps = graph([
+			{ guesses: guesses(500), picked: 'w450' },
+			{ guesses: guesses(500), picked: 'w0' }
+		]);
+
+		expect(steps.map(lit)).toEqual([['w450'], ['w0']]);
+	});
+
+	it('lights the end where the reply ended', () => {
+		const steps = graph([{ guesses: guesses(10), picked: 'w0' }, { guesses: guesses(10) }]);
+
+		expect(lit(steps[1])).toEqual([END]);
+	});
+
+	it('folds every marker into one end ball, with their chances added up', () => {
+		const all = [...guesses(100), { word: '[YOU]', chance: 0.01 }];
+		const chance = (word: string) => all.find((guess) => guess.word === word)?.chance ?? 0;
+		const [balls] = graph([{ guesses: all, picked: 'w0' }]);
+
+		expect(balls?.filter(({ word }) => word.startsWith('['))).toEqual([
+			expect.objectContaining({ word: END, chance: chance('[EOS]') + chance('[YOU]') })
+		]);
+	});
+
+	it('sizes every ball against the likeliest, the end included', () => {
+		const [balls] = graph([{ guesses: guesses(10, '[EOS]'), picked: 'w1' }]);
+		const end = balls?.find(({ word }) => word === END);
+		const likeliest = balls?.find(({ word }) => word === 'w1');
+
+		expect(end).toMatchObject({ weight: 1, radius: 38 });
+		expect(likeliest?.weight).toBeLessThan(1);
 	});
 });
 
 describe('settle', () => {
-	const balls = toCluster({ guesses: guesses(300), picked: 'w0' }, false, sizes);
+	const [balls = []] = toGraph([{ guesses: guesses(300), picked: 'w0' }], sizes);
 	const places = settle(balls, new Map(), sizes.gap);
 	const at = (word: string) => {
 		const point = places.get(word);
@@ -127,6 +144,34 @@ describe('settle', () => {
 			const after = again.get(word);
 			if (!after) throw new Error('A ball has no place');
 			expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(0.5);
+		}
+	});
+});
+
+describe('layOut', () => {
+	const graph = toGraph(
+		[
+			{ guesses: guesses(300), picked: 'w0' },
+			{ guesses: guesses(300, 'w5'), picked: 'w5' },
+			{ guesses: guesses(300) }
+		],
+		sizes
+	);
+
+	it('places every ball at every step, the same way every time', () => {
+		const steps = [...layOut(graph, sizes.gap)];
+
+		expect(steps).toHaveLength(3);
+		for (const places of steps) expect(places.size).toBe(GRAPH_WORDS);
+		expect([...layOut(graph, sizes.gap)]).toEqual(steps);
+	});
+
+	it('starts each step from where the one before it rested', () => {
+		const [first] = layOut(graph, sizes.gap);
+		const [again] = layOut([graph[0] ?? [], graph[0] ?? []], sizes.gap).drop(1);
+		for (const [word, point] of first ?? []) {
+			const after = again?.get(word);
+			expect(Math.hypot((after?.x ?? 0) - point.x, (after?.y ?? 0) - point.y)).toBeLessThan(0.5);
 		}
 	});
 });

@@ -1,0 +1,10 @@
+{
+	// Worker code runs in a worker, not a page: it gets WebWorker globals, not DOM.
+	"extends": "../../../../tsconfig.json",
+	"compilerOptions": {
+		"lib": ["ESNext", "WebWorker"],
+		"noEmit": true
+	},
+	"include": ["."],
+	"exclude": []
+}

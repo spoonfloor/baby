@@ -9,7 +9,7 @@ import type {
 } from '#lib/baby/index.ts';
 import { turnTokens } from '#lib/baby/script.ts';
 import { isSpecial } from '#lib/baby/vocabulary.ts';
-import { CLUSTER_WORDS } from '#lib/ui/guessMap.ts';
+import { graphWords } from '#lib/ui/guessMap.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
 import { nudge, type Notice } from './notices.ts';
@@ -36,8 +36,8 @@ export type BabyMessage = {
 	/** How a finished reply came about; only replies have one. */
 	trace?: ReplyTrace;
 	/**
-	 * A finished reply word by word, for the Graph: the odds at each word (only as
-	 * many as it shows, see `kept`) and the word picked.
+	 * A finished reply word by word, for the Graph: the odds at each word (only the
+	 * words it shows, see `kept`) and the word picked.
 	 */
 	steps?: ReplyStep[];
 };
@@ -231,7 +231,7 @@ export class Chat {
 						message.trace = event.trace;
 						break;
 					case 'done':
-						if (steps.length > 0) message.steps = steps.map(kept);
+						if (steps.length > 0) message.steps = kept(steps);
 						message.pending = false;
 						break;
 				}
@@ -257,20 +257,16 @@ function step(steps: ReplyStep[], event: BabyEvent): ReplyStep[] {
 }
 
 /**
- * A step with only the odds the Graph can show: the likeliest `CLUSTER_WORDS`
- * words, the word picked, and every marker, which the Graph adds up into one.
+ * A reply with only the odds the Graph can show: at every step, the chances of the
+ * words in its Graph (see `graphWords`) and of every marker, which the Graph adds
+ * up into one.
  */
-function kept({ guesses, picked }: ReplyStep): ReplyStep {
-	const words = guesses.filter(({ word }) => !isSpecial(word) && word !== picked);
-	const likeliest = new Set(
-		words
-			.sort((a, b) => b.chance - a.chance)
-			.slice(0, CLUSTER_WORDS)
-			.map(({ word }) => word)
-	);
-	const keep = ({ word }: { word: string }) =>
-		likeliest.has(word) || isSpecial(word) || word === picked;
-	return { guesses: guesses.filter(keep), ...(picked === undefined ? {} : { picked }) };
+function kept(steps: readonly ReplyStep[]): ReplyStep[] {
+	const words = graphWords(steps);
+	return steps.map(({ guesses, picked }) => ({
+		guesses: guesses.filter(({ word }) => words.has(word) || isSpecial(word)),
+		...(picked === undefined ? {} : { picked })
+	}));
 }
 
 /** Whether more than half the words of a message were ones Baby had never read. */

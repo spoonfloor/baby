@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace, Turn } from '#lib/baby/index.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
-import { CLUSTER_WORDS } from '#lib/ui/guessMap.ts';
+import { GRAPH_WORDS } from '#lib/ui/guessMap.ts';
 import { Chat } from './chat.svelte.ts';
 
 const primer: Primer = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
@@ -113,12 +113,12 @@ describe('Chat', () => {
 	});
 
 	it('keeps only the odds the Graph shows: the likeliest words, the word picked, and every marker', async () => {
-		const tail = Array.from({ length: CLUSTER_WORDS + 50 }, (_, index) => ({
+		const tail = Array.from({ length: GRAPH_WORDS + 50 }, (_, index) => ({
 			word: `w${index}`,
 			chance: 1 / (index + 2)
 		}));
 		const guesses = [...tail, { word: '[YOU]', chance: 1e-9 }];
-		const picked = `w${CLUSTER_WORDS + 40}`;
+		const picked = `w${GRAPH_WORDS + 40}`;
 		const { baby, release } = fakeBaby(
 			[
 				{ type: 'guesses', guesses },
@@ -132,11 +132,12 @@ describe('Chat', () => {
 
 		const message = chat.messages.at(-1);
 		const kept = message?.role === 'baby' ? (message.steps?.[0]?.guesses ?? []) : [];
-		expect(kept).toHaveLength(CLUSTER_WORDS + 2);
+		// The word picked takes one of the Graph’s places; the marker is extra.
+		expect(kept).toHaveLength(GRAPH_WORDS + 1);
 		expect(kept.map(({ word }) => word)).toEqual(
-			expect.arrayContaining(['w0', `w${CLUSTER_WORDS - 1}`, picked, '[YOU]'])
+			expect.arrayContaining(['w0', `w${GRAPH_WORDS - 2}`, picked, '[YOU]'])
 		);
-		expect(kept.map(({ word }) => word)).not.toContain(`w${CLUSTER_WORDS}`);
+		expect(kept.map(({ word }) => word)).not.toContain(`w${GRAPH_WORDS - 1}`);
 	});
 
 	it('sends Baby the conversation before each message: your turns and its replies, not the app’s', async () => {

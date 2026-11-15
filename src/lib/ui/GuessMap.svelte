@@ -1,25 +1,25 @@
 <!--
 	Baby’s odds at one word of its reply as a cluster of balls: every word Baby could
-	have said there, sized by its chance, the likelier the bigger, brighter and nearer
-	the middle; the word it picked lit (see guessMap.ts). Each ball shows
-	its word and chance if they fit, else its word, hyphenated as a last resort, else
-	nothing; a lit word always shows, just under its ball if it must. When the step
-	changes, each ball springs to its new place, passing through the others, so the
-	eye can follow it; a change before it gets there bends its path toward the new
-	place, keeping its speed. Approved animation (see APPROVED_ANIMATIONS in
-	stylelint.config.js). Point at a ball (or tap it) to see its word and chance.
+	have said, sized by its chance there, the likelier the bigger, brighter and nearer
+	the middle; the word it picked lit (see guessMap.ts). The same balls are in the
+	map at every step of a reply. Each ball shows its word and chance if they fit,
+	else its word, hyphenated as a last resort, else nothing; a lit word always shows,
+	just under its ball if it must. When the step changes, each ball springs to its
+	new place and size, passing through the others, so the eye can follow it; a
+	change before it gets there bends its path toward the new place, keeping its
+	speed. A step not laid out yet waits: the map stays where it is until it is.
+	Approved animation (see APPROVED_ANIMATIONS in stylelint.config.js). Point at a
+	ball (or tap it) to see its word and chance.
 -->
 <script lang="ts">
 	import { flushSync, tick, untrack } from 'svelte';
-	import type { ReplyStep } from '#lib/baby/index.ts';
 	import {
 		blend,
 		contrast,
 		cssTime,
-		settle,
+		END,
 		spring,
 		springStep,
-		toCluster,
 		type Ball,
 		type Point,
 		type Rgb,
@@ -27,13 +27,15 @@
 	} from './guessMap.ts';
 
 	interface Props {
-		/** One word of the reply: the odds there and the word picked. */
-		step: ReplyStep;
-		/** The reply ended here: nothing picked means Baby picked the end. */
-		ended: boolean;
+		/** The balls at every step of the reply (see `toGraph`). */
+		graph: readonly (readonly Ball[])[];
+		/** Where the balls rest at each step laid out so far (see `layOut`). */
+		places: readonly ReadonlyMap<string, Point>[];
+		/** The step to show, once it’s laid out. */
+		step: number;
 	}
 
-	let { step, ended }: Props = $props();
+	let { graph, places, step }: Props = $props();
 
 	/** How faint the least likely words get: never invisible, so every ball can be found. */
 	const FAINTEST = 0.15;
@@ -43,6 +45,8 @@
 	const FITS = ['both', 'word', 'hyphenated'] as const;
 	/** A lit word that fits none of those ways spills out of its ball instead. */
 	const SPILL = 'spill';
+	/** Fill changes smaller than this aren’t written: no eye can tell them apart. */
+	const FILL_STEP = 0.005;
 
 	/** One ball as drawn at a moment: where, how big, how bright. */
 	interface Frame extends Point {
@@ -57,41 +61,47 @@
 		to: Frame;
 		/** The radius its element is laid out at; other sizes scale it. */
 		size: number;
-		/** No longer guessed: shrinks away, then is dropped. */
-		leaving: boolean;
+		/** At its target and still, so frames skip it. */
+		resting: boolean;
+		/** What its element was last given, so a frame writes only what changed. */
+		transform: string;
+		fill: number;
 	}
 
 	let map: HTMLDivElement;
 	let tip: HTMLDivElement;
-	/** The balls in the page, likeliest last so they sit on top. Replaced whole at each change. */
-	let items: Ball[] = $state.raw([]);
-	/** Each ball’s element, by key. Moved frame by frame, so not reactive. */
+	/** The balls at the step shown, in the graph’s order: the same words at every step. */
+	let items: readonly Ball[] = $state.raw([]);
+	/** Each ball’s element and its fill, by word. Moved frame by frame, so not reactive. */
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- read only by the draw loop
-	const elements = new Map<string, HTMLElement>();
-	/** Where each ball rests, at full size, by key. */
-	let places = new Map<string, Point>();
+	const elements = new Map<string, { element: HTMLElement; fill: HTMLElement }>();
 	/** The balls being drawn, gliding or still. Drawn frame by frame, so not reactive. */
-	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- read only by the draw loop
 	let shown = new Map<string, Shown>();
-	let balls: Ball[] = [];
+	/** The graph and step drawn; a new graph is a new reply, which starts afresh. */
+	let drawnGraph: readonly (readonly Ball[])[] | undefined;
+	let drawnStep = 0;
 	/** Balls are moving, and when the last frame was drawn. */
 	let moving = false;
 	let lastFrame = 0;
 	/** Counts layouts, so one that a newer one overtook while the page caught up stops. */
 	let generation = 0;
 	let pointer: Point | undefined;
-	/** The pointed-at ball’s word and chance. */
+	/** The ball pointed at, by word. */
+	let pointedWord: string | undefined;
+	/** The pointed-at ball’s word and chance, and the tip’s size with it. */
 	let tipText = $state('');
+	let tipSize = { width: 0, height: 0 };
 	let width = 0;
 	let height = 0;
+	/** The design tokens, read once per layout rather than every frame. */
+	let look: ReturnType<typeof tokens> | undefined;
 
-	const description = $derived(
-		step.picked !== undefined
-			? `Baby’s odds at its next word, “${step.picked}” picked`
-			: ended
-				? 'Baby’s odds at its next word, the end picked'
-				: 'Baby’s odds at its next word'
-	);
+	const description = $derived.by(() => {
+		const lit = items.find((ball) => ball.lit)?.word;
+		if (lit === undefined) return 'Baby’s odds at its next word';
+		if (lit === END) return 'Baby’s odds at its next word, the end picked';
+		return `Baby’s odds at its next word, “${lit}” picked`;
+	});
 
 	/** Every size, color and timing comes from the design tokens, read as the browser resolved them. */
 	function tokens() {
@@ -108,7 +118,6 @@
 			},
 			sizes: {
 				min: length('--size-guess-min'),
-				max: length('--size-guess-max'),
 				gap: length('--size-guess-gap')
 			},
 			/** No spring when motion is reduced: every change cuts. */
@@ -136,13 +145,18 @@
 		return chance < 0.001 ? '<0.1%' : `${(chance * 100).toFixed(1)}%`;
 	}
 
+	// Shows the step asked for once it’s laid out; until then, the map stays as it is.
 	$effect(() => {
-		const latest = { step, ended };
+		const latest = { graph, places, step };
 		untrack(() => {
-			const { sizes, spring } = tokens();
-			balls = toCluster(latest.step, latest.ended, sizes);
-			places = settle(balls, places, sizes.gap);
-			void place(spring === undefined);
+			if (latest.graph !== drawnGraph) {
+				shown = new Map();
+				drawnGraph = latest.graph;
+			}
+			if (!latest.places[latest.step]) return;
+			drawnStep = latest.step;
+			look = tokens();
+			void place(look.spring === undefined);
 		});
 	});
 
@@ -150,21 +164,24 @@
 		const observer = new ResizeObserver(() => {
 			width = map.clientWidth;
 			height = map.clientHeight;
-			void place(true);
+			if (drawnGraph && places[drawnStep]) void place(true);
 		});
 		observer.observe(map);
 		return () => observer.disconnect();
 	});
 
-	/** Where every ball should be now: the resting places, scaled to fill the map and centered in it. */
-	function targets(): Map<string, Frame> {
-		const { sizes } = tokens();
+	/** Where every ball should be: its resting place, scaled to fill the map and centered in it. */
+	function targets(
+		balls: readonly Ball[],
+		rest: ReadonlyMap<string, Point>,
+		gap: number
+	): Map<string, Frame> {
 		let left = Infinity;
 		let right = -Infinity;
 		let top = Infinity;
 		let bottom = -Infinity;
 		for (const ball of balls) {
-			const at = places.get(ball.word);
+			const at = rest.get(ball.word);
 			if (!at) continue;
 			left = Math.min(left, at.x - ball.radius);
 			right = Math.max(right, at.x + ball.radius);
@@ -172,8 +189,8 @@
 			bottom = Math.max(bottom, at.y + ball.radius);
 		}
 		const room = {
-			width: Math.max(0, width - 2 * sizes.gap),
-			height: Math.max(0, height - 2 * sizes.gap)
+			width: Math.max(0, width - 2 * gap),
+			height: Math.max(0, height - 2 * gap)
 		};
 		const scale =
 			right > left
@@ -182,7 +199,7 @@
 		const middle = { x: (left + right) / 2, y: (top + bottom) / 2 };
 		return new Map(
 			balls.map((ball) => {
-				const at = places.get(ball.word) ?? middle;
+				const at = rest.get(ball.word) ?? middle;
 				return [
 					ball.word,
 					{
@@ -197,14 +214,16 @@
 	}
 
 	/**
-	 * Sends every ball to its new place: springing from wherever it is now, as fast as
-	 * it’s going, or, on a `cut`, straight there. A new ball grows from nothing where it
-	 * lands; a ball no longer in the cluster shrinks away where it is (or, on a cut,
-	 * just goes).
+	 * Sends every ball to its place at the step drawn: springing from wherever it is
+	 * now, as fast as it’s going, or, on a `cut`, straight there. When the map first
+	 * shows a reply, each ball grows from nothing where it lands.
 	 */
 	async function place(cut: boolean) {
-		if (width === 0 || height === 0) return;
-		const next = targets();
+		const balls = drawnGraph?.[drawnStep];
+		const rest = places[drawnStep];
+		if (width === 0 || height === 0 || !balls || !rest) return;
+		look ??= tokens();
+		const next = targets(balls, rest, look.sizes.gap);
 		const still = { x: 0, y: 0, radius: 0, weight: 0 };
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- becomes `shown`, read only by the draw loop
 		const placed = new Map<string, Shown>();
@@ -212,30 +231,32 @@
 			const to = next.get(ball.word);
 			if (!to) continue;
 			const was = shown.get(ball.word);
-			const at = cut ? to : (was?.at ?? { ...to, radius: 0, weight: 0 });
-			const velocity = cut ? still : (was?.velocity ?? still);
-			placed.set(ball.word, { ball, at, velocity, to, size: to.radius, leaving: false });
-		}
-		if (!cut) {
-			for (const [key, was] of shown) {
-				if (placed.has(key) || was.leaving) continue;
-				const to = { ...was.at, radius: 0, weight: 0 };
-				placed.set(key, { ...was, to, size: Math.max(was.size, was.at.radius), leaving: true });
-			}
+			placed.set(ball.word, {
+				ball,
+				at: cut ? to : (was?.at ?? { ...to, radius: 0, weight: 0 }),
+				velocity: cut ? still : (was?.velocity ?? still),
+				to,
+				size: to.radius,
+				resting: false,
+				transform: '',
+				fill: -1
+			});
 		}
 		shown = placed;
-		// The likeliest on top, and the lit words above all.
-		items = [...placed.values()]
-			.sort((a, b) => Number(a.ball.lit) - Number(b.ball.lit) || a.to.weight - b.to.weight)
-			.map(({ ball }) => ball);
+		items = balls;
 
 		const current = ++generation;
 		await tick();
 		if (current !== generation) return;
-		for (const [key, { size }] of shown) {
-			const element = elements.get(key);
+		// The likeliest on top, and the lit words above all.
+		const order = [...shown.values()].sort(
+			(a, b) => Number(a.ball.lit) - Number(b.ball.lit) || a.to.weight - b.to.weight
+		);
+		for (const [index, { ball, size }] of order.entries()) {
+			const element = elements.get(ball.word)?.element;
 			if (!element) continue;
 			element.style.width = element.style.height = `${size * 2}px`;
+			element.style.zIndex = String(index);
 		}
 		fit();
 		if (cut) {
@@ -255,7 +276,7 @@
 	 */
 	function fit() {
 		let unfitted = [...shown.values()].flatMap(({ ball }) => {
-			const element = elements.get(ball.word);
+			const element = elements.get(ball.word)?.element;
 			return element ? [{ ball, element }] : [];
 		});
 		for (const way of FITS) {
@@ -266,7 +287,7 @@
 	}
 
 	function fits(element: HTMLElement): boolean {
-		const text = element.firstElementChild;
+		const text = element.querySelector('.text');
 		if (!(text instanceof HTMLElement)) return false;
 		const lines = [...text.children].filter(
 			(line): line is HTMLElement => line instanceof HTMLElement && line.offsetParent !== null
@@ -282,45 +303,30 @@
 
 	function frame(now: number) {
 		if (!moving) return;
-		const { spring } = tokens();
+		const spring = look?.spring;
 		const seconds = Math.min(LONGEST_FRAME, (now - lastFrame) / 1000);
 		lastFrame = now;
 		let resting = true;
 		for (const ball of shown.values()) {
+			if (ball.resting) continue;
 			if (spring) move(ball, seconds, spring);
-			if (!atRest(ball)) resting = false;
+			if (!spring || atRest(ball)) {
+				ball.at = ball.to;
+				ball.velocity = { x: 0, y: 0, radius: 0, weight: 0 };
+				ball.resting = true;
+			} else resting = false;
 		}
-		if (!resting && spring) {
-			draw();
-			requestAnimationFrame(frame);
-			return;
-		}
-		moving = false;
-		const left = [...shown].filter(([, ball]) => ball.leaving).map(([key]) => key);
-		for (const ball of shown.values()) {
-			ball.at = ball.to;
-			ball.velocity = { x: 0, y: 0, radius: 0, weight: 0 };
-		}
-		for (const key of left) shown.delete(key);
-		if (left.length > 0) items = items.filter(({ word }) => shown.has(word));
 		draw();
+		if (resting) moving = false;
+		else requestAnimationFrame(frame);
 	}
 
 	/** Moves every part of a ball `seconds` along its spring toward where it’s going. */
 	function move(ball: Shown, seconds: number, spring: Spring) {
-		const at = { ...ball.at };
-		const velocity = { ...ball.velocity };
+		const { at, velocity, to } = ball;
 		for (const part of ['x', 'y', 'radius', 'weight'] as const) {
-			[at[part], velocity[part]] = springStep(
-				at[part],
-				velocity[part],
-				ball.to[part],
-				seconds,
-				spring
-			);
+			[at[part], velocity[part]] = springStep(at[part], velocity[part], to[part], seconds, spring);
 		}
-		ball.at = at;
-		ball.velocity = velocity;
 	}
 
 	function atRest({ at, velocity, to }: Shown): boolean {
@@ -335,75 +341,100 @@
 		);
 	}
 
+	/** Writes each ball’s place, size and fill to its element, where they changed, then the pointer’s tip. */
 	function draw() {
-		const { sizes, colors } = tokens();
-		let pointed: { ball: Ball; at: Frame } | undefined;
+		if (!look) return;
+		const { colors } = look;
 		for (const [key, ball] of shown) {
-			const element = elements.get(key);
-			if (!element) continue;
+			const parts = elements.get(key);
+			if (!parts) continue;
 			const { at } = ball;
 			// A spring can carry a ball past its target: never inside out, never brighter than full.
 			const radius = Math.max(0, at.radius);
 			const weight = Math.min(1, Math.max(0, at.weight));
 			const scale = ball.size > 0 ? radius / ball.size : 0;
-			element.style.transform = `translate(${at.x - ball.size}px, ${at.y - ball.size}px) scale(${scale})`;
-			const fill = FAINTEST + (1 - FAINTEST) * weight;
-			element.style.setProperty('--fill', String(fill));
-			// Its word goes in whichever label color stands out more from the fill as it looks now.
-			const seen = blend(colors.word, colors.under, fill);
-			element.classList.toggle(
-				'bright',
-				contrast(colors.labelBright, seen) > contrast(colors.label, seen)
-			);
-			element.classList.remove('pointed');
-			const hit = Math.max(radius, sizes.min * 2);
-			if (
-				!ball.leaving &&
-				radius > 0 &&
-				pointer &&
-				Math.hypot(pointer.x - at.x, pointer.y - at.y) < hit &&
-				(!pointed || weight > pointed.at.weight)
-			) {
-				pointed = { ball: ball.ball, at: { ...at, radius, weight } };
+			const transform = `translate(${(at.x - ball.size).toFixed(1)}px, ${(at.y - ball.size).toFixed(1)}px) scale(${scale.toFixed(3)})`;
+			if (transform !== ball.transform) {
+				parts.element.style.transform = ball.transform = transform;
 			}
+			const fill = FAINTEST + (1 - FAINTEST) * weight;
+			if (Math.abs(fill - ball.fill) >= FILL_STEP || (ball.resting && fill !== ball.fill)) {
+				ball.fill = fill;
+				parts.fill.style.opacity = String(fill);
+				// Its word goes in whichever label color stands out more from the fill as it looks now.
+				const seen = blend(colors.word, colors.under, fill);
+				parts.element.classList.toggle(
+					'bright',
+					contrast(colors.labelBright, seen) > contrast(colors.label, seen)
+				);
+			}
+		}
+		drawPointer();
+	}
+
+	/** Marks the ball under the pointer, the likeliest if several, and shows its tip. */
+	function drawPointer() {
+		if (!look) return;
+		let pointed: Shown | undefined;
+		if (pointer) {
+			for (const ball of shown.values()) {
+				const radius = Math.max(0, ball.at.radius);
+				const hit = Math.max(radius, look.sizes.min * 2);
+				if (
+					radius > 0 &&
+					Math.hypot(pointer.x - ball.at.x, pointer.y - ball.at.y) < hit &&
+					(!pointed || ball.at.weight > pointed.at.weight)
+				) {
+					pointed = ball;
+				}
+			}
+		}
+		const word = pointed?.ball.word;
+		if (word !== pointedWord) {
+			if (pointedWord !== undefined) elements.get(pointedWord)?.element.classList.remove('pointed');
+			if (word !== undefined) elements.get(word)?.element.classList.add('pointed');
+			pointedWord = word;
 		}
 		if (!pointed) {
 			tip.hidden = true;
 			return;
 		}
-		elements.get(pointed.ball.word)?.classList.add('pointed');
-		showTip(pointed.ball, pointed.at, pointed.at.radius);
+		showTip(pointed.ball, pointed.at, Math.max(0, pointed.at.radius), look.padding);
 	}
 
 	/** The word and its chance beside the ball being pointed at, kept inside the map. */
-	function showTip(ball: Ball, at: Point, radius: number) {
-		const { padding } = tokens();
+	function showTip(ball: Ball, at: Point, radius: number, padding: number) {
 		const text = `${ball.word} ${percent(ball.chance)}`;
-		// The tip is measured next, so it has to be in the page with its new text first.
-		if (text !== tipText) flushSync(() => (tipText = text));
+		const appearing = tip.hidden;
 		tip.hidden = false;
-		const x = Math.min(width - tip.offsetWidth, Math.max(0, at.x + radius + padding));
-		const y = Math.min(height - tip.offsetHeight, Math.max(0, at.y - radius - tip.offsetHeight));
+		// The tip is measured only when its text changes, with its new text in the page first.
+		if (text !== tipText || appearing) {
+			if (text !== tipText) flushSync(() => (tipText = text));
+			tipSize = { width: tip.offsetWidth, height: tip.offsetHeight };
+		}
+		const x = Math.min(width - tipSize.width, Math.max(0, at.x + radius + padding));
+		const y = Math.min(height - tipSize.height, Math.max(0, at.y - radius - tipSize.height));
 		tip.style.transform = `translate(${x}px, ${y}px)`;
 	}
 
 	function point(event: PointerEvent) {
 		const box = map.getBoundingClientRect();
 		pointer = { x: event.clientX - box.left, y: event.clientY - box.top };
-		if (!moving) draw();
+		if (!moving) drawPointer();
 	}
 
 	function leave() {
 		pointer = undefined;
-		if (!moving) draw();
+		if (!moving) drawPointer();
 	}
 
 	/** Keeps track of each ball’s element while it’s in the page. */
 	function register(key: string) {
 		return (element: HTMLElement) => {
-			elements.set(key, element);
+			const fill = element.querySelector('.fill');
+			if (fill instanceof HTMLElement) elements.set(key, { element, fill });
 			return () => {
-				if (elements.get(key) === element) elements.delete(key);
+				if (elements.get(key)?.element === element) elements.delete(key);
 			};
 		};
 	}
@@ -420,6 +451,7 @@
 >
 	{#each items as ball (ball.word)}
 		<div class="ball" {@attach register(ball.word)}>
+			<div class="fill"></div>
 			<div class="text">
 				<span class="word">{ball.word}</span>
 				<span class="chance">{percent(ball.chance)}</span>
@@ -459,13 +491,11 @@
 	}
 
 	/* The fill fades with the ball’s chance; its text stays solid. */
-	.ball::before {
+	.fill {
 		position: absolute;
 		inset: 0;
 		border-radius: inherit;
 		background: var(--color-guess-word);
-		opacity: var(--fill);
-		content: '';
 	}
 
 	.ball:global(.pointed) {

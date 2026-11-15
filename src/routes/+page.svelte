@@ -16,6 +16,7 @@
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
+	import { layOutReply } from '#lib/ui/graphLayout.svelte.ts';
 	import GuessPanel from '#lib/ui/GuessPanel.svelte';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
@@ -61,11 +62,18 @@
 	let at = $state(0);
 	let pointed: number | undefined = $state();
 	/** Baby’s latest finished reply that the Graph can look into. */
-	const latestReply = $derived(
+	const latest = $derived(
 		chat.messages.findLast(
 			(message) => message.role === 'baby' && !message.pending && message.steps !== undefined
-		)?.id
+		)
 	);
+	const latestReply = $derived(latest?.id);
+
+	// The latest reply’s Graph is laid out as soon as it’s finished, so it’s ready when opened.
+	$effect(() => {
+		const steps = latest?.role === 'baby' ? latest.steps : undefined;
+		if (steps) untrack(() => layOutReply(steps));
+	});
 
 	function inspect(id: string | undefined) {
 		inspecting = id;

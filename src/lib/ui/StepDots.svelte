@@ -1,7 +1,7 @@
 <!--
 	Steps through a sequence one at a time: a dot per step, the current one filled,
 	between previous and next arrows. Click a dot to go there; point at one to
-	preview it.
+	preview it. Steps not ready yet show as rings and can’t be gone to.
 -->
 <script lang="ts">
 	import IconButton from './IconButton.svelte';
@@ -9,13 +9,15 @@
 	interface Props {
 		/** What each step is, for its dot’s label. */
 		labels: readonly string[];
+		/** How many steps, from the first, can be gone to; the rest aren’t ready yet. */
+		ready?: number;
 		at: number;
 		onstep: (step: number) => void;
 		/** The step under the pointer, or undefined once it leaves the dots. */
 		onpoint: (step: number | undefined) => void;
 	}
 
-	let { labels, at, onstep, onpoint }: Props = $props();
+	let { labels, ready = labels.length, at, onstep, onpoint }: Props = $props();
 </script>
 
 <div class="steps">
@@ -25,6 +27,7 @@
 			<button
 				type="button"
 				class={['dot', { current: index === at }]}
+				disabled={index >= ready}
 				aria-label={label}
 				aria-current={index === at ? 'step' : undefined}
 				onpointermove={(event) => {
@@ -40,7 +43,7 @@
 	<IconButton
 		icon="next"
 		label="Next"
-		disabled={at === labels.length - 1}
+		disabled={at >= Math.min(labels.length, ready) - 1}
 		onclick={() => onstep(at + 1)}
 	/>
 </div>
@@ -81,5 +84,15 @@
 
 	.dot.current::before {
 		background: var(--color-text);
+	}
+
+	/* Not ready yet: a ring where the dot will be. */
+	.dot:disabled {
+		cursor: default;
+	}
+
+	.dot:disabled::before {
+		box-shadow: inset 0 0 0 var(--width-step-dot-pending) var(--color-text-muted);
+		background: none;
 	}
 </style>

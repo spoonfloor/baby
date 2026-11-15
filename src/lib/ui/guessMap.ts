@@ -2,15 +2,21 @@ import type { Guess, ReplyStep } from '#lib/baby/index.ts';
 import { isSpecial } from '#lib/baby/vocabulary.ts';
 
 /**
- * The Graph’s layout: Baby’s odds at one word of its reply as a cluster of balls.
- * Each ball is a word it could have said there, sized by its chance; the word it
- * picked is lit. The likelier a word, the closer to the middle it’s pulled, so the
- * long shots end up at the edge. Where everything comes to rest is worked out here,
- * all at once and the same way every time; the map then glides each ball there.
+ * The Graph’s layout: Baby’s odds at each word of its reply as a cluster of balls.
+ * Each ball is a word it could have said, sized by its chance there; the word it
+ * picked is lit. The same words are balls at every step of a reply, so stepping
+ * through it only moves and resizes them. The likelier a word, the closer to the
+ * middle it’s pulled, so the long shots end up at the edge. Where everything comes
+ * to rest is worked out here, step after step and the same way every time; the map
+ * then glides each ball there.
  */
 
-/** Words in the cluster, at most (the one picked always among them): past this many, the rest are specks. */
-export const CLUSTER_WORDS = 150;
+/**
+ * Words in the Graph of a whole reply, at most: every word picked, then each step’s
+ * likeliest words in turn (every step’s likeliest, then every step’s second, …)
+ * until there are this many. Every other word stays out at every step.
+ */
+export const GRAPH_WORDS = 200;
 
 /** Every marker Baby could pick ([EOS], or a turn start) as one ball: each would end the reply there. */
 export const END = '[end]';
@@ -58,36 +64,72 @@ export function foldEnd(guesses: readonly Guess[]): Guess[] {
 }
 
 /**
- * The cluster for one word of a reply: Baby’s odds there (see `foldEnd`). The
- * likeliest `CLUSTER_WORDS` are shown, likeliest first, the word it picked always
- * among them and lit; at a step with nothing picked where the reply has `ended`,
- * Baby picked `END`. Balls are sized against the likeliest ball, `END` included,
- * which is always full size, so a near-certain end dwarfs every word. Sizes follow
- * chance on a log scale spanning `DECADES`.
+ * The words in the Graph of a reply, `END` among them for every marker (see
+ * `GRAPH_WORDS`): the words picked, then each step’s likeliest in turn.
  */
-export function toCluster(
-	{ guesses, picked }: ReplyStep,
-	ended: boolean,
-	{ min, max }: Sizes
-): Ball[] {
-	const lit = picked ?? (ended ? END : undefined);
-	const all = foldEnd(guesses);
-	const shown = all.slice(0, CLUSTER_WORDS);
-	const own = all.find(({ word }) => word === lit);
-	// The picked word makes the cluster even as a long shot, in the last place.
-	if (own && !shown.includes(own)) shown.splice(-1, 1, own);
-	const top = all[0]?.chance ?? 0;
-	return shown.map(({ word, chance }) => {
-		const weight =
-			top > 0 && chance > 0 ? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / DECADES)) : 0;
-		return {
-			word,
-			chance,
-			weight,
-			radius: min + (max - min) * weight,
-			lit: word === lit
-		};
+export function graphWords(steps: readonly ReplyStep[]): Set<string> {
+	const odds = steps.map(({ guesses }) => foldEnd(guesses));
+	const words = new Set(steps.flatMap(({ picked }) => picked ?? []));
+	if (steps.at(-1)?.picked === undefined && steps.length > 0) words.add(END);
+	const longest = Math.max(0, ...odds.map((step) => step.length));
+	for (let rank = 0; rank < longest && words.size < GRAPH_WORDS; rank++) {
+		for (const step of odds) {
+			const guess = step[rank];
+			if (guess && words.size < GRAPH_WORDS) words.add(guess.word);
+		}
+	}
+	return words;
+}
+
+/**
+ * The balls at every step of a reply: Baby’s odds there (see `foldEnd`), the same
+ * words at every step and in the same order (see `GRAPH_WORDS`). The word picked at
+ * each step is lit there; at the last step, with nothing picked, Baby picked `END`.
+ * Balls are sized against the step’s likeliest word, `END` included, which is always
+ * full size, so a near-certain end dwarfs every word. Sizes follow chance on a log
+ * scale spanning `DECADES`.
+ */
+export function toGraph(steps: readonly ReplyStep[], { min, max }: Sizes): Ball[][] {
+	const odds = steps.map(({ guesses }) => foldEnd(guesses));
+	const lit = steps.map(({ picked }, index) =>
+		picked !== undefined ? picked : index === steps.length - 1 ? END : undefined
+	);
+	const words = graphWords(steps);
+
+	return odds.map((step, index) => {
+		const chances = new Map(step.map(({ word, chance }) => [word, chance]));
+		const top = step[0]?.chance ?? 0;
+		return [...words].map((word) => {
+			const chance = chances.get(word) ?? 0;
+			const weight =
+				top > 0 && chance > 0
+					? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / DECADES))
+					: 0;
+			return { word, chance, weight, radius: min + (max - min) * weight, lit: word === lit[index] };
+		});
 	});
+}
+
+/**
+ * Where the balls rest at each step of a reply (see `toGraph`), one step at a time,
+ * in order. Each step starts from where the one before it came to rest, so balls
+ * only move as much as their new chances force them to, and a step always looks the
+ * same however it’s reached.
+ */
+export function* layOut(
+	graph: readonly (readonly Ball[])[],
+	gap: number
+): Generator<Map<string, Point>> {
+	let places = new Map<string, Point>();
+	for (const balls of graph) {
+		// New balls spiral out from the middle likeliest first, so the likeliest start nearest it.
+		places = settle(
+			[...balls].sort((a, b) => b.chance - a.chance),
+			places,
+			gap
+		);
+		yield places;
+	}
 }
 
 /** Most steps of the settling simulation: enough for the cluster to come to rest from scratch. */

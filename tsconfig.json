@@ -8,5 +8,5 @@
 	},
 	"include": ["src", "test", "*"],
 	// Worker code is checked by its own project, with worker globals instead of DOM.
-	"exclude": ["src/lib/baby/worker"]
+	"exclude": ["src/lib/baby/worker", "src/lib/ui/worker"]
 }

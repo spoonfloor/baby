@@ -1,10 +1,12 @@
 <!--
 	The Graph: how Baby picked each word of a finished reply, one step at a time. The
 	map shows the odds Baby had at the step (see GuessMap); dots under it step
-	through the reply, as do the arrow keys. Opens under the reply it’s for.
+	through the reply, as do the arrow keys. Each step can be gone to once it’s laid
+	out (see graphLayout.svelte.ts), first to last. Opens under the reply it’s for.
 -->
 <script lang="ts">
 	import type { ReplyStep } from '#lib/baby/index.ts';
+	import { layOutReply } from './graphLayout.svelte.ts';
 	import GuessMap from './GuessMap.svelte';
 	import IconButton from './IconButton.svelte';
 	import StepDots from './StepDots.svelte';
@@ -27,9 +29,11 @@
 	const showing = $derived(pointed ?? at);
 	const last = $derived(steps.length - 1);
 	const labels = $derived(steps.map(({ picked }) => picked ?? 'End'));
+	const layout = $derived(layOutReply(steps));
 
+	/** Goes to a step, if it’s laid out. */
 	function goTo(step: number) {
-		onstep(Math.max(0, Math.min(last, step)));
+		onstep(Math.max(0, Math.min(last, layout.ready - 1, step)));
 	}
 
 	/** Arrow keys step through, unless they’re moving a caret or something else has them. */
@@ -54,11 +58,11 @@
 			<IconButton icon="close" label="Close" onclick={onclose} />
 		</div>
 		<div class="map">
-			{#if steps[showing]}
-				<GuessMap step={steps[showing]} ended={showing === last} />
+			{#if layout.graph}
+				<GuessMap graph={layout.graph} places={layout.places} step={showing} />
 			{/if}
 		</div>
-		<StepDots {labels} at={showing} onstep={goTo} {onpoint} />
+		<StepDots {labels} ready={layout.ready} at={showing} onstep={goTo} {onpoint} />
 	</Surface>
 </div>
 
