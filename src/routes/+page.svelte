@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { spawnBaby, type Guess } from '#lib/baby/index.ts';
+	import { spawnBaby, type ReplyStep } from '#lib/baby/index.ts';
 	import {
 		describeKnowledge,
 		describeNewWords,
@@ -59,18 +59,20 @@
 	let showingGuesses = $state(false);
 	let guessesExpanded = $state(false);
 	const expanded = $derived(showingGuesses && guessesExpanded);
-	/** Baby’s guesses at the first word of its reply to the finished words of the draft. Raw: replaced whole. */
-	let draftGuesses: Guess[] | undefined = $state.raw();
+	/**
+	 * The reply Baby would likeliest give to the finished words of the draft, word by
+	 * word; none before the first word is finished. Raw: replaced whole.
+	 */
+	let draftSteps: ReplyStep[] | undefined = $state.raw();
 	/**
 	 * The map follows Baby’s reply as it’s said, and keeps where it ended until you
-	 * type again; otherwise it shows Baby’s first word if the draft were sent.
+	 * type again; otherwise it shows what Baby would likeliest say if the draft were sent.
 	 */
-	const followingReply = $derived(chat.replying || (chat.nextWord !== undefined && draft === ''));
+	const followingReply = $derived(chat.replying || (chat.replySteps !== undefined && draft === ''));
 	/** Before a reply’s first guesses arrive, the map keeps the draft’s. */
-	const guesses = $derived((followingReply ? chat.nextWord?.guesses : undefined) ?? draftGuesses);
-	const said = $derived(
-		followingReply && chat.nextWord ? typeset(chat.nextWord.said.split(' ')) : ''
-	);
+	const steps = $derived((followingReply ? chat.replySteps : undefined) ?? draftSteps ?? []);
+	const replyEnded = $derived(!(followingReply && chat.replying));
+	const said = $derived(typeset(steps.flatMap(({ picked }) => picked ?? [])));
 
 	// Ask again whenever a word of the draft is finished, the conversation moves on
 	// (`chat.guess` reads it), or Baby has read something (its state changes).
@@ -78,10 +80,14 @@
 		if (!showingGuesses || followingReply) return;
 		const prompt = finishedPart(draft);
 		void chat.knowledge;
+		if (prompt === '') {
+			draftSteps = undefined;
+			return;
+		}
 		let current = true;
 		chat.guess(prompt).then(
 			(latest) => {
-				if (current) draftGuesses = latest;
+				if (current) draftSteps = latest;
 			},
 			// A debugging aid: the map just keeps its last guesses.
 			(error) => console.error('Couldn’t get Baby’s guesses', error)
@@ -175,8 +181,9 @@
 		<div class={['composer', { expanded }]}>
 			{#if showingGuesses}
 				<GuessPanel
+					{steps}
+					ended={replyEnded}
 					{said}
-					{guesses}
 					expanded={guessesExpanded}
 					ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
 					onclose={() => (showingGuesses = false)}

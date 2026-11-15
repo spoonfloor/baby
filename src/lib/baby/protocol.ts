@@ -10,8 +10,9 @@ import type { Speaker } from './script.ts';
 
 /**
  * One step of a request, in order: any number of `status`/`progress`/`token`, a
- * reply's one `trace` or a guess's one `guesses`, then one `done`. A reply sends
- * `guesses` before each word it picks, the last of them for the pick that ended it.
+ * reply's one `trace`, then one `done`. A reply or a guess sends `guesses` before
+ * each word it picks, the last of them for the pick that ended it (unless it ran to
+ * the longest reply).
  */
 export type BabyEvent =
 	| { type: 'status'; text: string } // what Baby is doing right now
@@ -29,6 +30,16 @@ export type BabyEvent =
 export interface Guess {
 	word: string;
 	chance: number;
+}
+
+/**
+ * One word of a reply as Baby picked it: the odds of every word it could have said
+ * there, and the one it picked. No `picked` where Baby ended the reply (or is still
+ * picking).
+ */
+export interface ReplyStep {
+	guesses: Guess[];
+	picked?: string;
 }
 
 /** How Baby arrived at a reply, recorded as it happened (Baby’s words change as it reads). */
@@ -77,7 +88,7 @@ export interface Reading {
 export type BabyRequest =
 	/** `history` is the conversation before `prompt`, oldest first; Baby sees what fits of it. */
 	| { type: 'reply'; id: string; prompt: string; history: Turn[] }
-	/** Baby’s guesses at the first word of a reply to `prompt`, without replying. */
+	/** The reply Baby would give to `prompt` picking its likeliest word every time, without replying. */
 	| { type: 'guess'; id: string; prompt: string; history: Turn[] }
 	| { type: 'read'; id: string; reading: Reading }
 	/** Forgets everything, saved Baby included, leaving a newborn that knows only its first word. */

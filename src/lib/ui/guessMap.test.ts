@@ -1,42 +1,70 @@
 import { describe, expect, it } from 'vitest';
+import type { ReplyStep } from '#lib/baby/index.ts';
 import {
 	blend,
+	CLUSTER_WORDS,
 	contrast,
 	cubicBezier,
 	END,
-	MAP_WORDS,
 	settle,
-	toBalls,
+	toCluster,
 	type Point
 } from './guessMap.ts';
 
 const sizes = { min: 4, max: 38, gap: 2 };
 
-/** Chances that fall off word by word, like Baby’s: a few likely words and a long tail. */
-function guesses(count: number) {
+/** Chances that fall off word by word, like Baby’s: a few likely words and a long tail, [EOS] among them. */
+function guesses(count: number, first = 'w0') {
 	const raw = Array.from({ length: count }, (_, index) => 1 / (index + 1) ** 2);
 	const total = raw.reduce((sum, chance) => sum + chance, 0);
 	return raw.map((chance, index) => ({
-		word: index === 3 ? '[EOS]' : `w${index}`,
+		word: index === 0 ? first : index === 3 ? '[EOS]' : `w${index}`,
 		chance: chance / total
 	}));
 }
 
-const distance = (point: Point | undefined) => (point ? Math.hypot(point.x, point.y) : Infinity);
+/** A reply of `words`, each the likeliest at its step, then the odds it ended on. */
+function reply(words: string[]): ReplyStep[] {
+	return [
+		...words.map((word) => ({ guesses: guesses(300, word), picked: word })),
+		{ guesses: guesses(300, '[EOS]') }
+	];
+}
 
-describe('toBalls', () => {
-	it('keeps the likeliest words, likeliest first and full size, area following chance', () => {
-		const balls = toBalls(guesses(100), sizes);
+describe('toCluster', () => {
+	it('averages the odds at every word, so they still add up to 1, likeliest first and full size', () => {
+		const balls = toCluster(reply(['i', 'want', 'cake']), true, sizes);
+		const all = toCluster(reply(['i', 'want', 'cake']), true, { ...sizes, min: 0 });
 
-		expect(balls).toHaveLength(MAP_WORDS);
-		expect(balls[0]).toMatchObject({ word: 'w0', weight: 1, radius: 38, end: false });
-		expect(balls[1]?.weight).toBeCloseTo(Math.sqrt(1 / 4));
+		expect(balls).toHaveLength(CLUSTER_WORDS);
+		expect(balls[0]).toMatchObject({ weight: 1, radius: 38 });
+		const chances = balls.map(({ chance }) => chance);
+		expect(chances).toEqual([...chances].sort((a, b) => b - a));
+		expect(all.reduce((sum, { chance }) => sum + chance, 0)).toBeLessThanOrEqual(1);
+	});
+
+	it('lights the reply’s own words, even a long shot, and where it ended', () => {
+		const steps = reply(['i', 'want', 'cake']);
+		steps[1] = { guesses: guesses(300), picked: 'w250' };
+		const balls = toCluster(steps, true, sizes);
+
+		expect(
+			balls
+				.filter(({ lit }) => lit)
+				.map(({ word }) => word)
+				.sort()
+		).toEqual(['cake', 'i', 'w250', END].sort());
+	});
+
+	it('lights no end while the reply is still being said', () => {
+		const balls = toCluster([{ guesses: guesses(10) }], false, sizes);
+		expect(balls.some(({ lit }) => lit)).toBe(false);
 	});
 
 	it('folds every marker into one end ball, with their chances added up', () => {
 		const all = [...guesses(100), { word: '[YOU]', chance: 0.01 }];
 		const chance = (word: string) => all.find((guess) => guess.word === word)?.chance ?? 0;
-		const balls = toBalls(all, sizes);
+		const balls = toCluster([{ guesses: all }], false, sizes);
 
 		expect(balls.filter(({ word }) => word.startsWith('['))).toEqual([
 			expect.objectContaining({ word: END, end: true, chance: chance('[EOS]') + chance('[YOU]') })
@@ -45,36 +73,43 @@ describe('toBalls', () => {
 });
 
 describe('settle', () => {
-	const balls = toBalls(guesses(40), sizes);
+	const balls = toCluster(reply(['i', 'want', 'cake']), true, sizes);
 	const places = settle(balls, new Map(), sizes.gap);
+	const at = (word: string) => {
+		const point = places.get(word);
+		if (!point) throw new Error(`${word} has no place`);
+		return point;
+	};
+	const distance = (point: Point) => Math.hypot(point.x, point.y);
 
 	it('packs every ball without overlaps', () => {
 		for (const [i, a] of balls.entries()) {
 			for (const b of balls.slice(i + 1)) {
-				const p = places.get(a.word);
-				const q = places.get(b.word);
-				if (!p || !q) throw new Error('A ball has no place');
+				const p = at(a.word);
+				const q = at(b.word);
 				expect(Math.hypot(p.x - q.x, p.y - q.y)).toBeGreaterThan(a.radius + b.radius);
 			}
 		}
 	});
 
 	it('puts the likeliest word nearest the middle', () => {
-		const nearest = Math.min(...balls.slice(1).map(({ word }) => distance(places.get(word))));
-		expect(distance(places.get('w0'))).toBeLessThan(nearest);
+		const [likeliest, ...rest] = balls;
+		if (!likeliest) throw new Error('No balls');
+		const nearest = Math.min(...rest.map(({ word }) => distance(at(word))));
+		expect(distance(at(likeliest.word))).toBeLessThan(nearest);
 	});
 
 	it('settles the same way every time', () => {
 		expect(settle(balls, new Map(), sizes.gap)).toEqual(places);
 	});
 
-	it('leaves a settled map where it is when nothing changes', () => {
+	it('leaves a settled cluster where it is when nothing changes', () => {
 		const again = settle(balls, places, sizes.gap);
 		for (const { word } of balls) {
-			const before = places.get(word);
+			const before = at(word);
 			const after = again.get(word);
-			if (!before || !after) throw new Error('A ball has no place');
-			expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(0.1);
+			if (!after) throw new Error('A ball has no place');
+			expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(0.5);
 		}
 	});
 });

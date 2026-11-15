@@ -41,6 +41,8 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 		async *guess(prompt, history = []) {
 			guessed.push([prompt, history]);
 			yield { type: 'guesses', guesses: [{ word: 'hi', chance: 1 }] };
+			yield { type: 'token', text: 'hi' };
+			yield { type: 'guesses', guesses: [{ word: '[EOS]', chance: 1 }] };
 			yield { type: 'done' };
 		},
 		read: ({ source }) => respond(source),
@@ -98,7 +100,7 @@ describe('Chat', () => {
 		]);
 	});
 
-	it('follows where Baby’s reply has got to: what it has said, and the odds of its next word', async () => {
+	it('follows Baby’s reply word by word: the odds at each word and the word picked', async () => {
 		const odds = (word: string) => [{ word, chance: 1 }];
 		const { baby, release } = fakeBaby(
 			[
@@ -112,10 +114,13 @@ describe('Chat', () => {
 
 		release();
 		await chat.send('hello');
-		expect(chat.nextWord).toEqual({ said: 'moon', guesses: odds('[EOS]') });
+		expect(chat.replySteps).toEqual([
+			{ guesses: odds('moon'), picked: 'moon' },
+			{ guesses: odds('[EOS]') }
+		]);
 
 		const again = chat.send('hello again');
-		expect(chat.nextWord).toBeUndefined();
+		expect(chat.replySteps).toBeUndefined();
 		await again;
 	});
 
@@ -139,13 +144,16 @@ describe('Chat', () => {
 		]);
 	});
 
-	it('asks Baby’s guesses at its first word after the conversation so far, without saying anything', async () => {
+	it('asks Baby’s likeliest reply, word by word, after the conversation so far, without saying anything', async () => {
 		const { baby, release, guessed } = fakeBaby([{ type: 'token', text: 'hi' }], trained);
 		release();
 		const chat = new Chat(baby);
 		await chat.send('Hello');
 
-		expect(await chat.guess('how are')).toEqual([{ word: 'hi', chance: 1 }]);
+		expect(await chat.guess('how are')).toEqual([
+			{ guesses: [{ word: 'hi', chance: 1 }], picked: 'hi' },
+			{ guesses: [{ word: '[EOS]', chance: 1 }] }
+		]);
 		expect(guessed).toEqual([
 			[
 				'how are',

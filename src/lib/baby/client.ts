@@ -4,7 +4,7 @@ import type { BabyEvent, BabyRequest, BabyResponse, BabyState, Reading, Turn } f
 export interface Baby {
 	/** Replies to `prompt`, said after `history` (the conversation so far, oldest first). */
 	reply(prompt: string, history?: readonly Turn[]): AsyncIterable<BabyEvent>;
-	/** Baby’s guesses at the first word of a reply to `prompt`, without replying. */
+	/** The reply Baby would give to `prompt` picking its likeliest word every time, without replying. */
 	guess(prompt: string, history?: readonly Turn[]): AsyncIterable<BabyEvent>;
 	/** Reads, then practices on everything read so far. */
 	read(reading: Reading): AsyncIterable<BabyEvent>;

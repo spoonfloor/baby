@@ -1,32 +1,34 @@
 <!--
-	The next-word map with the app saying what it shows: Baby’s guesses at its next
-	word, under what it has said so far. Opens above the composer; `expanded`, it takes
-	the place of the conversation.
+	The next-word map: Baby’s reply as one cluster of every word it could have said,
+	its own words lit (see GuessMap), over the reply itself in Baby’s words: as it’s
+	said, or the reply it would likeliest give. Opens above the composer; `expanded`,
+	it takes the place of the conversation.
 -->
 <script lang="ts">
-	import type { Guess } from '#lib/baby/index.ts';
+	import type { ReplyStep } from '#lib/baby/index.ts';
 	import GuessMap from './GuessMap.svelte';
 	import IconButton from './IconButton.svelte';
 	import MessageText from './MessageText.svelte';
 	import Surface from './Surface.svelte';
 
 	interface Props {
-		/** What Baby has said so far in the reply the guesses are for, typeset; empty before it says anything. */
+		/** The reply, word by word; empty shows nothing. */
+		steps: readonly ReplyStep[];
+		/** The reply is over (see GuessMap). */
+		ended: boolean;
+		/** The reply’s words under the map, typeset. */
 		said: string;
-		/** Undefined until Baby’s first guesses arrive. */
-		guesses: readonly Guess[] | undefined;
 		expanded: boolean;
 		ontoggleexpanded: () => void;
 		onclose: () => void;
 	}
 
-	let { said, guesses, expanded, ontoggleexpanded, onclose }: Props = $props();
+	let { steps, ended, said, expanded, ontoggleexpanded, onclose }: Props = $props();
 </script>
 
 <div class={['panel', { expanded }]}>
 	<Surface>
-		<div class="heading">
-			<p>Baby’s next word</p>
+		<div class="controls">
 			<IconButton
 				icon={expanded ? 'shrink' : 'enlarge'}
 				label={expanded ? 'Shrink' : 'Enlarge'}
@@ -35,8 +37,8 @@
 			<IconButton icon="close" label="Close" onclick={onclose} />
 		</div>
 		<div class="map">
-			{#if guesses}
-				<GuessMap {guesses} />
+			{#if steps.length > 0}
+				<GuessMap {steps} {ended} />
 			{/if}
 		</div>
 		<div class="said"><MessageText text={said} /></div>
@@ -56,7 +58,7 @@
 		min-block-size: 0;
 	}
 
-	/* The surface fills the panel: the heading on top, the map in the rest. */
+	/* The surface fills the panel: the controls on top, the reply under the map, the map in the rest. */
 	.panel > :global(.surface) {
 		display: flex;
 		flex: 1;
@@ -65,22 +67,10 @@
 		min-block-size: 0;
 	}
 
-	.heading {
+	.controls {
 		display: flex;
-		align-items: center;
+		justify-content: flex-end;
 		gap: var(--space-inline);
-		color: var(--color-app-voice);
-		font-size: var(--font-size-label);
-		font-style: var(--font-style-app-voice);
-	}
-
-	.heading p {
-		flex: 1;
-		min-width: 0;
-		margin: 0;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
 	}
 
 	.map {

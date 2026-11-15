@@ -2,8 +2,8 @@ import type {
 	Baby,
 	BabyEvent,
 	BabyState,
-	Guess,
 	Reading,
+	ReplyStep,
 	ReplyTrace,
 	Turn
 } from '#lib/baby/index.ts';
@@ -72,11 +72,10 @@ export class Chat {
 	/** The message the user is teaching Baby a reply to; their next message is that reply. */
 	teaching: string | undefined = $state();
 	/**
-	 * Where Baby’s latest reply has got to: what it has said so far, and the odds of
-	 * each word it could say next. When the reply is done, the odds its last pick was
-	 * drawn from. Raw: replaced whole at every word.
+	 * Baby’s latest reply, word by word as it picks them: the odds at each word and
+	 * the word picked. Raw: replaced whole at every step.
 	 */
-	nextWord: { said: string; guesses: Guess[] } | undefined = $state.raw();
+	replySteps: ReplyStep[] | undefined = $state.raw();
 
 	#baby: Baby;
 
@@ -88,7 +87,7 @@ export class Chat {
 	async send(text: string) {
 		if (this.replying) throw new Error('Baby is already replying');
 		this.replying = true;
-		this.nextWord = undefined;
+		this.replySteps = undefined;
 		const history = this.#history();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
@@ -101,15 +100,16 @@ export class Chat {
 	}
 
 	/**
-	 * Baby’s guesses at the first word it would say if `prompt` were sent now, after
-	 * the conversation so far. Reads the conversation before its first await, so an
-	 * effect calling this reruns when the conversation changes.
+	 * The reply Baby would give if `prompt` were sent now, after the conversation so
+	 * far, picking its likeliest word every time. Reads the conversation before its
+	 * first await, so an effect calling this reruns when the conversation changes.
 	 */
-	async guess(prompt: string): Promise<Guess[]> {
+	async guess(prompt: string): Promise<ReplyStep[]> {
+		let steps: ReplyStep[] = [];
 		for await (const event of this.#baby.guess(prompt, this.#history())) {
-			if (event.type === 'guesses') return event.guesses;
+			steps = step(steps, event);
 		}
-		throw new Error('Baby finished without guessing');
+		return steps;
 	}
 
 	async read(primer: Primer) {
@@ -154,7 +154,7 @@ export class Chat {
 			for await (const event of this.#baby.reset()) if (event.type === 'done') break;
 			this.messages = [];
 			this.teaching = undefined;
-			this.nextWord = undefined;
+			this.replySteps = undefined;
 		} catch (error) {
 			console.error(error);
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
@@ -233,9 +233,10 @@ export class Chat {
 						break;
 					case 'token':
 						message.text += event.text;
+						if (request === 'reply') this.replySteps = step(this.replySteps ?? [], event);
 						break;
 					case 'guesses':
-						this.nextWord = { said: message.text, guesses: event.guesses };
+						this.replySteps = step(this.replySteps ?? [], event);
 						break;
 					case 'trace':
 						message.trace = event.trace;
@@ -253,6 +254,16 @@ export class Chat {
 			return undefined;
 		}
 	}
+}
+
+/** `steps` after `event`: odds start the next step, a word is what was picked at the latest. */
+function step(steps: ReplyStep[], event: BabyEvent): ReplyStep[] {
+	if (event.type === 'guesses') return [...steps, { guesses: event.guesses }];
+	const latest = steps.at(-1);
+	if (event.type === 'token' && latest) {
+		return [...steps.slice(0, -1), { ...latest, picked: event.text.trim() }];
+	}
+	return steps;
 }
 
 /** Whether more than half the words of a message were ones Baby had never read. */

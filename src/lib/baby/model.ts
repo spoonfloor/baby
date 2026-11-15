@@ -152,24 +152,9 @@ export class Model {
 		// The script format: Baby sees `… [YOU] … [EOS] [BABY]` and continues from there.
 		const ids = this.#seen(prompt, history).map((word) => this.#vocabulary.id(word));
 		const context = ids.map((id) => this.#vocabulary.word(id));
-		let picked = 0;
-		let stop: ReplyTrace['stop'] = 'limit';
-		let marker: string | undefined;
-		while (picked < MAX_REPLY_TOKENS) {
-			await this.#idle();
-			const probabilities = this.#transformer.predict(ids);
-			yield { type: 'guesses', guesses: this.#guesses(probabilities) };
-			const word = this.#vocabulary.word(this.#pick(probabilities));
-			// A marker ends the reply: [EOS], or a turn start, where Baby thinks the turn is over.
-			if (isSpecial(word)) {
-				stop = word === EOS ? 'eos' : 'turn';
-				marker = word;
-				break;
-			}
-			ids.push(this.#vocabulary.id(word));
-			yield { type: 'token', text: picked === 0 ? word : ` ${word}` };
-			picked++;
-		}
+		const { picked, marker } = yield* this.#say(ids, (probabilities) => this.#pick(probabilities));
+		const stop: ReplyTrace['stop'] =
+			marker === undefined ? 'limit' : marker === EOS ? 'eos' : 'turn';
 
 		yield { type: 'status', text: this.#replySummary(picked, marker) };
 		yield {
@@ -180,13 +165,38 @@ export class Model {
 	}
 
 	/**
-	 * The chance of each word Baby could say first in a reply to `prompt`, read exactly
-	 * as `reply` reads it: the same guesses its first pick is drawn from.
+	 * The reply Baby would give to `prompt` if it always picked its likeliest word,
+	 * reading the conversation exactly as `reply` does: the same `guesses` before each
+	 * word and the same `token`s, without saying anything.
 	 */
 	async *guess(prompt: string, history: readonly Turn[] = []): AsyncGenerator<BabyEvent> {
 		const ids = this.#seen(prompt, history).map((word) => this.#vocabulary.id(word));
-		yield { type: 'guesses', guesses: this.#guesses(this.#transformer.predict(ids)) };
+		yield* this.#say(ids, likeliest);
 		yield { type: 'done' };
+	}
+
+	/**
+	 * Says words after `ids`, adding each to them: the odds, then the word `pick`
+	 * chose from them, until it picks a marker (where Baby thinks the turn is over)
+	 * or reaches the longest reply.
+	 */
+	async *#say(
+		ids: number[],
+		pick: (probabilities: Float32Array) => number
+	): AsyncGenerator<BabyEvent, { picked: number; marker?: string }> {
+		let picked = 0;
+		while (picked < MAX_REPLY_TOKENS) {
+			await this.#idle();
+			const probabilities = this.#transformer.predict(ids);
+			yield { type: 'guesses', guesses: this.#guesses(probabilities) };
+			const id = pick(probabilities);
+			const word = this.#vocabulary.word(id);
+			if (isSpecial(word)) return { picked, marker: word };
+			ids.push(id);
+			yield { type: 'token', text: picked === 0 ? word : ` ${word}` };
+			picked++;
+		}
+		return { picked };
 	}
 
 	/** `probabilities` as the chance of each word Baby could pick: what `#pick` draws from. */
@@ -240,6 +250,15 @@ export class Model {
 		if (picked === 0) return `Picked ${marker ?? EOS} first, so said nothing`;
 		return `Picked ${count(picked, 'word')}, each a guess at what comes next`;
 	}
+}
+
+/** The word Baby is likeliest to pick, [UNK] aside: the first of any tied for it. */
+function likeliest(probabilities: Float32Array): number {
+	let best = EOS_ID;
+	probabilities.forEach((p, id) => {
+		if (id !== UNK_ID && p > (probabilities[best] ?? 0)) best = id;
+	});
+	return best;
 }
 
 /** How much of Baby’s guesses go to things it can say: everything but [UNK]. */

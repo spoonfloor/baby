@@ -13,6 +13,7 @@
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
+	import { typeset } from '#lib/baby/typeset.ts';
 	import GuessPanel from '#lib/ui/GuessPanel.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import IconButton from '#lib/ui/IconButton.svelte';
@@ -35,25 +36,33 @@
 	const noop = () => {};
 	const iconNames = Object.keys(icons) as IconName[];
 
-	/** Guesses like a trained Baby’s: a few likely words, markers and long words among them, and a long tail. */
-	const guesses = [
-		'hello',
-		'hi',
-		'[EOS]',
-		'hangover',
-		'extraordinarily',
-		'how',
-		'what',
-		'i',
-		'oh',
-		'tell',
-		'why',
-		'[YOU]',
-		...Array.from({ length: 50 }, (_, index) => `word${index}`)
-	].map((word, index, words) => {
+	/**
+	 * A reply like a trained Baby’s, word by word: at each, a few likely words, markers
+	 * among them, and a long tail of 200, the word picked usually the likeliest.
+	 */
+	function odds(likely: string[]) {
+		const words = [
+			...likely,
+			'[EOS]',
+			'[YOU]',
+			...Array.from({ length: 200 }, (_, i) => `word${i}`)
+		];
 		const total = words.reduce((sum, _, rank) => sum + 1 / (rank + 1) ** 1.6, 0);
-		return { word, chance: 1 / (index + 1) ** 1.6 / total };
-	});
+		return words.map((word, rank) => ({ word, chance: 1 / (rank + 1) ** 1.6 / total }));
+	}
+	const cake = ['i', 'want', 'to', 'eat', 'a', 'piece', 'of', 'cake', '.'];
+	const alternatives = ['really', 'just', 'extraordinarily', 'hangover', 'so'];
+	const replySteps = [
+		...cake.map((word, index) => ({
+			guesses: odds([word, ...alternatives.slice(index % 3)]),
+			// One word picked against the odds, as a reply sometimes does.
+			picked: index === 5 ? 'word150' : word
+		})),
+		{ guesses: odds([]) }
+	];
+	const replySaid = typeset([...cake.slice(0, 5), 'word150', ...cake.slice(6)]);
+	/** The same reply partway through being said: the last word still being picked. */
+	const partSteps = [...replySteps.slice(0, 3), { guesses: odds(['eat', 'have', 'go']) }];
 	let guessesExpanded = $state(false);
 
 	const greetings = chatbot101.find(({ id }) => id === 'greetings');
@@ -212,18 +221,35 @@
 
 	<section>
 		<h2>Next-word map</h2>
-		<GuessPanel said="" {guesses} expanded={false} ontoggleexpanded={noop} onclose={noop} />
 		<GuessPanel
+			steps={replySteps}
+			ended
+			said={replySaid}
+			expanded={false}
+			ontoggleexpanded={noop}
+			onclose={noop}
+		/>
+		<GuessPanel
+			steps={partSteps}
+			ended={false}
+			said={typeset(cake.slice(0, 3))}
+			expanded={false}
+			ontoggleexpanded={noop}
+			onclose={noop}
+		/>
+		<GuessPanel
+			steps={[]}
+			ended={false}
 			said=""
-			guesses={undefined}
 			expanded={false}
 			ontoggleexpanded={noop}
 			onclose={noop}
 		/>
 		<div class="tall">
 			<GuessPanel
-				said={long}
-				{guesses}
+				steps={replySteps}
+				ended
+				said={replySaid}
 				expanded={guessesExpanded}
 				ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
 				onclose={noop}
