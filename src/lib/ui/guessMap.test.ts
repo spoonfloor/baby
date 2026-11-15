@@ -4,6 +4,7 @@ import {
 	CLUSTER_WORDS,
 	DECADES,
 	contrast,
+	cssTime,
 	cubicBezier,
 	END,
 	settle,
@@ -126,6 +127,19 @@ describe('settle', () => {
 			if (!after) throw new Error('A ball has no place');
 			expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeLessThan(0.5);
 		}
+	});
+});
+
+describe('cssTime', () => {
+	it('reads milliseconds and seconds, as written or minified', () => {
+		expect(cssTime('350ms')).toBe(350);
+		expect(cssTime('.35s')).toBeCloseTo(350);
+		expect(cssTime(' 0.4s ')).toBeCloseTo(400);
+	});
+
+	it('refuses anything else', () => {
+		expect(() => cssTime('350')).toThrow(SyntaxError);
+		expect(() => cssTime('')).toThrow(SyntaxError);
 	});
 });
 

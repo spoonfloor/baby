@@ -241,6 +241,18 @@ function pushApart(a: Body, b: Body, gap: number) {
 }
 
 /**
+ * A CSS time (`350ms`, or `.35s` as a minifier writes it) in milliseconds, for
+ * timing in script what a stylesheet times.
+ */
+export function cssTime(css: string): number {
+	const match = /^(-?[\d.]+)(ms|s)$/.exec(css.trim());
+	if (!match) throw new SyntaxError(`Not a CSS time: ${css}`);
+	const value = Number(match[1]);
+	if (Number.isNaN(value)) throw new SyntaxError(`Not a CSS time: ${css}`);
+	return match[2] === 's' ? value * 1000 : value;
+}
+
+/**
  * A CSS `cubic-bezier(x1, y1, x2, y2)` as a function of progress (0–1), for gliding
  * on the same curve a stylesheet would.
  */

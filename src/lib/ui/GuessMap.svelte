@@ -15,6 +15,7 @@
 	import {
 		blend,
 		contrast,
+		cssTime,
 		cubicBezier,
 		settle,
 		toCluster,
@@ -109,7 +110,7 @@
 			},
 			duration: matchMedia('(prefers-reduced-motion: reduce)').matches
 				? 0
-				: length('--duration-guess-glide'),
+				: cssTime(style.getPropertyValue('--duration-guess-glide')),
 			easing: cubicBezier(style.getPropertyValue('--easing-guess-glide')),
 			padding: length('--space-inline')
 		};
