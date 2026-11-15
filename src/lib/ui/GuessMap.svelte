@@ -97,7 +97,6 @@
 		return {
 			colors: {
 				word: color('--color-guess-word'),
-				end: color('--color-guess-end'),
 				label: color('--color-guess-label'),
 				labelBright: color('--color-guess-label-bright'),
 				/** The map sits on a surface: what a faded ball is seen against. */
@@ -320,7 +319,7 @@
 			const fill = FAINTEST + (1 - FAINTEST) * at.weight;
 			element.style.setProperty('--fill', String(fill));
 			// Its word goes in whichever label color stands out more from the fill as it looks now.
-			const seen = blend(ball.ball.end ? colors.end : colors.word, colors.under, fill);
+			const seen = blend(colors.word, colors.under, fill);
 			element.classList.toggle(
 				'bright',
 				contrast(colors.labelBright, seen) > contrast(colors.label, seen)
@@ -389,7 +388,7 @@
 	onpointerleave={leave}
 >
 	{#each items as ball (ball.word)}
-		<div class={['ball', { end: ball.end }]} {@attach register(ball.word)}>
+		<div class="ball" {@attach register(ball.word)}>
 			<div class="text">
 				<span class="word">{ball.word}</span>
 				<span class="chance">{percent(ball.chance)}</span>
@@ -436,10 +435,6 @@
 		background: var(--color-guess-word);
 		opacity: var(--fill);
 		content: '';
-	}
-
-	.ball.end::before {
-		background: var(--color-guess-end);
 	}
 
 	.ball:global(.pointed) {

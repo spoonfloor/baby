@@ -57,7 +57,7 @@ describe('toCluster', () => {
 		const balls = toCluster({ guesses: all }, false, sizes);
 
 		expect(balls.filter(({ word }) => word.startsWith('['))).toEqual([
-			expect.objectContaining({ word: END, end: true, chance: chance('[EOS]') + chance('[YOU]') })
+			expect.objectContaining({ word: END, chance: chance('[EOS]') + chance('[YOU]') })
 		]);
 	});
 

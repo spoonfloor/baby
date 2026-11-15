@@ -233,10 +233,8 @@
 				pending={false}
 				inspect={{
 					open: demo.open,
-					word:
-						demo.open && replySteps[demo.pointed ?? demo.at]?.picked !== undefined
-							? (demo.pointed ?? demo.at)
-							: undefined,
+					ended: replySteps.at(-1)?.picked === undefined,
+					word: demo.pointed ?? demo.at,
 					ontoggle: () => {
 						demo.open = !demo.open;
 						demo.at = 0;
@@ -252,7 +250,6 @@
 						at={demo.at}
 						pointed={demo.pointed}
 						onstep={(step) => (demo.at = step)}
-						onpoint={(step) => (demo.pointed = step)}
 						onclose={() => (demo.open = false)}
 					/>
 				{/snippet}

@@ -27,8 +27,6 @@ export interface Ball {
 	/** Its chance next to the likeliest word’s, on a log scale (see `DECADES`): 0–1. */
 	weight: number;
 	radius: number;
-	/** The `END` ball: picking it ends the reply. */
-	end: boolean;
 	/** The word Baby picked here. */
 	lit: boolean;
 }
@@ -87,7 +85,6 @@ export function toCluster(
 			chance,
 			weight,
 			radius: min + (max - min) * weight,
-			end: word === END,
 			lit: word === lit
 		};
 	});

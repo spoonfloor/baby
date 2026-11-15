@@ -36,7 +36,6 @@
 	--color-accent: var(--raw-pink-400);
 	--color-app-voice: var(--color-accent); /* the app speaking, as distinct from Baby */
 	--color-guess-word: var(--color-text); /* a word Baby could say next, in the next-word map */
-	--color-guess-end: var(--color-text-muted); /* the [end] ball: Baby could end its reply there */
 	--color-guess-label: var(--color-text); /* a word written on a faint ball */
 	--color-guess-label-bright: var(--color-surface); /* a word written on a bright ball */
 	--color-progress: var(--color-accent); /* the done part of a progress bar, like the spinner */
@@ -109,6 +108,6 @@
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */
 	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
-	--duration-guess-glide: 400ms; /* words in the next-word map glide to their new places */
+	--duration-guess-glide: 350ms; /* words in the next-word map glide to their new places */
 	--easing-guess-glide: cubic-bezier(0.4, 0.4, 0, 1);
 }

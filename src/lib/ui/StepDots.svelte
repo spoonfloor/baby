@@ -1,7 +1,6 @@
 <!--
 	Steps through a sequence one at a time: a dot per step, the current one filled,
-	between previous and next arrows. Click a dot to go there; point at one to
-	preview it.
+	between previous and next arrows. Click a dot to go there.
 -->
 <script lang="ts">
 	import IconButton from './IconButton.svelte';
@@ -11,25 +10,20 @@
 		labels: readonly string[];
 		at: number;
 		onstep: (step: number) => void;
-		/** The step under the pointer, or undefined once it leaves the dots. */
-		onpoint: (step: number | undefined) => void;
 	}
 
-	let { labels, at, onstep, onpoint }: Props = $props();
+	let { labels, at, onstep }: Props = $props();
 </script>
 
 <div class="steps">
 	<IconButton icon="previous" label="Previous" disabled={at === 0} onclick={() => onstep(at - 1)} />
-	<div class="dots" role="presentation" onpointerleave={() => onpoint(undefined)}>
+	<div class="dots">
 		{#each labels as label, index (index)}
 			<button
 				type="button"
 				class={['dot', { current: index === at }]}
 				aria-label={label}
 				aria-current={index === at ? 'step' : undefined}
-				onpointerenter={(event) => {
-					if (event.pointerType === 'mouse') onpoint(index);
-				}}
 				onclick={() => onstep(index)}
 			></button>
 		{/each}

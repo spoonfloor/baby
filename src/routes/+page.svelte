@@ -152,10 +152,8 @@
 								progress={message.progress}
 								inspect={steps && {
 									open,
-									word:
-										open && steps[pointed ?? at]?.picked !== undefined
-											? (pointed ?? at)
-											: undefined,
+									ended: steps.at(-1)?.picked === undefined,
+									word: pointed ?? at,
 									ontoggle: () => inspect(open ? undefined : message.id),
 									onpoint: (word) => (pointed = word),
 									onstep: (word) => {
@@ -172,7 +170,6 @@
 											{at}
 											{pointed}
 											onstep={(step) => (at = step)}
-											onpoint={(step) => (pointed = step)}
 											onclose={() => inspect(undefined)}
 										/>
 									{/if}
