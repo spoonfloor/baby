@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { typeset } from './typeset.ts';
+import { typeset, typesetWords } from './typeset.ts';
 import { tokenize } from './vocabulary.ts';
 
 const set = (words: string) => typeset(words.split(' '));
@@ -29,5 +29,11 @@ describe('typeset', () => {
 	it('undoes tokenizing for ordinary sentences', () => {
 		const text = 'Hey, how’s it going? I am happy today, Baby!';
 		expect(typeset(tokenize(text))).toBe(text);
+	});
+
+	it('sets word by word, each with the space before it, the same as the whole', () => {
+		const words = ['hi', ',', 'i', 'am', 'baby', '.'];
+		expect(typesetWords(words)).toEqual(['Hi', ',', ' I', ' am', ' Baby', '.']);
+		expect(typesetWords(words).join('')).toBe(typeset(words));
 	});
 });

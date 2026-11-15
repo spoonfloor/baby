@@ -3,6 +3,8 @@ export const icons = {
 	plus: 'M12 5v14M5 12h14',
 	expand: 'M6 9l6 6 6-6',
 	collapse: 'M6 15l6-6 6 6',
+	previous: 'M15 6l-6 6 6 6',
+	next: 'M9 6l6 6-6 6',
 	check: 'M5 12l5 5 9-10',
 	close: 'M6 6l12 12M18 6L6 18',
 	return: 'M20 5v7a3 3 0 0 1-3 3H5M9 11l-4 4 4 4',

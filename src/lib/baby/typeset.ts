@@ -25,17 +25,22 @@ const capitalize = (word: string) => word.charAt(0).toUpperCase() + word.slice(1
 const isI = (word: string) => word === 'i' || word.startsWith(`i${APOSTROPHE}`);
 
 export function typeset(words: readonly string[]): string {
-	let text = '';
+	return typesetWords(words).join('');
+}
+
+/** `typeset`, word by word: each word as it’s written, with the space before it if any. */
+export function typesetWords(words: readonly string[]): string[] {
+	const shownWords: string[] = [];
 	let sentenceStart = true;
 	let previous: string | undefined;
 	for (const word of words) {
 		let shown = word.replaceAll(APOSTROPHE, '’');
 		if (sentenceStart || NAMES.has(word) || isI(word)) shown = capitalize(shown);
 		const spaced = previous !== undefined && !CLOSING.has(word) && !OPENING.has(previous);
-		text += (spaced ? ' ' : '') + shown;
+		shownWords.push((spaced ? ' ' : '') + shown);
 		if (SENTENCE_END.has(word)) sentenceStart = true;
 		else if (!CLOSING.has(word) && !OPENING.has(word)) sentenceStart = false;
 		previous = word;
 	}
-	return text;
+	return shownWords;
 }

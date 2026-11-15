@@ -13,7 +13,9 @@ const APPROVED_ANIMATIONS = [
 	'src/lib/ui/Spinner.svelte',
 	'src/lib/ui/ProgressBar.svelte',
 	// Glides on a canvas, so nothing for Stylelint to check; listed as the record of approval.
-	'src/lib/ui/GuessMap.svelte'
+	'src/lib/ui/GuessMap.svelte',
+	// The Graph’s reply line: each word fades in, on the map’s glide.
+	'src/lib/ui/GuessPanel.svelte'
 ];
 
 const rawValueRules = {

@@ -2,15 +2,14 @@ import type { Guess, ReplyStep } from '#lib/baby/index.ts';
 import { isSpecial } from '#lib/baby/vocabulary.ts';
 
 /**
- * The next-word map’s layout: Baby’s reply as one cluster of balls. Each ball is a
- * word, sized by its chance at a word of the reply picked at random: Baby’s odds at
- * every word of the reply, averaged. The reply’s own words are lit. The likelier a
- * word, the closer to the middle it’s pulled, so the long shots end up at the edge.
- * Where everything comes to rest is worked out here, all at once and the same way
- * every time; the map then glides each ball there.
+ * The Graph’s layout: Baby’s odds at one word of its reply as a cluster of balls.
+ * Each ball is a word it could have said there, sized by its chance; the word it
+ * picked is lit. The likelier a word, the closer to the middle it’s pulled, so the
+ * long shots end up at the edge. Where everything comes to rest is worked out here,
+ * all at once and the same way every time; the map then glides each ball there.
  */
 
-/** Words in the cluster, at most (the reply’s own always among them): past this many, the rest are specks. */
+/** Words in the cluster, at most (the one picked always among them): past this many, the rest are specks. */
 export const CLUSTER_WORDS = 150;
 
 /** Every marker Baby could pick ([EOS], or a turn start) as one ball: each would end the reply there. */
@@ -23,14 +22,14 @@ export interface Point {
 
 export interface Ball {
 	word: string;
-	/** Its chance at a word of the reply picked at random. */
+	/** Its chance of being picked here. */
 	chance: number;
 	/** Its chance next to the likeliest word’s, on a log scale (see `DECADES`): 0–1. */
 	weight: number;
 	radius: number;
 	/** The `END` ball: picking it ends the reply. */
 	end: boolean;
-	/** One of the reply’s own words. */
+	/** The word Baby picked here. */
 	lit: boolean;
 }
 
@@ -61,38 +60,26 @@ export function foldEnd(guesses: readonly Guess[]): Guess[] {
 }
 
 /**
- * The cluster for a reply, `steps` word by word: Baby’s odds at each word (see
- * `foldEnd`), averaged, so the chances still add up to 1. The likeliest
- * `CLUSTER_WORDS` are shown, likeliest first, the reply’s own words always among them
- * and lit. Once the reply has `ended`, a last step with nothing picked is where Baby
- * picked `END`. Balls are sized against the likeliest word, which is always full size;
- * `END` is no word, so it never shrinks them, and is at most full size itself. Sizes
- * follow chance on a log scale spanning `decades` (see `DECADES`).
+ * The cluster for one word of a reply: Baby’s odds there (see `foldEnd`). The
+ * likeliest `CLUSTER_WORDS` are shown, likeliest first, the word it picked always
+ * among them and lit; at a step with nothing picked where the reply has `ended`,
+ * Baby picked `END`. Balls are sized against the likeliest word, which is always
+ * full size; `END` is no word, so it never shrinks them, and is at most full size
+ * itself. Sizes follow chance on a log scale spanning `decades` (see `DECADES`).
  */
 export function toCluster(
-	steps: readonly ReplyStep[],
+	{ guesses, picked }: ReplyStep,
 	ended: boolean,
 	{ min, max }: Sizes,
 	decades: number
 ): Ball[] {
-	const lit = new Set(steps.flatMap(({ picked }) => picked ?? []));
-	if (ended && steps.length > 0 && steps.at(-1)?.picked === undefined) lit.add(END);
-	const totals = new Map<string, number>();
-	for (const { guesses } of steps) {
-		for (const { word, chance } of foldEnd(guesses)) {
-			totals.set(word, (totals.get(word) ?? 0) + chance / steps.length);
-		}
-	}
-	const averaged = [...totals]
-		.map(([word, chance]) => ({ word, chance }))
-		.sort((a, b) => b.chance - a.chance);
-	// The reply’s own words first, then the likeliest of the rest in the room left.
-	const own = averaged.filter(({ word }) => lit.has(word));
-	const rest = averaged.filter(({ word }) => !lit.has(word));
-	const shown = [...own, ...rest.slice(0, Math.max(0, CLUSTER_WORDS - own.length))].sort(
-		(a, b) => b.chance - a.chance
-	);
-	const top = averaged.find(({ word }) => word !== END)?.chance ?? averaged[0]?.chance ?? 0;
+	const lit = picked ?? (ended ? END : undefined);
+	const all = foldEnd(guesses);
+	const shown = all.slice(0, CLUSTER_WORDS);
+	const own = all.find(({ word }) => word === lit);
+	// The picked word makes the cluster even as a long shot, in the last place.
+	if (own && !shown.includes(own)) shown.splice(-1, 1, own);
+	const top = all.find(({ word }) => word !== END)?.chance ?? all[0]?.chance ?? 0;
 	return shown.map(({ word, chance }) => {
 		const weight =
 			top > 0 && chance > 0 ? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / decades)) : 0;
@@ -102,7 +89,7 @@ export function toCluster(
 			weight,
 			radius: min + (max - min) * weight,
 			end: word === END,
-			lit: lit.has(word)
+			lit: word === lit
 		};
 	});
 }

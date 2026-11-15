@@ -1,9 +1,9 @@
 <!--
-	Baby’s reply as one cluster of balls: every word Baby could have said, sized by its
-	chance at a word of the reply picked at random, the likelier the bigger, brighter
-	and nearer the middle; the reply’s own words lit (see guessMap.ts). Each ball shows
+	Baby’s odds at one word of its reply as a cluster of balls: every word Baby could
+	have said there, sized by its chance, the likelier the bigger, brighter and nearer
+	the middle; the word it picked lit (see guessMap.ts). Each ball shows
 	its word and chance if they fit, else its word, hyphenated as a last resort, else
-	nothing; a lit word always shows, just under its ball if it must. When the reply
+	nothing; a lit word always shows, just under its ball if it must. When the step
 	changes, each ball glides straight to its new place, passing through the others,
 	so the eye can follow it; changes that come faster than a glide cut straight to
 	their places instead. Approved animation (see APPROVED_ANIMATIONS in
@@ -25,15 +25,15 @@
 	} from './guessMap.ts';
 
 	interface Props {
-		/** The reply, word by word: the odds at each and the word picked. */
-		steps: readonly ReplyStep[];
-		/** The reply is over: a last step with nothing picked is where Baby ended it. */
+		/** One word of the reply: the odds there and the word picked. */
+		step: ReplyStep;
+		/** The reply ended here: nothing picked means Baby picked the end. */
 		ended: boolean;
 		/** The map has the room to show more words big enough to read (see DECADES). */
 		expanded: boolean;
 	}
 
-	let { steps, ended, expanded }: Props = $props();
+	let { step, ended, expanded }: Props = $props();
 
 	/** How faint the least likely words get: never invisible, so every ball can be found. */
 	const FAINTEST = 0.15;
@@ -74,7 +74,7 @@
 	let balls: Ball[] = [];
 	let glideStart = 0;
 	let gliding = false;
-	/** When the reply last changed: a change sooner than a glide after it cuts instead. */
+	/** When the step last changed: a change sooner than a glide after it cuts instead. */
 	let lastChange = -Infinity;
 	/** Counts layouts, so one that a newer one overtook while the page caught up stops. */
 	let generation = 0;
@@ -84,7 +84,13 @@
 	let width = 0;
 	let height = 0;
 
-	const description = $derived(steps.flatMap(({ picked }) => picked ?? []).join(' '));
+	const description = $derived(
+		step.picked !== undefined
+			? `Baby’s odds at its next word, “${step.picked}” picked`
+			: ended
+				? 'Baby’s odds at its next word, the end picked'
+				: 'Baby’s odds at its next word'
+	);
 
 	/** Every size, color and timing comes from the design tokens, read as the browser resolved them. */
 	function tokens() {
@@ -128,13 +134,13 @@
 	}
 
 	$effect(() => {
-		const latest = { steps, ended, decades: DECADES[expanded ? 'expanded' : 'compact'] };
+		const latest = { step, ended, decades: DECADES[expanded ? 'expanded' : 'compact'] };
 		untrack(() => {
 			const { sizes, duration } = tokens();
 			const now = performance.now();
 			const cut = now - lastChange < duration;
 			lastChange = now;
-			balls = toCluster(latest.steps, latest.ended, sizes, latest.decades);
+			balls = toCluster(latest.step, latest.ended, sizes, latest.decades);
 			places = settle(balls, places, sizes.gap);
 			void place(cut);
 		});
@@ -380,7 +386,7 @@
 	class="map"
 	bind:this={map}
 	role="img"
-	aria-label="Baby’s guesses at each word of “{description}”"
+	aria-label={description}
 	onpointermove={point}
 	onpointerdown={point}
 	onpointerleave={leave}

@@ -72,7 +72,6 @@
 	/** Before a reply’s first guesses arrive, the map keeps the draft’s. */
 	const steps = $derived((followingReply ? chat.replySteps : undefined) ?? draftSteps ?? []);
 	const replyEnded = $derived(!(followingReply && chat.replying));
-	const said = $derived(typeset(steps.flatMap(({ picked }) => picked ?? [])));
 
 	// Ask again whenever a word of the draft is finished, the conversation moves on
 	// (`chat.guess` reads it), or Baby has read something (its state changes).
@@ -179,7 +178,6 @@
 				<GuessPanel
 					{steps}
 					ended={replyEnded}
-					{said}
 					expanded={guessesExpanded}
 					ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
 					onclose={() => (showingGuesses = false)}

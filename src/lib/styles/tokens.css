@@ -109,4 +109,6 @@
 	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
 	--duration-guess-glide: 400ms; /* words in the next-word map glide to their new places */
 	--easing-guess-glide: cubic-bezier(0.4, 0.4, 0, 1);
+	--duration-guess-step: 1000ms; /* each word of a reply the Graph plays back, at most */
+	--duration-guess-playback: 10000ms; /* a whole reply played back, at most: long replies step faster */
 }

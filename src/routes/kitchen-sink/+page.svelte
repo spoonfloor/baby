@@ -13,7 +13,6 @@
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
-	import { typeset } from '#lib/baby/typeset.ts';
 	import GuessPanel from '#lib/ui/GuessPanel.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import IconButton from '#lib/ui/IconButton.svelte';
@@ -60,7 +59,6 @@
 		})),
 		{ guesses: odds([]) }
 	];
-	const replySaid = typeset([...cake.slice(0, 5), 'word150', ...cake.slice(6)]);
 	/** The same reply partway through being said: the last word still being picked. */
 	const partSteps = [...replySteps.slice(0, 3), { guesses: odds(['eat', 'have', 'go']) }];
 	let guessesExpanded = $state(false);
@@ -220,36 +218,50 @@
 	</section>
 
 	<section>
-		<h2>Next-word map</h2>
+		<h2>The Graph</h2>
+		<h3>Playing</h3>
+		<GuessPanel steps={replySteps} ended expanded={false} ontoggleexpanded={noop} onclose={noop} />
+		<h3>First word</h3>
 		<GuessPanel
 			steps={replySteps}
 			ended
-			said={replySaid}
 			expanded={false}
+			start={0}
 			ontoggleexpanded={noop}
 			onclose={noop}
 		/>
+		<h3>A word against the odds, stepped to</h3>
+		<GuessPanel
+			steps={replySteps}
+			ended
+			expanded={false}
+			start={5}
+			ontoggleexpanded={noop}
+			onclose={noop}
+		/>
+		<h3>Ended</h3>
+		<GuessPanel
+			steps={replySteps}
+			ended
+			expanded={false}
+			start={replySteps.length - 1}
+			ontoggleexpanded={noop}
+			onclose={noop}
+		/>
+		<h3>Being said</h3>
 		<GuessPanel
 			steps={partSteps}
 			ended={false}
-			said={typeset(cake.slice(0, 3))}
 			expanded={false}
 			ontoggleexpanded={noop}
 			onclose={noop}
 		/>
-		<GuessPanel
-			steps={[]}
-			ended={false}
-			said=""
-			expanded={false}
-			ontoggleexpanded={noop}
-			onclose={noop}
-		/>
+		<h3>No reply yet</h3>
+		<GuessPanel steps={[]} ended={false} expanded={false} ontoggleexpanded={noop} onclose={noop} />
 		<div class="tall">
 			<GuessPanel
 				steps={replySteps}
 				ended
-				said={replySaid}
 				expanded={guessesExpanded}
 				ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
 				onclose={noop}

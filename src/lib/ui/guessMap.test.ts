@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import type { ReplyStep } from '#lib/baby/index.ts';
 import {
 	blend,
 	CLUSTER_WORDS,
@@ -24,65 +23,48 @@ function guesses(count: number, first = 'w0') {
 	}));
 }
 
-/** A reply of `words`, each the likeliest at its step, then the odds it ended on. */
-function reply(words: string[]): ReplyStep[] {
-	return [
-		...words.map((word) => ({ guesses: guesses(300, word), picked: word })),
-		{ guesses: guesses(300, '[EOS]') }
-	];
-}
-
 describe('toCluster', () => {
-	it('averages the odds at every word, so they still add up to 1, likeliest first and full size', () => {
-		const balls = toCluster(reply(['i', 'want', 'cake']), true, sizes, DECADES.expanded);
-		const all = toCluster(
-			reply(['i', 'want', 'cake']),
-			true,
-			{ ...sizes, min: 0 },
+	it('shows the likeliest words, likeliest first, the likeliest full size', () => {
+		const balls = toCluster(
+			{ guesses: guesses(300), picked: 'w0' },
+			false,
+			sizes,
 			DECADES.expanded
 		);
 
 		expect(balls).toHaveLength(CLUSTER_WORDS);
-		expect(balls[0]).toMatchObject({ weight: 1, radius: 38 });
+		expect(balls[0]).toMatchObject({ word: 'w0', weight: 1, radius: 38 });
 		const chances = balls.map(({ chance }) => chance);
 		expect(chances).toEqual([...chances].sort((a, b) => b - a));
-		expect(all.reduce((sum, { chance }) => sum + chance, 0)).toBeLessThanOrEqual(1);
 	});
 
-	it('lights the reply’s own words, even a long shot, and where it ended', () => {
-		const steps = reply(['i', 'want', 'cake']);
-		steps[1] = { guesses: guesses(300), picked: 'w250' };
-		const balls = toCluster(steps, true, sizes, DECADES.expanded);
-
-		expect(
-			balls
-				.filter(({ lit }) => lit)
-				.map(({ word }) => word)
-				.sort()
-		).toEqual(['cake', 'i', 'w250', END].sort());
-	});
-
-	it('keeps a lit word at the edge of the cluster when a long shot makes room', () => {
-		const last = `w${CLUSTER_WORDS - 1}`;
-		const steps = [
-			{ guesses: guesses(300), picked: last },
-			{ guesses: guesses(300), picked: 'w250' }
-		];
-		const balls = toCluster(steps, false, sizes, DECADES.expanded);
+	it('lights the word picked, keeping it in the cluster even as a long shot', () => {
+		const balls = toCluster(
+			{ guesses: guesses(300), picked: 'w250' },
+			false,
+			sizes,
+			DECADES.expanded
+		);
 
 		expect(balls).toHaveLength(CLUSTER_WORDS);
-		expect(balls.filter(({ lit }) => lit).map(({ word }) => word)).toEqual([last, 'w250']);
+		expect(balls.filter(({ lit }) => lit).map(({ word }) => word)).toEqual(['w250']);
+		expect(balls.at(-1)?.word).toBe('w250');
 	});
 
-	it('lights no end while the reply is still being said', () => {
-		const balls = toCluster([{ guesses: guesses(10) }], false, sizes, DECADES.expanded);
-		expect(balls.some(({ lit }) => lit)).toBe(false);
+	it('lights the end where the reply ended, and nothing while it’s still being picked', () => {
+		const lit = (ended: boolean) =>
+			toCluster({ guesses: guesses(10) }, ended, sizes, DECADES.expanded)
+				.filter(({ lit }) => lit)
+				.map(({ word }) => word);
+
+		expect(lit(true)).toEqual([END]);
+		expect(lit(false)).toEqual([]);
 	});
 
 	it('folds every marker into one end ball, with their chances added up', () => {
 		const all = [...guesses(100), { word: '[YOU]', chance: 0.01 }];
 		const chance = (word: string) => all.find((guess) => guess.word === word)?.chance ?? 0;
-		const balls = toCluster([{ guesses: all }], false, sizes, DECADES.expanded);
+		const balls = toCluster({ guesses: all }, false, sizes, DECADES.expanded);
 
 		expect(balls.filter(({ word }) => word.startsWith('['))).toEqual([
 			expect.objectContaining({ word: END, end: true, chance: chance('[EOS]') + chance('[YOU]') })
@@ -90,7 +72,7 @@ describe('toCluster', () => {
 	});
 
 	it('sizes words against the likeliest word, never the end, which is at most full size', () => {
-		const balls = toCluster([{ guesses: guesses(10, '[EOS]') }], false, sizes, DECADES.expanded);
+		const balls = toCluster({ guesses: guesses(10, '[EOS]') }, false, sizes, DECADES.expanded);
 		const [end, likeliest] = balls;
 
 		expect(end).toMatchObject({ word: END, weight: 1, radius: 38 });
@@ -99,15 +81,13 @@ describe('toCluster', () => {
 
 	it('sizes on a log scale, down to the smallest ball `decades` factors of ten below the likeliest', () => {
 		const balls = toCluster(
-			[
-				{
-					guesses: [
-						{ word: 'a', chance: 0.5 },
-						{ word: 'b', chance: 0.5 / 10 ** (DECADES.expanded / 2) },
-						{ word: 'c', chance: 0.5 / 10 ** (DECADES.expanded + 1) }
-					]
-				}
-			],
+			{
+				guesses: [
+					{ word: 'a', chance: 0.5 },
+					{ word: 'b', chance: 0.5 / 10 ** (DECADES.expanded / 2) },
+					{ word: 'c', chance: 0.5 / 10 ** (DECADES.expanded + 1) }
+				]
+			},
 			false,
 			sizes,
 			DECADES.expanded
@@ -119,7 +99,7 @@ describe('toCluster', () => {
 });
 
 describe('settle', () => {
-	const balls = toCluster(reply(['i', 'want', 'cake']), true, sizes, DECADES.expanded);
+	const balls = toCluster({ guesses: guesses(300), picked: 'w0' }, false, sizes, DECADES.expanded);
 	const places = settle(balls, new Map(), sizes.gap);
 	const at = (word: string) => {
 		const point = places.get(word);
