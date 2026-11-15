@@ -1,7 +1,7 @@
 <!--
 	Steps through a sequence one at a time: a dot per step, the current one filled,
 	between previous and next arrows. Click a dot to go there; point at one to
-	preview it. Steps not ready yet show as rings and can’t be gone to.
+	preview it. Steps not ready yet show darker and can’t be gone to.
 -->
 <script lang="ts">
 	import IconButton from './IconButton.svelte';
@@ -86,13 +86,12 @@
 		background: var(--color-text);
 	}
 
-	/* Not ready yet: a ring where the dot will be. */
+	/* Not ready yet: darker until it can be gone to. */
 	.dot:disabled {
 		cursor: default;
 	}
 
 	.dot:disabled::before {
-		box-shadow: inset 0 0 0 var(--width-step-dot-pending) var(--color-text-muted);
-		background: none;
+		background: var(--color-step-dot-pending);
 	}
 </style>

@@ -26,6 +26,7 @@
 	import SourceDialog from '#lib/ui/SourceDialog.svelte';
 	import SourcesPanel from '#lib/ui/SourcesPanel.svelte';
 	import Spinner from '#lib/ui/Spinner.svelte';
+	import StepDots from '#lib/ui/StepDots.svelte';
 	import StatusLine from '#lib/ui/StatusLine.svelte';
 	import UserMessage from '#lib/ui/UserMessage.svelte';
 
@@ -62,13 +63,19 @@
 	];
 	const replyWords = replySteps.flatMap(({ picked }) => picked ?? []);
 	/** The Graph under a reply: closed, then open at each kind of step. */
-	const graphDemos: { title: string; open: boolean; at: number; pointed?: number | undefined }[] =
-		$state([
-			{ title: 'Closed', open: false, at: 0 },
-			{ title: 'Open, at the first word', open: true, at: 0 },
-			{ title: 'At a word picked against the odds', open: true, at: 5 },
-			{ title: 'Where Baby ended the reply', open: true, at: replySteps.length - 1 }
-		]);
+	const graphDemos: {
+		title: string;
+		open: boolean;
+		at: number;
+		pointed?: number | undefined;
+		waiting?: boolean;
+	}[] = $state([
+		{ title: 'Closed', open: false, at: 0 },
+		{ title: 'Asked for before it’s ready', open: false, at: 0, waiting: true },
+		{ title: 'Open, at the first word', open: true, at: 0 },
+		{ title: 'At a word picked against the odds', open: true, at: 5 },
+		{ title: 'Where Baby ended the reply', open: true, at: replySteps.length - 1 }
+	]);
 
 	const greetings = chatbot101.find(({ id }) => id === 'greetings');
 	if (!greetings) throw new Error('Chatbot 101 has no Greetings');
@@ -233,6 +240,7 @@
 				pending={false}
 				inspect={{
 					open: demo.open,
+					waiting: demo.waiting ?? false,
 					ended: replySteps.at(-1)?.picked === undefined,
 					word: demo.pointed ?? demo.at,
 					ontoggle: () => {
@@ -256,6 +264,14 @@
 				{/snippet}
 			</BabyMessage>
 		{/each}
+		<h3>Steps, the last few not ready yet</h3>
+		<StepDots
+			labels={replySteps.map(({ picked }) => picked ?? 'End')}
+			ready={4}
+			at={1}
+			onstep={() => {}}
+			onpoint={() => {}}
+		/>
 	</section>
 
 	<section>

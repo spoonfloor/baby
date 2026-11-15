@@ -11,6 +11,7 @@
 	--raw-gray-950: #191919;
 	--raw-gray-850: #2a2a2a;
 	--raw-gray-800: #363636;
+	--raw-gray-650: #5a5a5a;
 	--raw-gray-450: #8a8a8a;
 	--raw-gray-50: #f4f4f4;
 	--raw-pink-400: #ee6f97;
@@ -35,6 +36,7 @@
 	--color-text-muted: var(--raw-gray-450); /* placeholder, status line, counts, icons, labels */
 	--color-accent: var(--raw-pink-400);
 	--color-app-voice: var(--color-accent); /* the app speaking, as distinct from Baby */
+	--color-step-dot-pending: var(--raw-gray-650); /* a step dot whose step isn’t ready yet */
 	--color-guess-word: var(--color-text); /* a word Baby could say next, in the next-word map */
 	--color-guess-label: var(--color-text); /* a word written on a faint ball */
 	--color-guess-label-bright: var(--color-surface); /* a word written on a bright ball */
@@ -104,7 +106,6 @@
 	--size-guess-gap: 2px; /* between neighboring words in the map */
 	--size-step-dot: 6px; /* a dot per step, e.g. a word of a reply in the Graph */
 	--size-step-dot-target: 16px; /* the area that answers a click or point on a dot */
-	--width-step-dot-pending: 1px; /* the ring a step dot shows until its step is ready */
 
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */

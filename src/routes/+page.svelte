@@ -152,7 +152,9 @@
 							/>
 						{:else if message.role === 'baby'}
 							{@const steps = message.steps}
-							{@const open = inspecting === message.id}
+							{@const asked = inspecting === message.id}
+							<!-- The Graph opens once its first step is laid out; until then, it’s waited for. -->
+							{@const open = asked && steps !== undefined && layOutReply(steps).ready > 0}
 							<BabyMessage
 								words={message.text ? message.text.split(' ') : []}
 								status={message.status}
@@ -160,9 +162,10 @@
 								progress={message.progress}
 								inspect={steps && {
 									open,
+									waiting: asked && !open,
 									ended: steps.at(-1)?.picked === undefined,
 									word: pointed ?? at,
-									ontoggle: () => inspect(open ? undefined : message.id),
+									ontoggle: () => inspect(asked ? undefined : message.id),
 									onpoint: (word) => (pointed = word),
 									onstep: (word) => {
 										at = word;
