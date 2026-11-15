@@ -25,7 +25,7 @@ export interface Ball {
 	word: string;
 	/** Its chance at a word of the reply picked at random. */
 	chance: number;
-	/** The chance next to the likeliest word’s, square-rooted, so a ball’s area follows its chance: 0–1. */
+	/** Its chance next to the likeliest word’s, on a log scale (see `DECADES`): 0–1. */
 	weight: number;
 	radius: number;
 	/** The `END` ball: picking it ends the reply. */
@@ -40,6 +40,14 @@ export interface Sizes {
 	max: number;
 	gap: number;
 }
+
+/**
+ * How many factors of ten less likely than the likeliest word a word can be and still
+ * be bigger than the smallest ball. Sizes follow chance on a log scale, so the words
+ * Baby could have said but likely won’t stay big enough to read. Compact, the map has
+ * room for fewer of them, so its curve is steeper and the likeliest stay readable.
+ */
+export const DECADES = { compact: 2, expanded: 5 } as const;
 
 /** How much of the cluster’s round outline its packed balls fill. */
 const PACKING = 0.7;
@@ -57,12 +65,15 @@ export function foldEnd(guesses: readonly Guess[]): Guess[] {
  * `foldEnd`), averaged, so the chances still add up to 1. The likeliest
  * `CLUSTER_WORDS` are shown, likeliest first, the reply’s own words always among them
  * and lit. Once the reply has `ended`, a last step with nothing picked is where Baby
- * picked `END`. The likeliest is always full size.
+ * picked `END`. Balls are sized against the likeliest word, which is always full size;
+ * `END` is no word, so it never shrinks them, and is at most full size itself. Sizes
+ * follow chance on a log scale spanning `decades` (see `DECADES`).
  */
 export function toCluster(
 	steps: readonly ReplyStep[],
 	ended: boolean,
-	{ min, max }: Sizes
+	{ min, max }: Sizes,
+	decades: number
 ): Ball[] {
 	const lit = new Set(steps.flatMap(({ picked }) => picked ?? []));
 	if (ended && steps.length > 0 && steps.at(-1)?.picked === undefined) lit.add(END);
@@ -81,9 +92,10 @@ export function toCluster(
 	const shown = [...own, ...rest.slice(0, Math.max(0, CLUSTER_WORDS - own.length))].sort(
 		(a, b) => b.chance - a.chance
 	);
-	const top = averaged[0]?.chance ?? 0;
+	const top = averaged.find(({ word }) => word !== END)?.chance ?? averaged[0]?.chance ?? 0;
 	return shown.map(({ word, chance }) => {
-		const weight = top > 0 ? Math.sqrt(chance / top) : 0;
+		const weight =
+			top > 0 && chance > 0 ? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / decades)) : 0;
 		return {
 			word,
 			chance,

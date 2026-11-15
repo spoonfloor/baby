@@ -14,6 +14,7 @@
 	import type { ReplyStep } from '#lib/baby/index.ts';
 	import {
 		blend,
+		DECADES,
 		contrast,
 		cubicBezier,
 		settle,
@@ -28,9 +29,11 @@
 		steps: readonly ReplyStep[];
 		/** The reply is over: a last step with nothing picked is where Baby ended it. */
 		ended: boolean;
+		/** The map has the room to show more words big enough to read (see DECADES). */
+		expanded: boolean;
 	}
 
-	let { steps, ended }: Props = $props();
+	let { steps, ended, expanded }: Props = $props();
 
 	/** How faint the least likely words get: never invisible, so every ball can be found. */
 	const FAINTEST = 0.15;
@@ -125,13 +128,13 @@
 	}
 
 	$effect(() => {
-		const latest = { steps, ended };
+		const latest = { steps, ended, decades: DECADES[expanded ? 'expanded' : 'compact'] };
 		untrack(() => {
 			const { sizes, duration } = tokens();
 			const now = performance.now();
 			const cut = now - lastChange < duration;
 			lastChange = now;
-			balls = toCluster(latest.steps, latest.ended, sizes);
+			balls = toCluster(latest.steps, latest.ended, sizes, latest.decades);
 			places = settle(balls, places, sizes.gap);
 			void place(cut);
 		});

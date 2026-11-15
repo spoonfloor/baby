@@ -38,7 +38,7 @@
 		</div>
 		<div class="map">
 			{#if steps.length > 0}
-				<GuessMap {steps} {ended} />
+				<GuessMap {steps} {ended} {expanded} />
 			{/if}
 		</div>
 		<div class="said"><MessageText text={said} /></div>
