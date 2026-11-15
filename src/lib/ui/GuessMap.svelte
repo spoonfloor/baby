@@ -7,7 +7,9 @@
 	just under its ball if it must. When the step changes, each ball springs to its
 	new place and size, passing through the others, so the eye can follow it; a
 	change before it gets there bends its path toward the new place, keeping its
-	speed. A step not laid out yet waits: the map stays where it is until it is.
+	speed. Balls are solid, never see-through, and lean gray on the way: a ball
+	losing its chance dims early in its move, one gaining it brightens late, so
+	mid-move only the word headed for the lead stands out. A step not laid out yet waits: the map stays where it is until it is.
 	Approved animation (see APPROVED_ANIMATIONS in stylelint.config.js). Point at a
 	ball (or tap it) to see its word and chance.
 -->
@@ -37,8 +39,15 @@
 
 	let { graph, places, step }: Props = $props();
 
-	/** How faint the least likely words get: never invisible, so every ball can be found. */
+	/** How near the surface’s color the least likely words get: never gone, so every ball can be found. */
 	const FAINTEST = 0.15;
+	/**
+	 * How hard brightness leans gray over a move: brightening follows the move’s
+	 * progress cubed (late), dimming its complement (early).
+	 */
+	const GRAY_BIAS = 3;
+	/** A move shorter than this, in pixels, changes brightness at once. */
+	const SMALLEST_MOVE = 0.5;
 	/** The map grows to fill its space, but no ball gets more than this much bigger than full size. */
 	const MOST_ENLARGED = 2;
 	/** How a ball’s text fits, tried in this order; a ball that fits none shows no text. */
@@ -53,6 +62,8 @@
 		radius: number;
 		weight: number;
 	}
+	/** The parts of a ball that spring; its brightness follows their progress (see `brightness`). */
+	const SPRUNG = ['x', 'y', 'radius'] as const;
 	interface Shown {
 		ball: Ball;
 		/** Where it is now, and how fast each part is changing, per second. */
@@ -61,6 +72,8 @@
 		to: Frame;
 		/** The radius its element is laid out at; other sizes scale it. */
 		size: number;
+		/** Its brightness and how far it had to go when its move began, for `brightness`. */
+		from: { weight: number; distance: number };
 		/** At its target and still, so frames skip it. */
 		resting: boolean;
 		/** What its element was last given, so a frame writes only what changed. */
@@ -72,9 +85,9 @@
 	let tip: HTMLDivElement;
 	/** The balls at the step shown, in the graph’s order: the same words at every step. */
 	let items: readonly Ball[] = $state.raw([]);
-	/** Each ball’s element and its fill, by word. Moved frame by frame, so not reactive. */
+	/** Each ball’s element, by word. Moved frame by frame, so not reactive. */
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- read only by the draw loop
-	const elements = new Map<string, { element: HTMLElement; fill: HTMLElement }>();
+	const elements = new Map<string, HTMLElement>();
 	/** The balls being drawn, gliding or still. Drawn frame by frame, so not reactive. */
 	let shown = new Map<string, Shown>();
 	/** The graph and step drawn; a new graph is a new reply, which starts afresh. */
@@ -231,12 +244,17 @@
 			const to = next.get(ball.word);
 			if (!to) continue;
 			const was = shown.get(ball.word);
+			const at = cut ? to : (was?.at ?? { ...to, radius: 0, weight: 0 });
 			placed.set(ball.word, {
 				ball,
-				at: cut ? to : (was?.at ?? { ...to, radius: 0, weight: 0 }),
+				at,
 				velocity: cut ? still : (was?.velocity ?? still),
 				to,
 				size: to.radius,
+				from: {
+					weight: cut ? to.weight : was ? brightness(was) : 0,
+					distance: cut ? 0 : distance(at, to)
+				},
 				resting: false,
 				transform: '',
 				fill: -1
@@ -253,7 +271,7 @@
 			(a, b) => Number(a.ball.lit) - Number(b.ball.lit) || a.to.weight - b.to.weight
 		);
 		for (const [index, { ball, size }] of order.entries()) {
-			const element = elements.get(ball.word)?.element;
+			const element = elements.get(ball.word);
 			if (!element) continue;
 			element.style.width = element.style.height = `${size * 2}px`;
 			element.style.zIndex = String(index);
@@ -276,7 +294,7 @@
 	 */
 	function fit() {
 		let unfitted = [...shown.values()].flatMap(({ ball }) => {
-			const element = elements.get(ball.word)?.element;
+			const element = elements.get(ball.word);
 			return element ? [{ ball, element }] : [];
 		});
 		for (const way of FITS) {
@@ -296,8 +314,8 @@
 		return tall <= text.clientHeight && lines.every((line) => line.scrollWidth <= text.clientWidth);
 	}
 
-	/** Close enough to its target, and slow enough, that a ball is at rest: pixels (or weight) and per second. */
-	const REST = { distance: 0.05, speed: 0.5, weight: 0.001 };
+	/** Close enough to its target, and slow enough, that a ball is at rest: pixels and per second. */
+	const REST = { distance: 0.05, speed: 0.5 };
 	/** The longest step a frame moves things by, in seconds, so a stalled page doesn’t jump. */
 	const LONGEST_FRAME = 1 / 20;
 
@@ -324,7 +342,7 @@
 	/** Moves every part of a ball `seconds` along its spring toward where it’s going. */
 	function move(ball: Shown, seconds: number, spring: Spring) {
 		const { at, velocity, to } = ball;
-		for (const part of ['x', 'y', 'radius', 'weight'] as const) {
+		for (const part of SPRUNG) {
 			[at[part], velocity[part]] = springStep(at[part], velocity[part], to[part], seconds, spring);
 		}
 	}
@@ -332,13 +350,23 @@
 	function atRest({ at, velocity, to }: Shown): boolean {
 		const near = (part: 'x' | 'y' | 'radius', limit: number) =>
 			Math.abs(at[part] - to[part]) < limit && Math.abs(velocity[part]) < REST.speed;
-		return (
-			near('x', REST.distance) &&
-			near('y', REST.distance) &&
-			near('radius', REST.distance) &&
-			Math.abs(at.weight - to.weight) < REST.weight &&
-			Math.abs(velocity.weight) < REST.weight * 10
-		);
+		return SPRUNG.every((part) => near(part, REST.distance));
+	}
+
+	/** How far a ball has left to go, in place and size together. */
+	function distance(at: Frame, to: Frame): number {
+		return Math.hypot(to.x - at.x, to.y - at.y, to.radius - at.radius);
+	}
+
+	/**
+	 * How bright a ball is now: from its brightness when the move began to its
+	 * target’s, by how far through the move it is, leaning gray (see `GRAY_BIAS`).
+	 */
+	function brightness({ at, to, from, resting }: Shown): number {
+		if (resting || from.distance < SMALLEST_MOVE) return to.weight;
+		const progress = Math.min(1, Math.max(0, 1 - distance(at, to) / from.distance));
+		const eased = to.weight > from.weight ? progress ** GRAY_BIAS : 1 - (1 - progress) ** GRAY_BIAS;
+		return from.weight + (to.weight - from.weight) * eased;
 	}
 
 	/** Writes each ball’s place, size and fill to its element, where they changed, then the pointer’s tip. */
@@ -346,24 +374,25 @@
 		if (!look) return;
 		const { colors } = look;
 		for (const [key, ball] of shown) {
-			const parts = elements.get(key);
-			if (!parts) continue;
+			const element = elements.get(key);
+			if (!element) continue;
 			const { at } = ball;
-			// A spring can carry a ball past its target: never inside out, never brighter than full.
+			// A spring can carry a ball past its target: never inside out.
 			const radius = Math.max(0, at.radius);
-			const weight = Math.min(1, Math.max(0, at.weight));
+			const weight = brightness(ball);
 			const scale = ball.size > 0 ? radius / ball.size : 0;
 			const transform = `translate(${(at.x - ball.size).toFixed(1)}px, ${(at.y - ball.size).toFixed(1)}px) scale(${scale.toFixed(3)})`;
 			if (transform !== ball.transform) {
-				parts.element.style.transform = ball.transform = transform;
+				element.style.transform = ball.transform = transform;
 			}
 			const fill = FAINTEST + (1 - FAINTEST) * weight;
 			if (Math.abs(fill - ball.fill) >= FILL_STEP || (ball.resting && fill !== ball.fill)) {
 				ball.fill = fill;
-				parts.fill.style.opacity = String(fill);
-				// Its word goes in whichever label color stands out more from the fill as it looks now.
+				// Solid: the fill as it would look over the surface, so balls never show through each other.
 				const seen = blend(colors.word, colors.under, fill);
-				parts.element.classList.toggle(
+				element.style.backgroundColor = `rgb(${seen.map(Math.round).join(' ')})`;
+				// Its word goes in whichever label color stands out more from the fill as it looks now.
+				element.classList.toggle(
 					'bright',
 					contrast(colors.labelBright, seen) > contrast(colors.label, seen)
 				);
@@ -383,7 +412,7 @@
 				if (
 					radius > 0 &&
 					Math.hypot(pointer.x - ball.at.x, pointer.y - ball.at.y) < hit &&
-					(!pointed || ball.at.weight > pointed.at.weight)
+					(!pointed || ball.to.weight > pointed.to.weight)
 				) {
 					pointed = ball;
 				}
@@ -391,8 +420,8 @@
 		}
 		const word = pointed?.ball.word;
 		if (word !== pointedWord) {
-			if (pointedWord !== undefined) elements.get(pointedWord)?.element.classList.remove('pointed');
-			if (word !== undefined) elements.get(word)?.element.classList.add('pointed');
+			if (pointedWord !== undefined) elements.get(pointedWord)?.classList.remove('pointed');
+			if (word !== undefined) elements.get(word)?.classList.add('pointed');
 			pointedWord = word;
 		}
 		if (!pointed) {
@@ -431,10 +460,9 @@
 	/** Keeps track of each ball’s element while it’s in the page. */
 	function register(key: string) {
 		return (element: HTMLElement) => {
-			const fill = element.querySelector('.fill');
-			if (fill instanceof HTMLElement) elements.set(key, { element, fill });
+			elements.set(key, element);
 			return () => {
-				if (elements.get(key)?.element === element) elements.delete(key);
+				if (elements.get(key) === element) elements.delete(key);
 			};
 		};
 	}
@@ -451,7 +479,6 @@
 >
 	{#each items as ball (ball.word)}
 		<div class="ball" {@attach register(ball.word)}>
-			<div class="fill"></div>
 			<div class="text">
 				<span class="word">{ball.word}</span>
 				<span class="chance">{percent(ball.chance)}</span>
@@ -488,14 +515,6 @@
 
 	.ball:global(.bright) {
 		color: var(--color-guess-label-bright);
-	}
-
-	/* The fill fades with the ball’s chance; its text stays solid. */
-	.fill {
-		position: absolute;
-		inset: 0;
-		border-radius: inherit;
-		background: var(--color-guess-word);
 	}
 
 	.ball:global(.pointed) {
