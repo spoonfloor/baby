@@ -109,5 +109,7 @@
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */
 	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
 	--duration-guess-glide: 350ms; /* words in the next-word map glide to their new places */
-	--easing-guess-glide: cubic-bezier(0.4, 0.4, 0, 1);
+
+	/* On the back burner: cubic-bezier(0.4, 0.4, 0, 1) */
+	--easing-guess-glide: cubic-bezier(0.6, 0.1, 0.3, 0.9);
 }
