@@ -1,7 +1,8 @@
 <!--
 	The Graph: how Baby picked each word of a finished reply, one step at a time. The
 	map shows the odds Baby had at the step (see GuessMap); dots under it step
-	through the reply, as do the arrow keys. Each step can be gone to once it’s laid
+	through the reply, as do the arrow keys. The map runs under the controls to the
+	card’s edges, its balls resting in the room between them. Each step can be gone to once it’s laid
 	out (see graphLayout.svelte.ts), first to last. Opens under the reply it’s for.
 -->
 <script lang="ts">
@@ -25,6 +26,9 @@
 	}
 
 	let { steps, at, pointed, onstep, onpoint, onclose }: Props = $props();
+
+	/** The room between the controls, where the map fits its balls. */
+	let room: HTMLElement | undefined = $state();
 
 	const showing = $derived(pointed ?? at);
 	const last = $derived(steps.length - 1);
@@ -54,15 +58,18 @@
 
 <div class="panel">
 	<Surface>
+		{#if layout.graph}
+			<div class="drawing">
+				<GuessMap graph={layout.graph} places={layout.places} step={showing} {room} />
+			</div>
+		{/if}
 		<div class="controls">
 			<IconButton icon="close" label="Close" onclick={onclose} />
 		</div>
-		<div class="map">
-			{#if layout.graph}
-				<GuessMap graph={layout.graph} places={layout.places} step={showing} />
-			{/if}
+		<div class="room" bind:this={room}></div>
+		<div class="controls steps">
+			<StepDots {labels} ready={layout.ready} at={showing} onstep={goTo} {onpoint} />
 		</div>
-		<StepDots {labels} ready={layout.ready} at={showing} onstep={goTo} {onpoint} />
 	</Surface>
 </div>
 
@@ -73,21 +80,41 @@
 		block-size: var(--height-guess-panel);
 	}
 
-	/* The surface fills the panel: the close button on top, the dots under the map, the map in the rest. */
+	/* The surface fills the panel: the close button on top, the dots at the bottom, the room between. */
 	.panel > :global(.surface) {
+		position: relative;
 		display: flex;
 		flex: 1;
 		flex-direction: column;
 		gap: var(--space-tight);
 		min-block-size: 0;
+		overflow: hidden;
 	}
 
+	/* The map, edge to edge under everything, clipped only by the card’s own corners. */
+	.drawing {
+		position: absolute;
+		inset: 0;
+		isolation: isolate;
+	}
+
+	/* Above the map, passing the pointer through to it except on the controls themselves. */
 	.controls {
+		position: relative;
 		display: flex;
 		justify-content: flex-end;
+		pointer-events: none;
 	}
 
-	.map {
+	.steps {
+		justify-content: center;
+	}
+
+	.controls :global(button) {
+		pointer-events: auto;
+	}
+
+	.room {
 		flex: 1;
 		min-block-size: 0;
 	}

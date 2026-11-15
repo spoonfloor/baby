@@ -35,9 +35,14 @@
 		places: readonly ReadonlyMap<string, Point>[];
 		/** The step to show, once it’s laid out. */
 		step: number;
+		/**
+		 * The part of the map the cluster is fitted to, when that’s less than all of it:
+		 * balls rest inside it but can be seen anywhere in the map.
+		 */
+		room?: HTMLElement | undefined;
 	}
 
-	let { graph, places, step }: Props = $props();
+	let { graph, places, step, room }: Props = $props();
 
 	/** How near the surface’s color the least likely words get: never gone, so every ball can be found. */
 	const FAINTEST = 0.15;
@@ -108,6 +113,8 @@
 	let tipSize = { width: 0, height: 0 };
 	let width = 0;
 	let height = 0;
+	/** Where the cluster is fitted, in the map’s pixels: `room`, or the whole map. */
+	let fitBox = { x: 0, y: 0, width: 0, height: 0 };
 	/** The design tokens, read once per layout rather than every frame. */
 	let look: ReturnType<typeof tokens> | undefined;
 
@@ -179,16 +186,26 @@
 	});
 
 	$effect(() => {
+		const fitTo = room;
 		const observer = new ResizeObserver(() => {
 			width = map.clientWidth;
 			height = map.clientHeight;
+			const box = map.getBoundingClientRect();
+			const inner = fitTo?.getBoundingClientRect() ?? box;
+			fitBox = {
+				x: inner.left - box.left,
+				y: inner.top - box.top,
+				width: inner.width,
+				height: inner.height
+			};
 			if (drawnGraph && places[drawnStep]) void place(true);
 		});
 		observer.observe(map);
+		if (fitTo) observer.observe(fitTo);
 		return () => observer.disconnect();
 	});
 
-	/** Where every ball should be: its resting place, scaled to fill the map and centered in it. */
+	/** Where every ball should be: its resting place, scaled to fill the fitting box and centered in it. */
 	function targets(
 		balls: readonly Ball[],
 		rest: ReadonlyMap<string, Point>,
@@ -206,13 +223,13 @@
 			top = Math.min(top, at.y - ball.radius);
 			bottom = Math.max(bottom, at.y + ball.radius);
 		}
-		const room = {
-			width: Math.max(0, width - 2 * gap),
-			height: Math.max(0, height - 2 * gap)
+		const space = {
+			width: Math.max(0, fitBox.width - 2 * gap),
+			height: Math.max(0, fitBox.height - 2 * gap)
 		};
 		const scale =
 			right > left
-				? Math.min(MOST_ENLARGED, room.width / (right - left), room.height / (bottom - top))
+				? Math.min(MOST_ENLARGED, space.width / (right - left), space.height / (bottom - top))
 				: 1;
 		const middle = { x: (left + right) / 2, y: (top + bottom) / 2 };
 		return new Map(
@@ -221,8 +238,8 @@
 				return [
 					ball.word,
 					{
-						x: width / 2 + (at.x - middle.x) * scale,
-						y: height / 2 + (at.y - middle.y) * scale,
+						x: fitBox.x + fitBox.width / 2 + (at.x - middle.x) * scale,
+						y: fitBox.y + fitBox.height / 2 + (at.y - middle.y) * scale,
 						radius: ball.radius * scale,
 						weight: ball.lit ? 1 : ball.weight
 					}
