@@ -35,6 +35,8 @@ export interface Ball {
 	radius: number;
 	/** The word Baby picked here. */
 	lit: boolean;
+	/** Its largest weight at any step of the reply: how big it gets anywhere in it. */
+	peak: number;
 }
 
 /** Ball radii and the space between balls, in pixels at full size. */
@@ -96,7 +98,7 @@ export function toGraph(steps: readonly ReplyStep[], { min, max }: Sizes): Ball[
 	);
 	const words = graphWords(steps);
 
-	return odds.map((step, index) => {
+	const graph = odds.map((step, index) => {
 		const chances = new Map(step.map(({ word, chance }) => [word, chance]));
 		const top = step[0]?.chance ?? 0;
 		return [...words].map((word) => {
@@ -105,9 +107,16 @@ export function toGraph(steps: readonly ReplyStep[], { min, max }: Sizes): Ball[
 				top > 0 && chance > 0
 					? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / DECADES))
 					: 0;
-			return { word, chance, weight, radius: min + (max - min) * weight, lit: word === lit[index] };
+			const radius = min + (max - min) * weight;
+			return { word, chance, weight, radius, lit: word === lit[index], peak: 0 };
 		});
 	});
+	const peaks = new Map<string, number>();
+	for (const balls of graph) {
+		for (const { word, weight } of balls) peaks.set(word, Math.max(peaks.get(word) ?? 0, weight));
+	}
+	for (const balls of graph) for (const ball of balls) ball.peak = peaks.get(ball.word) ?? 0;
+	return graph;
 }
 
 /**
@@ -122,9 +131,10 @@ export function* layOut(
 ): Generator<Map<string, Point>> {
 	let places = new Map<string, Point>();
 	for (const balls of graph) {
-		// New balls spiral out from the middle likeliest first, so the likeliest start nearest it.
+		// New balls spiral out from the middle, the biggest anywhere in the reply first, so
+		// every word that matters at some step starts near it.
 		places = settle(
-			[...balls].sort((a, b) => b.chance - a.chance),
+			[...balls].sort((a, b) => b.peak - a.peak || b.chance - a.chance),
 			places,
 			gap
 		);
@@ -136,9 +146,15 @@ export function* layOut(
 const STEPS = 1500;
 /** Rounds of pushing overlapping balls apart, per step. */
 const SEPARATIONS = 3;
-/** Every ball’s pull toward the middle: a little for all, so none drift off, plus its chance. */
+/**
+ * Every ball’s pull toward the middle: a little for all, so none drift off, plus its
+ * chance here, plus a weaker pull for how big it gets anywhere in the reply (its
+ * peak), so words that matter at some step stay near the middle at every step and
+ * don’t have to cross the cluster when their turn comes.
+ */
 const PULL_BASE = 0.0006;
 const PULL_PER_CHANCE = 0.06;
+const PULL_PER_PEAK = 0.02;
 /** Damping: lively at first, so balls can shove past each other into place, then settling. */
 const DAMPING_LIVELY = 0.9;
 const DAMPING_SETTLING = 0.75;
@@ -187,7 +203,7 @@ export function settle(
 			vy: 0,
 			fromX: start.x,
 			fromY: start.y,
-			pull: PULL_BASE + ball.chance * PULL_PER_CHANCE
+			pull: PULL_BASE + ball.chance * PULL_PER_CHANCE + ball.peak * PULL_PER_PEAK
 		};
 	});
 

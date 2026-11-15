@@ -166,6 +166,32 @@ describe('layOut', () => {
 		expect([...layOut(graph, sizes.gap)]).toEqual(steps);
 	});
 
+	it('keeps a word that’s big at a later step near the middle from the start', () => {
+		// “late” is a long shot at the first step and the likeliest at the second.
+		const late = guesses(300).map(({ word, chance }) => ({
+			word: word === 'w250' ? 'late' : word,
+			chance
+		}));
+		const first = late;
+		const second = guesses(300, 'late');
+		const reply = toGraph(
+			[
+				{ guesses: first, picked: 'w0' },
+				{ guesses: second, picked: 'late' }
+			],
+			sizes
+		);
+		const [start] = layOut(reply, sizes.gap);
+		const away = (word: string) => {
+			const point = start?.get(word);
+			return point ? Math.hypot(point.x, point.y) : Infinity;
+		};
+		const neverBig = (reply[0] ?? []).filter(({ peak }) => peak === 0).map(({ word }) => word);
+
+		expect(neverBig.length).toBeGreaterThan(0);
+		expect(neverBig.every((word) => away(word) > away('late'))).toBe(true);
+	});
+
 	it('starts each step from where the one before it rested', () => {
 		const [first] = layOut(graph, sizes.gap);
 		const [again] = layOut([graph[0] ?? [], graph[0] ?? []], sizes.gap).drop(1);
