@@ -46,10 +46,13 @@
 	--color-action: var(--raw-gray-50); /* primary button fill */
 	--color-on-action: var(--raw-gray-950); /* primary button text */
 
-	/* Type: one family; hierarchy comes from weight, color and space, and a smaller size only for labels */
+	/* Type: one family for text; hierarchy comes from weight, color and space, and a smaller size only for labels */
 	--font-family: 'Inter Variable', system-ui, sans-serif;
 	--font-size-body: 1.0625rem;
 	--font-size-small: 0.875rem;
+
+	/* Words in the next-word map’s balls: narrow, so more of them fit; only weight 400 is loaded */
+	--font-family-condensed: 'IBM Plex Sans Condensed', var(--font-family);
 
 	/* Section labels and subtitles, e.g. the sources panel’s groups */
 	--font-size-label: var(--font-size-small);

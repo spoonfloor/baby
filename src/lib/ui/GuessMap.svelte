@@ -403,6 +403,7 @@
 		block-size: 100%;
 		min-block-size: 0;
 		overflow: hidden;
+		font-family: var(--font-family-condensed);
 		font-size: var(--font-size-label);
 		line-height: var(--line-height-tight);
 		touch-action: manipulation;
