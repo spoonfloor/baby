@@ -61,7 +61,6 @@
 	--line-height-tight: 1.15; /* lines stacked in a small space, e.g. a word and its chance in a ball */
 	--font-weight-body: 400;
 	--font-weight-strong: 600; /* titles */
-	--font-style-app-voice: italic; /* the app speaking, with --color-app-voice */
 	--measure: 60ch; /* longest line of running text */
 
 	/* Shape */
