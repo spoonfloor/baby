@@ -127,11 +127,10 @@
 	$effect(() => {
 		const latest = { steps, ended };
 		untrack(() => {
-			const { duration } = tokens();
+			const { sizes, duration } = tokens();
 			const now = performance.now();
 			const cut = now - lastChange < duration;
 			lastChange = now;
-			const { sizes } = tokens();
 			balls = toCluster(latest.steps, latest.ended, sizes);
 			places = settle(balls, places, sizes.gap);
 			void place(cut);

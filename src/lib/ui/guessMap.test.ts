@@ -56,6 +56,18 @@ describe('toCluster', () => {
 		).toEqual(['cake', 'i', 'w250', END].sort());
 	});
 
+	it('keeps a lit word at the edge of the cluster when a long shot makes room', () => {
+		const last = `w${CLUSTER_WORDS - 1}`;
+		const steps = [
+			{ guesses: guesses(300), picked: last },
+			{ guesses: guesses(300), picked: 'w250' }
+		];
+		const balls = toCluster(steps, false, sizes);
+
+		expect(balls).toHaveLength(CLUSTER_WORDS);
+		expect(balls.filter(({ lit }) => lit).map(({ word }) => word)).toEqual([last, 'w250']);
+	});
+
 	it('lights no end while the reply is still being said', () => {
 		const balls = toCluster([{ guesses: guesses(10) }], false, sizes);
 		expect(balls.some(({ lit }) => lit)).toBe(false);

@@ -75,12 +75,12 @@ export function toCluster(
 	const averaged = [...totals]
 		.map(([word, chance]) => ({ word, chance }))
 		.sort((a, b) => b.chance - a.chance);
-	const shown = averaged.slice(0, CLUSTER_WORDS);
-	const missing = averaged.filter(
-		({ word }) => lit.has(word) && !shown.some((guess) => guess.word === word)
+	// The reply’s own words first, then the likeliest of the rest in the room left.
+	const own = averaged.filter(({ word }) => lit.has(word));
+	const rest = averaged.filter(({ word }) => !lit.has(word));
+	const shown = [...own, ...rest.slice(0, Math.max(0, CLUSTER_WORDS - own.length))].sort(
+		(a, b) => b.chance - a.chance
 	);
-	shown.splice(shown.length - missing.length, missing.length, ...missing);
-	shown.sort((a, b) => b.chance - a.chance);
 	const top = averaged[0]?.chance ?? 0;
 	return shown.map(({ word, chance }) => {
 		const weight = top > 0 ? Math.sqrt(chance / top) : 0;
