@@ -108,6 +108,6 @@
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */
 	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
-	--spring-guess-response: 350ms; /* words in the Graph spring to their new places: one swing, undamped */
+	--spring-guess-response: 450ms; /* words in the Graph spring to their new places: one swing, undamped */
 	--spring-guess-damping: 0.8; /* 1 settles without overshooting; less overshoots a little first */
 }
