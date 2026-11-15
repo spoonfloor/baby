@@ -170,6 +170,7 @@
 											{at}
 											{pointed}
 											onstep={(step) => (at = step)}
+											onpoint={(step) => (pointed = step)}
 											onclose={() => inspect(undefined)}
 										/>
 									{/if}

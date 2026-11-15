@@ -250,6 +250,7 @@
 						at={demo.at}
 						pointed={demo.pointed}
 						onstep={(step) => (demo.at = step)}
+						onpoint={(step) => (demo.pointed = step)}
 						onclose={() => (demo.open = false)}
 					/>
 				{/snippet}

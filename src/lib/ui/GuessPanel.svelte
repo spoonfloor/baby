@@ -15,13 +15,14 @@
 		steps: readonly ReplyStep[];
 		/** The step the Graph is on. */
 		at: number;
-		/** A step being previewed (a word of the reply pointed at), shown in place of `at`. */
+		/** A step being previewed (a word or dot pointed at), shown in place of `at`. */
 		pointed?: number | undefined;
 		onstep: (step: number) => void;
+		onpoint: (step: number | undefined) => void;
 		onclose: () => void;
 	}
 
-	let { steps, at, pointed, onstep, onclose }: Props = $props();
+	let { steps, at, pointed, onstep, onpoint, onclose }: Props = $props();
 
 	const showing = $derived(pointed ?? at);
 	const last = $derived(steps.length - 1);
@@ -57,7 +58,7 @@
 				<GuessMap step={steps[showing]} ended={showing === last} />
 			{/if}
 		</div>
-		<StepDots {labels} at={showing} onstep={goTo} />
+		<StepDots {labels} at={showing} onstep={goTo} {onpoint} />
 	</Surface>
 </div>
 
