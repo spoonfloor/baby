@@ -4,8 +4,6 @@ import type { BabyEvent, BabyRequest, BabyResponse, BabyState, Reading, Turn } f
 export interface Baby {
 	/** Replies to `prompt`, said after `history` (the conversation so far, oldest first). */
 	reply(prompt: string, history?: readonly Turn[]): AsyncIterable<BabyEvent>;
-	/** The reply Baby would give to `prompt` picking its likeliest word every time, without replying. */
-	guess(prompt: string, history?: readonly Turn[]): AsyncIterable<BabyEvent>;
 	/** Reads, then practices on everything read so far. */
 	read(reading: Reading): AsyncIterable<BabyEvent>;
 	/** Forgets everything Baby has ever read, leaving a newborn that knows only its first word. */
@@ -70,8 +68,6 @@ export function createBaby(endpoint: Endpoint): Baby {
 	return {
 		reply: (prompt, history = []) =>
 			stream((id) => ({ type: 'reply', id, prompt, history: [...history] })),
-		guess: (prompt, history = []) =>
-			stream((id) => ({ type: 'guess', id, prompt, history: [...history] })),
 		read: (reading) => stream((id) => ({ type: 'read', id, reading })),
 		reset: () => stream((id) => ({ type: 'reset', id })),
 		subscribe(listener) {

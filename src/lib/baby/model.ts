@@ -152,7 +152,7 @@ export class Model {
 		// The script format: Baby sees `… [YOU] … [EOS] [BABY]` and continues from there.
 		const ids = this.#seen(prompt, history).map((word) => this.#vocabulary.id(word));
 		const context = ids.map((id) => this.#vocabulary.word(id));
-		const { picked, marker } = yield* this.#say(ids, (probabilities) => this.#pick(probabilities));
+		const { picked, marker } = yield* this.#say(ids);
 		const stop: ReplyTrace['stop'] =
 			marker === undefined ? 'limit' : marker === EOS ? 'eos' : 'turn';
 
@@ -165,31 +165,17 @@ export class Model {
 	}
 
 	/**
-	 * The reply Baby would give to `prompt` if it always picked its likeliest word,
-	 * reading the conversation exactly as `reply` does: the same `guesses` before each
-	 * word and the same `token`s, without saying anything.
-	 */
-	async *guess(prompt: string, history: readonly Turn[] = []): AsyncGenerator<BabyEvent> {
-		const ids = this.#seen(prompt, history).map((word) => this.#vocabulary.id(word));
-		yield* this.#say(ids, likeliest);
-		yield { type: 'done' };
-	}
-
-	/**
-	 * Says words after `ids`, adding each to them: the odds, then the word `pick`
-	 * chose from them, until it picks a marker (where Baby thinks the turn is over)
+	 * Says words after `ids`, adding each to them: the odds, then the word picked
+	 * from them, until it picks a marker (where Baby thinks the turn is over)
 	 * or reaches the longest reply.
 	 */
-	async *#say(
-		ids: number[],
-		pick: (probabilities: Float32Array) => number
-	): AsyncGenerator<BabyEvent, { picked: number; marker?: string }> {
+	async *#say(ids: number[]): AsyncGenerator<BabyEvent, { picked: number; marker?: string }> {
 		let picked = 0;
 		while (picked < MAX_REPLY_TOKENS) {
 			await this.#idle();
 			const probabilities = this.#transformer.predict(ids);
 			yield { type: 'guesses', guesses: this.#guesses(probabilities) };
-			const id = pick(probabilities);
+			const id = this.#pick(probabilities);
 			const word = this.#vocabulary.word(id);
 			if (isSpecial(word)) return { picked, marker: word };
 			ids.push(id);
@@ -250,15 +236,6 @@ export class Model {
 		if (picked === 0) return `Picked ${marker ?? EOS} first, so said nothing`;
 		return `Picked ${count(picked, 'word')}, each a guess at what comes next`;
 	}
-}
-
-/** The word Baby is likeliest to pick, [UNK] aside: the first of any tied for it. */
-function likeliest(probabilities: Float32Array): number {
-	let best = EOS_ID;
-	probabilities.forEach((p, id) => {
-		if (id !== UNK_ID && p > (probabilities[best] ?? 0)) best = id;
-	});
-	return best;
 }
 
 /** How much of Baby’s guesses go to things it can say: everything but [UNK]. */

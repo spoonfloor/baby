@@ -1,5 +1,6 @@
 <!-- Every UI part in every state, on one page, for design review. -->
 <script lang="ts">
+	import type { ReplyStep } from '#lib/baby/index.ts';
 	import {
 		describeKnowledge,
 		describeNewWords,
@@ -51,7 +52,7 @@
 	}
 	const cake = ['i', 'want', 'to', 'eat', 'a', 'piece', 'of', 'cake', '.'];
 	const alternatives = ['really', 'just', 'extraordinarily', 'hangover', 'so'];
-	const replySteps = [
+	const replySteps: ReplyStep[] = [
 		...cake.map((word, index) => ({
 			guesses: odds([word, ...alternatives.slice(index % 3)]),
 			// One word picked against the odds, as a reply sometimes does.
@@ -59,9 +60,15 @@
 		})),
 		{ guesses: odds([]) }
 	];
-	/** The same reply partway through being said: the last word still being picked. */
-	const partSteps = [...replySteps.slice(0, 3), { guesses: odds(['eat', 'have', 'go']) }];
-	let guessesExpanded = $state(false);
+	const replyWords = replySteps.flatMap(({ picked }) => picked ?? []);
+	/** The Graph under a reply: closed, then open at each kind of step. */
+	const graphDemos: { title: string; open: boolean; at: number; pointed?: number | undefined }[] =
+		$state([
+			{ title: 'Closed', open: false, at: 0 },
+			{ title: 'Open, at the first word', open: true, at: 0 },
+			{ title: 'At a word picked against the odds', open: true, at: 5 },
+			{ title: 'Where Baby ended the reply', open: true, at: replySteps.length - 1 }
+		]);
 
 	const greetings = chatbot101.find(({ id }) => id === 'greetings');
 	if (!greetings) throw new Error('Chatbot 101 has no Greetings');
@@ -213,60 +220,44 @@
 			<Button>Cancel</Button>
 			<Button primary>Read</Button>
 			<Button inline icon="personEdit">Teach a reply</Button>
-			<Button inline app>What will Baby say next?</Button>
 		</div>
 	</section>
 
 	<section>
 		<h2>The Graph</h2>
-		<h3>Playing</h3>
-		<GuessPanel steps={replySteps} ended expanded={false} ontoggleexpanded={noop} onclose={noop} />
-		<h3>First word</h3>
-		<GuessPanel
-			steps={replySteps}
-			ended
-			expanded={false}
-			start={0}
-			ontoggleexpanded={noop}
-			onclose={noop}
-		/>
-		<h3>A word against the odds, stepped to</h3>
-		<GuessPanel
-			steps={replySteps}
-			ended
-			expanded={false}
-			start={5}
-			ontoggleexpanded={noop}
-			onclose={noop}
-		/>
-		<h3>Ended</h3>
-		<GuessPanel
-			steps={replySteps}
-			ended
-			expanded={false}
-			start={replySteps.length - 1}
-			ontoggleexpanded={noop}
-			onclose={noop}
-		/>
-		<h3>Being said</h3>
-		<GuessPanel
-			steps={partSteps}
-			ended={false}
-			expanded={false}
-			ontoggleexpanded={noop}
-			onclose={noop}
-		/>
-		<h3>No reply yet</h3>
-		<GuessPanel steps={[]} ended={false} expanded={false} ontoggleexpanded={noop} onclose={noop} />
-		<div class="tall">
-			<GuessPanel
-				steps={replySteps}
-				ended
-				expanded={guessesExpanded}
-				ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
-				onclose={noop}
-			/>
-		</div>
+		{#each graphDemos as demo, index (index)}
+			<h3>{demo.title}</h3>
+			<BabyMessage
+				status="Picked 9 words, each a guess at what comes next"
+				words={replyWords}
+				pending={false}
+				inspect={{
+					open: demo.open,
+					word:
+						demo.open && replySteps[demo.pointed ?? demo.at]?.picked !== undefined
+							? (demo.pointed ?? demo.at)
+							: undefined,
+					ontoggle: () => {
+						demo.open = !demo.open;
+						demo.at = 0;
+					},
+					onpoint: (word) => (demo.pointed = word),
+					onstep: (word) => (demo.at = word)
+				}}
+				actions={teachLink}
+			>
+				{#snippet graph()}
+					<GuessPanel
+						steps={replySteps}
+						at={demo.at}
+						pointed={demo.pointed}
+						onstep={(step) => (demo.at = step)}
+						onpoint={(step) => (demo.pointed = step)}
+						onclose={() => (demo.open = false)}
+					/>
+				{/snippet}
+			</BabyMessage>
+		{/each}
 	</section>
 
 	<section>
@@ -279,40 +270,40 @@
 
 	<section>
 		<h2>Baby message</h2>
-		<BabyMessage status="Recognized 0 of 3 words" text="" pending />
-		<BabyMessage status="Looked for words to say but found none" text="" pending={false} />
+		<BabyMessage status="Recognized 0 of 3 words" words={[]} pending />
+		<BabyMessage status="Looked for words to say but found none" words={[]} pending={false} />
 		<BabyMessage
 			status="Looked for words to say but found none"
-			text=""
+			words={[]}
 			pending={false}
 			actions={teachLink}
 		/>
 		<BabyMessage
 			status="Picked 3 words, each a guess at what comes next"
-			text="Thank you ?"
+			words={['thank', 'you', '?']}
 			pending={false}
 			actions={teachLink}
 		/>
 		<BabyMessage
 			status="Picked 29 words, each a guess at what comes next"
-			text={long}
+			words={long.toLowerCase().split(' ')}
 			pending={false}
 		/>
 		<BabyMessage
 			status="Practicing “Greetings”"
-			text=""
+			words={[]}
 			pending
 			progress={{ done: 0, total: 800 }}
 		/>
 		<BabyMessage
 			status="Practicing “Greetings” · step 300 of 800 · about 25 seconds left"
-			text=""
+			words={[]}
 			pending
 			progress={{ done: 300, total: 800 }}
 		/>
 		<BabyMessage
 			status="Read “Greetings”: 256 words · 28 new · loss 1.24 → 0.29 in 450 of 800 steps"
-			text=""
+			words={[]}
 			pending={false}
 		/>
 	</section>
@@ -383,13 +374,6 @@
 
 	.end {
 		justify-content: flex-end;
-	}
-
-	/* Room for an expanded next-word map, which fills the space it’s given. */
-	.tall {
-		display: flex;
-		flex-direction: column;
-		block-size: var(--height-panel-max);
 	}
 
 	/* Each panel hangs over what's below it when open, so give them room side by side. */

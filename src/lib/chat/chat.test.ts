@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace, Turn } from '#lib/baby/index.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
+import { CLUSTER_WORDS } from '#lib/ui/guessMap.ts';
 import { Chat } from './chat.svelte.ts';
 
 const primer: Primer = { id: 'abc', title: 'ABC', documents: [['a', 'b', 'c', '[EOS]']] };
@@ -22,8 +23,6 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 	let state: BabyState = { words, sources };
 	/** Each reply request: the message, and the conversation before it. */
 	const asked: [prompt: string, history: readonly Turn[]][] = [];
-	/** Each guess request, the same way. */
-	const guessed: [prompt: string, history: readonly Turn[]][] = [];
 	async function* respond(source?: string): AsyncGenerator<BabyEvent> {
 		yield* events;
 		await released;
@@ -38,13 +37,6 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 			asked.push([prompt, history]);
 			return respond();
 		},
-		async *guess(prompt, history = []) {
-			guessed.push([prompt, history]);
-			yield { type: 'guesses', guesses: [{ word: 'hi', chance: 1 }] };
-			yield { type: 'token', text: 'hi' };
-			yield { type: 'guesses', guesses: [{ word: '[EOS]', chance: 1 }] };
-			yield { type: 'done' };
-		},
 		read: ({ source }) => respond(source),
 		async *reset() {
 			state = { words: [], sources: [] };
@@ -57,7 +49,7 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 			return () => listeners.delete(listener);
 		}
 	};
-	return { baby, release, asked, guessed };
+	return { baby, release, asked };
 }
 
 /** A Baby whose every request fails partway, after one status. */
@@ -68,7 +60,6 @@ function failingBaby(): Baby {
 	}
 	return {
 		reply: respond,
-		guess: respond,
 		read: respond,
 		reset: respond,
 		subscribe: () => () => {}
@@ -100,7 +91,7 @@ describe('Chat', () => {
 		]);
 	});
 
-	it('follows Baby’s reply word by word: the odds at each word and the word picked', async () => {
+	it('keeps a finished reply word by word on its message: the odds at each word and the word picked', async () => {
 		const odds = (word: string) => [{ word, chance: 1 }];
 		const { baby, release } = fakeBaby(
 			[
@@ -112,16 +103,40 @@ describe('Chat', () => {
 		);
 		const chat = new Chat(baby);
 
+		const sending = chat.send('hello');
+		expect(chat.messages.at(-1)).not.toHaveProperty('steps');
+		release();
+		await sending;
+		expect(chat.messages.at(-1)).toMatchObject({
+			steps: [{ guesses: odds('moon'), picked: 'moon' }, { guesses: odds('[EOS]') }]
+		});
+	});
+
+	it('keeps only the odds the Graph shows: the likeliest words, the word picked, and every marker', async () => {
+		const tail = Array.from({ length: CLUSTER_WORDS + 50 }, (_, index) => ({
+			word: `w${index}`,
+			chance: 1 / (index + 2)
+		}));
+		const guesses = [...tail, { word: '[YOU]', chance: 1e-9 }];
+		const picked = `w${CLUSTER_WORDS + 40}`;
+		const { baby, release } = fakeBaby(
+			[
+				{ type: 'guesses', guesses },
+				{ type: 'token', text: picked }
+			],
+			[picked]
+		);
+		const chat = new Chat(baby);
 		release();
 		await chat.send('hello');
-		expect(chat.replySteps).toEqual([
-			{ guesses: odds('moon'), picked: 'moon' },
-			{ guesses: odds('[EOS]') }
-		]);
 
-		const again = chat.send('hello again');
-		expect(chat.replySteps).toBeUndefined();
-		await again;
+		const message = chat.messages.at(-1);
+		const kept = message?.role === 'baby' ? (message.steps?.[0]?.guesses ?? []) : [];
+		expect(kept).toHaveLength(CLUSTER_WORDS + 2);
+		expect(kept.map(({ word }) => word)).toEqual(
+			expect.arrayContaining(['w0', `w${CLUSTER_WORDS - 1}`, picked, '[YOU]'])
+		);
+		expect(kept.map(({ word }) => word)).not.toContain(`w${CLUSTER_WORDS}`);
 	});
 
 	it('sends Baby the conversation before each message: your turns and its replies, not the app’s', async () => {
@@ -142,28 +157,6 @@ describe('Chat', () => {
 				]
 			]
 		]);
-	});
-
-	it('asks Baby’s likeliest reply, word by word, after the conversation so far, without saying anything', async () => {
-		const { baby, release, guessed } = fakeBaby([{ type: 'token', text: 'hi' }], trained);
-		release();
-		const chat = new Chat(baby);
-		await chat.send('Hello');
-
-		expect(await chat.guess('how are')).toEqual([
-			{ guesses: [{ word: 'hi', chance: 1 }], picked: 'hi' },
-			{ guesses: [{ word: '[EOS]', chance: 1 }] }
-		]);
-		expect(guessed).toEqual([
-			[
-				'how are',
-				[
-					{ speaker: 'you', text: 'Hello' },
-					{ speaker: 'baby', text: 'hi' }
-				]
-			]
-		]);
-		expect(chat.messages).toHaveLength(2);
 	});
 
 	it('keeps a reply’s trace on its message, and marks which request each message was', async () => {

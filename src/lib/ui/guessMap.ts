@@ -43,10 +43,10 @@ export interface Sizes {
 /**
  * How many factors of ten less likely than the likeliest word a word can be and still
  * be bigger than the smallest ball. Sizes follow chance on a log scale, so the words
- * Baby could have said but likely won’t stay big enough to read. Compact, the map has
- * room for fewer of them, so its curve is steeper and the likeliest stay readable.
+ * Baby could have said but likely won’t stay big enough to read; steep enough that
+ * the likeliest stay readable in the map’s small space.
  */
-export const DECADES = { compact: 2, expanded: 5 } as const;
+export const DECADES = 2;
 
 /** How much of the cluster’s round outline its packed balls fill. */
 const PACKING = 0.7;
@@ -65,13 +65,12 @@ export function foldEnd(guesses: readonly Guess[]): Guess[] {
  * among them and lit; at a step with nothing picked where the reply has `ended`,
  * Baby picked `END`. Balls are sized against the likeliest word, which is always
  * full size; `END` is no word, so it never shrinks them, and is at most full size
- * itself. Sizes follow chance on a log scale spanning `decades` (see `DECADES`).
+ * itself. Sizes follow chance on a log scale spanning `DECADES`.
  */
 export function toCluster(
 	{ guesses, picked }: ReplyStep,
 	ended: boolean,
-	{ min, max }: Sizes,
-	decades: number
+	{ min, max }: Sizes
 ): Ball[] {
 	const lit = picked ?? (ended ? END : undefined);
 	const all = foldEnd(guesses);
@@ -82,7 +81,7 @@ export function toCluster(
 	const top = all.find(({ word }) => word !== END)?.chance ?? all[0]?.chance ?? 0;
 	return shown.map(({ word, chance }) => {
 		const weight =
-			top > 0 && chance > 0 ? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / decades)) : 0;
+			top > 0 && chance > 0 ? Math.min(1, Math.max(0, 1 + Math.log10(chance / top) / DECADES)) : 0;
 		return {
 			word,
 			chance,

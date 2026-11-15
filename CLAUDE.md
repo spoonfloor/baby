@@ -50,7 +50,7 @@ Status lines are always a single fragment with no final period (“Looked for wo
 
 ## Names
 
-- **The Graph**: the “What will Baby say next?” next-word map (`GuessPanel.svelte`, `guessMap.ts`). Use this name in conversation, commits, and the log.
+- **The Graph**: the map of how Baby picked each word of a reply, opened from the chevron after it (`GuessPanel.svelte`, `guessMap.ts`). Use this name in conversation, commits, and the log.
 
 ## Workflow
 

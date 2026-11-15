@@ -112,7 +112,7 @@ describe('Model', () => {
 	it('guesses at each word of its reply: every word it can say, [UNK] left out', async () => {
 		const model = newModel();
 		await collect(model.read(hi));
-		const events = await collect(model.guess('Hi Baby!'));
+		const events = await collect(model.reply('Hi Baby!'));
 
 		const guessed = events.find((event) => event.type === 'guesses')?.guesses ?? [];
 		const likeliest = guessed.reduce((best, guess) => (guess.chance > best.chance ? guess : best));
@@ -124,23 +124,6 @@ describe('Model', () => {
 		expect(total).toBeCloseTo(1, 5);
 		expect(likeliest.word).toBe('hello');
 		expect(events.at(-1)).toEqual({ type: 'done' });
-	});
-
-	it('guesses its likeliest reply: its likeliest word every time, odds before each', async () => {
-		const model = newModel();
-		await collect(model.read(hi));
-		const events = await collect(model.guess('Hi Baby!'));
-
-		expect(events.map((event) => (event.type === 'token' ? event.text : event.type))).toEqual([
-			'guesses',
-			'hello',
-			'guesses',
-			' there',
-			'guesses',
-			' !',
-			'guesses',
-			'done'
-		]);
 	});
 
 	it('sends the odds before each word of a reply, the last for the pick that ended it', async () => {

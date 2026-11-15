@@ -99,16 +99,16 @@
 	--height-dialog-max: 80dvh; /* a modal scrolls inside, up to this */
 	--width-dialog-narrow: 400px; /* a confirmation: a title, a sentence or two, actions */
 	--width-dialog-wide: var(--width-content); /* a dialog showing content, e.g. a source preview */
-	--height-guess-panel: 40dvh; /* the next-word map, open above the composer */
+	--height-guess-panel: 40dvh; /* the Graph, open under a reply */
 	--size-guess-min: 4px; /* radius of the least likely word in the next-word map */
 	--size-guess-max: 38px; /* radius of the likeliest word */
 	--size-guess-gap: 2px; /* between neighboring words in the map */
+	--size-step-dot: 6px; /* a dot per step, e.g. a word of a reply in the Graph */
+	--size-step-dot-target: 16px; /* the area that answers a click or point on a dot */
 
 	/* Motion: only for animations that have been explicitly approved */
 	--duration-spinner-cycle: 500ms; /* 4 frames → 8 fps */
 	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
 	--duration-guess-glide: 400ms; /* words in the next-word map glide to their new places */
 	--easing-guess-glide: cubic-bezier(0.4, 0.4, 0, 1);
-	--duration-guess-step: 1000ms; /* each word of a reply the Graph plays back, at most */
-	--duration-guess-playback: 10000ms; /* a whole reply played back, at most: long replies step faster */
 }

@@ -10,7 +10,7 @@ import type { Speaker } from './script.ts';
 
 /**
  * One step of a request, in order: any number of `status`/`progress`/`token`, a
- * reply's one `trace`, then one `done`. A reply or a guess sends `guesses` before
+ * reply's one `trace`, then one `done`. A reply sends `guesses` before
  * each word it picks, the last of them for the pick that ended it (unless it ran to
  * the longest reply).
  */
@@ -88,8 +88,6 @@ export interface Reading {
 export type BabyRequest =
 	/** `history` is the conversation before `prompt`, oldest first; Baby sees what fits of it. */
 	| { type: 'reply'; id: string; prompt: string; history: Turn[] }
-	/** The reply Baby would give to `prompt` picking its likeliest word every time, without replying. */
-	| { type: 'guess'; id: string; prompt: string; history: Turn[] }
 	| { type: 'read'; id: string; reading: Reading }
 	/** Forgets everything, saved Baby included, leaving a newborn that knows only its first word. */
 	| { type: 'reset'; id: string };

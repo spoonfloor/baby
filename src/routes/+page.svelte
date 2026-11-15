@@ -1,14 +1,13 @@
 <script lang="ts">
-	import { spawnBaby, type ReplyStep } from '#lib/baby/index.ts';
+	import { untrack } from 'svelte';
+	import { spawnBaby } from '#lib/baby/index.ts';
 	import {
 		describeKnowledge,
 		describeNewWords,
 		describeReading,
 		readingStats
 	} from '#lib/baby/reading.ts';
-	import { typeset } from '#lib/baby/typeset.ts';
 	import { Chat } from '#lib/chat/chat.svelte.ts';
-	import { finishedPart } from '#lib/chat/draft.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { transcript } from '#lib/chat/transcript.ts';
 	import { groups, type Primer } from '#lib/library/index.ts';
@@ -55,39 +54,29 @@
 
 	/** What’s in the composer, unsent. */
 	let draft = $state('');
-	/** The map of Baby’s guesses at its next word is open, and whether it fills the conversation’s place. */
-	let showingGuesses = $state(false);
-	let guessesExpanded = $state(false);
-	const expanded = $derived(showingGuesses && guessesExpanded);
-	/**
-	 * The reply Baby would likeliest give to the finished words of the draft, word by
-	 * word; with none finished, its reply to an empty message. Raw: replaced whole.
-	 */
-	let draftSteps: ReplyStep[] | undefined = $state.raw();
-	/**
-	 * The map follows Baby’s reply as it’s said, and keeps where it ended until you
-	 * type again; otherwise it shows what Baby would likeliest say if the draft were sent.
-	 */
-	const followingReply = $derived(chat.replying || (chat.replySteps !== undefined && draft === ''));
-	/** Before a reply’s first guesses arrive, the map keeps the draft’s. */
-	const steps = $derived((followingReply ? chat.replySteps : undefined) ?? draftSteps ?? []);
-	const replyEnded = $derived(!(followingReply && chat.replying));
 
-	// Ask again whenever a word of the draft is finished, the conversation moves on
-	// (`chat.guess` reads it), or Baby has read something (its state changes).
+	/** The reply the Graph is open under, if any: one at a time. */
+	let inspecting: string | undefined = $state();
+	/** The step the Graph is on, and the one being previewed (a word or dot pointed at). */
+	let at = $state(0);
+	let pointed: number | undefined = $state();
+	/** Baby’s latest finished reply that the Graph can look into. */
+	const latestReply = $derived(
+		chat.messages.findLast(
+			(message) => message.role === 'baby' && !message.pending && message.steps !== undefined
+		)?.id
+	);
+
+	function inspect(id: string | undefined) {
+		inspecting = id;
+		at = 0;
+		pointed = undefined;
+	}
+
+	// While the Graph is open, a new reply takes it over, from its first word.
 	$effect(() => {
-		if (!showingGuesses || followingReply) return;
-		const prompt = finishedPart(draft);
-		void chat.knowledge;
-		let current = true;
-		chat.guess(prompt).then(
-			(latest) => {
-				if (current) draftSteps = latest;
-			},
-			// A debugging aid: the map just keeps its last guesses.
-			(error) => console.error('Couldn’t get Baby’s guesses', error)
-		);
-		return () => (current = false);
+		const latest = latestReply;
+		if (untrack(() => inspecting) !== undefined && latest !== undefined) inspect(latest);
 	});
 
 	function read(primer: Primer) {
@@ -130,7 +119,7 @@
 	<Button inline icon="personEdit" onclick={startTeaching}>Teach a reply</Button>
 {/snippet}
 
-<div class={['page', { expanded }]}>
+<div class="page">
 	<header class="toolbar">
 		<SourcesPanel
 			summary={describeKnowledge(known.size)}
@@ -142,7 +131,7 @@
 
 	<!-- The transcript and the composer both grow (a reply streaming, a draft wrapping), so follow them together. -->
 	<main class={['chat', { empty }]} {@attach bottom.attachment}>
-		{#if !empty && !expanded}
+		{#if !empty}
 			<ol class="transcript">
 				{#each chat.messages as message (message.id)}
 					<li>
@@ -154,13 +143,41 @@
 									: `Your reply to “${message.replyTo}”`}
 							/>
 						{:else if message.role === 'baby'}
+							{@const steps = message.steps}
+							{@const open = inspecting === message.id}
 							<BabyMessage
-								text={typeset(message.text.split(' '))}
+								words={message.text ? message.text.split(' ') : []}
 								status={message.status}
 								pending={message.pending}
 								progress={message.progress}
+								inspect={steps && {
+									open,
+									word:
+										open && steps[pointed ?? at]?.picked !== undefined
+											? (pointed ?? at)
+											: undefined,
+									ontoggle: () => inspect(open ? undefined : message.id),
+									onpoint: (word) => (pointed = word),
+									onstep: (word) => {
+										at = word;
+										pointed = undefined;
+									}
+								}}
 								actions={offersTeaching(message.id) ? teachLink : undefined}
-							/>
+							>
+								{#snippet graph()}
+									{#if steps}
+										<GuessPanel
+											{steps}
+											{at}
+											{pointed}
+											onstep={(step) => (at = step)}
+											onpoint={(step) => (pointed = step)}
+											onclose={() => inspect(undefined)}
+										/>
+									{/if}
+								{/snippet}
+							</BabyMessage>
 						{:else}
 							<AppMessage
 								text={noticeText(message.notice, pointerVerb())}
@@ -173,16 +190,7 @@
 		{/if}
 
 		<!-- One composer for both states, so focus and draft text survive the first send. -->
-		<div class={['composer', { expanded }]}>
-			{#if showingGuesses}
-				<GuessPanel
-					{steps}
-					ended={replyEnded}
-					expanded={guessesExpanded}
-					ontoggleexpanded={() => (guessesExpanded = !guessesExpanded)}
-					onclose={() => (showingGuesses = false)}
-				/>
-			{/if}
+		<div class="composer">
 			<Composer
 				bind:this={composer}
 				bind:value={draft}
@@ -215,11 +223,6 @@
 					/>
 				{/snippet}
 			</Composer>
-			<div class="offer">
-				<Button inline app onclick={() => (showingGuesses = !showingGuesses)}>
-					{showingGuesses ? 'Hide what Baby will say next' : 'What will Baby say next?'}
-				</Button>
-			</div>
 		</div>
 	</main>
 </div>
@@ -246,11 +249,6 @@
 		display: flex;
 		flex-direction: column;
 		min-height: 100dvh;
-	}
-
-	/* The map of Baby’s guesses takes the conversation’s place: everything fits the screen. */
-	.page.expanded {
-		height: 100dvh;
 	}
 
 	/* Pinned to the top as the composer is to the bottom, so messages scroll beneath it. */
@@ -280,11 +278,6 @@
 		justify-content: center;
 	}
 
-	.page.expanded .chat {
-		min-height: 0;
-		padding-block-start: var(--space-gutter);
-	}
-
 	.transcript {
 		display: flex;
 		flex: 1;
@@ -303,15 +296,5 @@
 		gap: var(--space-tight);
 		padding-block-end: max(var(--space-gutter), env(safe-area-inset-bottom));
 		background: var(--color-bg);
-	}
-
-	.composer.expanded {
-		flex: 1;
-		min-height: 0;
-	}
-
-	/* Lined up with the text in the composer above it. */
-	.offer {
-		padding-inline: var(--space-surface-inline);
 	}
 </style>

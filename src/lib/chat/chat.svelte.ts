@@ -8,6 +8,8 @@ import type {
 	Turn
 } from '#lib/baby/index.ts';
 import { turnTokens } from '#lib/baby/script.ts';
+import { isSpecial } from '#lib/baby/vocabulary.ts';
+import { CLUSTER_WORDS } from '#lib/ui/guessMap.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
 import { nudge, type Notice } from './notices.ts';
@@ -33,6 +35,11 @@ export type BabyMessage = {
 	progress?: { done: number; total: number };
 	/** How a finished reply came about; only replies have one. */
 	trace?: ReplyTrace;
+	/**
+	 * A finished reply word by word, for the Graph: the odds at each word (only as
+	 * many as it shows, see `kept`) and the word picked.
+	 */
+	steps?: ReplyStep[];
 };
 export type AppMessage = { id: string; role: 'app'; notice: Notice };
 export type Message = UserMessage | BabyMessage | AppMessage;
@@ -71,11 +78,6 @@ export class Chat {
 	});
 	/** The message the user is teaching Baby a reply to; their next message is that reply. */
 	teaching: string | undefined = $state();
-	/**
-	 * Baby’s latest reply, word by word as it picks them: the odds at each word and
-	 * the word picked. Raw: replaced whole at every step.
-	 */
-	replySteps: ReplyStep[] | undefined = $state.raw();
 
 	#baby: Baby;
 
@@ -87,7 +89,6 @@ export class Chat {
 	async send(text: string) {
 		if (this.replying) throw new Error('Baby is already replying');
 		this.replying = true;
-		this.replySteps = undefined;
 		const history = this.#history();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
@@ -97,19 +98,6 @@ export class Chat {
 		if (!reply) return;
 		const notice = this.#noticeAfterReply(reply);
 		if (notice) this.messages.push({ id: crypto.randomUUID(), role: 'app', notice });
-	}
-
-	/**
-	 * The reply Baby would give if `prompt` were sent now, after the conversation so
-	 * far, picking its likeliest word every time. Reads the conversation before its
-	 * first await, so an effect calling this reruns when the conversation changes.
-	 */
-	async guess(prompt: string): Promise<ReplyStep[]> {
-		let steps: ReplyStep[] = [];
-		for await (const event of this.#baby.guess(prompt, this.#history())) {
-			steps = step(steps, event);
-		}
-		return steps;
 	}
 
 	async read(primer: Primer) {
@@ -154,7 +142,6 @@ export class Chat {
 			for await (const event of this.#baby.reset()) if (event.type === 'done') break;
 			this.messages = [];
 			this.teaching = undefined;
-			this.replySteps = undefined;
 		} catch (error) {
 			console.error(error);
 			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
@@ -221,6 +208,8 @@ export class Chat {
 			pending: true
 		});
 		this.messages.push(message);
+		// Kept off the message until the reply is finished: no one looks at them sooner.
+		let steps: ReplyStep[] = [];
 
 		try {
 			for await (const event of events) {
@@ -233,15 +222,16 @@ export class Chat {
 						break;
 					case 'token':
 						message.text += event.text;
-						if (request === 'reply') this.replySteps = step(this.replySteps ?? [], event);
+						steps = step(steps, event);
 						break;
 					case 'guesses':
-						this.replySteps = step(this.replySteps ?? [], event);
+						steps = step(steps, event);
 						break;
 					case 'trace':
 						message.trace = event.trace;
 						break;
 					case 'done':
+						if (steps.length > 0) message.steps = steps.map(kept);
 						message.pending = false;
 						break;
 				}
@@ -264,6 +254,23 @@ function step(steps: ReplyStep[], event: BabyEvent): ReplyStep[] {
 		return [...steps.slice(0, -1), { ...latest, picked: event.text.trim() }];
 	}
 	return steps;
+}
+
+/**
+ * A step with only the odds the Graph can show: the likeliest `CLUSTER_WORDS`
+ * words, the word picked, and every marker, which the Graph adds up into one.
+ */
+function kept({ guesses, picked }: ReplyStep): ReplyStep {
+	const words = guesses.filter(({ word }) => !isSpecial(word) && word !== picked);
+	const likeliest = new Set(
+		words
+			.sort((a, b) => b.chance - a.chance)
+			.slice(0, CLUSTER_WORDS)
+			.map(({ word }) => word)
+	);
+	const keep = ({ word }: { word: string }) =>
+		likeliest.has(word) || isSpecial(word) || word === picked;
+	return { guesses: guesses.filter(keep), ...(picked === undefined ? {} : { picked }) };
 }
 
 /** Whether more than half the words of a message were ones Baby had never read. */
