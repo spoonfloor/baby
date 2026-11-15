@@ -48,6 +48,10 @@ Three voices, kept visibly distinct: the user (bubble), Baby (status line + plai
 
 Status lines are always a single fragment with no final period (“Looked for words to say but found none”), never two sentences.
 
+## Names
+
+- **The Graph**: the “What will Baby say next?” next-word map (`GuessPanel.svelte`, `guessMap.ts`). Use this name in conversation, commits, and the log.
+
 ## Workflow
 
 - `npm run dev`: dev server. `/kitchen-sink` is the design-review page; add new components and states there.
