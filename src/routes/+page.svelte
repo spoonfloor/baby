@@ -61,7 +61,7 @@
 	const expanded = $derived(showingGuesses && guessesExpanded);
 	/**
 	 * The reply Baby would likeliest give to the finished words of the draft, word by
-	 * word; none before the first word is finished. Raw: replaced whole.
+	 * word; with none finished, its reply to an empty message. Raw: replaced whole.
 	 */
 	let draftSteps: ReplyStep[] | undefined = $state.raw();
 	/**
@@ -80,10 +80,6 @@
 		if (!showingGuesses || followingReply) return;
 		const prompt = finishedPart(draft);
 		void chat.knowledge;
-		if (prompt === '') {
-			draftSteps = undefined;
-			return;
-		}
 		let current = true;
 		chat.guess(prompt).then(
 			(latest) => {
