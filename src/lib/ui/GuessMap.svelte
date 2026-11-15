@@ -4,9 +4,9 @@
 	the middle; the word it picked lit (see guessMap.ts). Each ball shows
 	its word and chance if they fit, else its word, hyphenated as a last resort, else
 	nothing; a lit word always shows, just under its ball if it must. When the step
-	changes, each ball glides straight to its new place, passing through the others,
-	so the eye can follow it; changes that come faster than a glide cut straight to
-	their places instead. Approved animation (see APPROVED_ANIMATIONS in
+	changes, each ball springs to its new place, passing through the others, so the
+	eye can follow it; a change before it gets there bends its path toward the new
+	place, keeping its speed. Approved animation (see APPROVED_ANIMATIONS in
 	stylelint.config.js). Point at a ball (or tap it) to see its word and chance.
 -->
 <script lang="ts">
@@ -16,12 +16,14 @@
 		blend,
 		contrast,
 		cssTime,
-		cubicBezier,
 		settle,
+		spring,
+		springStep,
 		toCluster,
 		type Ball,
 		type Point,
-		type Rgb
+		type Rgb,
+		type Spring
 	} from './guessMap.ts';
 
 	interface Props {
@@ -49,7 +51,9 @@
 	}
 	interface Shown {
 		ball: Ball;
-		from: Frame;
+		/** Where it is now, and how fast each part is changing, per second. */
+		at: Frame;
+		velocity: Frame;
 		to: Frame;
 		/** The radius its element is laid out at; other sizes scale it. */
 		size: number;
@@ -70,10 +74,9 @@
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- read only by the draw loop
 	let shown = new Map<string, Shown>();
 	let balls: Ball[] = [];
-	let glideStart = 0;
-	let gliding = false;
-	/** When the step last changed: a change sooner than a glide after it cuts instead. */
-	let lastChange = -Infinity;
+	/** Balls are moving, and when the last frame was drawn. */
+	let moving = false;
+	let lastFrame = 0;
 	/** Counts layouts, so one that a newer one overtook while the page caught up stops. */
 	let generation = 0;
 	let pointer: Point | undefined;
@@ -108,10 +111,13 @@
 				max: length('--size-guess-max'),
 				gap: length('--size-guess-gap')
 			},
-			duration: matchMedia('(prefers-reduced-motion: reduce)').matches
-				? 0
-				: cssTime(style.getPropertyValue('--duration-guess-glide')),
-			easing: cubicBezier(style.getPropertyValue('--easing-guess-glide')),
+			/** No spring when motion is reduced: every change cuts. */
+			spring: matchMedia('(prefers-reduced-motion: reduce)').matches
+				? undefined
+				: spring(
+						cssTime(style.getPropertyValue('--spring-guess-response')),
+						parseFloat(style.getPropertyValue('--spring-guess-damping'))
+					),
 			padding: length('--space-inline')
 		};
 	}
@@ -133,13 +139,10 @@
 	$effect(() => {
 		const latest = { step, ended };
 		untrack(() => {
-			const { sizes, duration } = tokens();
-			const now = performance.now();
-			const cut = now - lastChange < duration;
-			lastChange = now;
+			const { sizes, spring } = tokens();
 			balls = toCluster(latest.step, latest.ended, sizes);
 			places = settle(balls, places, sizes.gap);
-			void place(cut);
+			void place(spring === undefined);
 		});
 	});
 
@@ -194,34 +197,33 @@
 	}
 
 	/**
-	 * Sends every ball to its new place: gliding from wherever it is now, or, on a
-	 * `cut`, straight there. A new ball grows from nothing where it lands; a ball no
-	 * longer in the cluster shrinks away where it is (or, on a cut, just goes).
+	 * Sends every ball to its new place: springing from wherever it is now, as fast as
+	 * it’s going, or, on a `cut`, straight there. A new ball grows from nothing where it
+	 * lands; a ball no longer in the cluster shrinks away where it is (or, on a cut,
+	 * just goes).
 	 */
 	async function place(cut: boolean) {
 		if (width === 0 || height === 0) return;
-		const now = performance.now();
-		const t = progress(now);
 		const next = targets();
+		const still = { x: 0, y: 0, radius: 0, weight: 0 };
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- becomes `shown`, read only by the draw loop
 		const placed = new Map<string, Shown>();
 		for (const ball of balls) {
 			const to = next.get(ball.word);
 			if (!to) continue;
 			const was = shown.get(ball.word);
-			const from = cut ? to : was ? frameAt(was, t) : { ...to, radius: 0, weight: 0 };
-			placed.set(ball.word, { ball, from, to, size: to.radius, leaving: false });
+			const at = cut ? to : (was?.at ?? { ...to, radius: 0, weight: 0 });
+			const velocity = cut ? still : (was?.velocity ?? still);
+			placed.set(ball.word, { ball, at, velocity, to, size: to.radius, leaving: false });
 		}
 		if (!cut) {
 			for (const [key, was] of shown) {
 				if (placed.has(key) || was.leaving) continue;
-				const from = frameAt(was, t);
-				const to = { ...from, radius: 0, weight: 0 };
-				placed.set(key, { ball: was.ball, from, to, size: from.radius, leaving: true });
+				const to = { ...was.at, radius: 0, weight: 0 };
+				placed.set(key, { ...was, to, size: Math.max(was.size, was.at.radius), leaving: true });
 			}
 		}
 		shown = placed;
-		glideStart = now;
 		// The likeliest on top, and the lit words above all.
 		items = [...placed.values()]
 			.sort((a, b) => Number(a.ball.lit) - Number(b.ball.lit) || a.to.weight - b.to.weight)
@@ -237,10 +239,11 @@
 		}
 		fit();
 		if (cut) {
-			gliding = false;
-			draw(now);
-		} else if (!gliding) {
-			gliding = true;
+			moving = false;
+			draw();
+		} else if (!moving) {
+			moving = true;
+			lastFrame = performance.now();
 			requestAnimationFrame(frame);
 		}
 	}
@@ -272,52 +275,79 @@
 		return tall <= text.clientHeight && lines.every((line) => line.scrollWidth <= text.clientWidth);
 	}
 
-	/** How far through the glide everything is at `now`, eased: 1 when not gliding. */
-	function progress(now: number): number {
-		if (!gliding) return 1;
-		const { duration, easing } = tokens();
-		return duration === 0 ? 1 : easing(Math.min(1, (now - glideStart) / duration));
-	}
-
-	/** Where a ball is `t` of the way through its glide (0–1). */
-	function frameAt({ from, to }: Shown, t: number): Frame {
-		const mix = (a: number, b: number) => a + (b - a) * t;
-		return {
-			x: mix(from.x, to.x),
-			y: mix(from.y, to.y),
-			radius: mix(from.radius, to.radius),
-			weight: mix(from.weight, to.weight)
-		};
-	}
+	/** Close enough to its target, and slow enough, that a ball is at rest: pixels (or weight) and per second. */
+	const REST = { distance: 0.05, speed: 0.5, weight: 0.001 };
+	/** The longest step a frame moves things by, in seconds, so a stalled page doesn’t jump. */
+	const LONGEST_FRAME = 1 / 20;
 
 	function frame(now: number) {
-		if (!gliding) return;
-		draw(now);
-		if (progress(now) < 1) {
+		if (!moving) return;
+		const { spring } = tokens();
+		const seconds = Math.min(LONGEST_FRAME, (now - lastFrame) / 1000);
+		lastFrame = now;
+		let resting = true;
+		for (const ball of shown.values()) {
+			if (spring) move(ball, seconds, spring);
+			if (!atRest(ball)) resting = false;
+		}
+		if (!resting && spring) {
+			draw();
 			requestAnimationFrame(frame);
 			return;
 		}
-		gliding = false;
+		moving = false;
 		const left = [...shown].filter(([, ball]) => ball.leaving).map(([key]) => key);
 		for (const ball of shown.values()) {
-			if (!ball.leaving) ball.from = ball.to;
+			ball.at = ball.to;
+			ball.velocity = { x: 0, y: 0, radius: 0, weight: 0 };
 		}
 		for (const key of left) shown.delete(key);
 		if (left.length > 0) items = items.filter(({ word }) => shown.has(word));
-		draw(now);
+		draw();
 	}
 
-	function draw(now: number) {
+	/** Moves every part of a ball `seconds` along its spring toward where it’s going. */
+	function move(ball: Shown, seconds: number, spring: Spring) {
+		const at = { ...ball.at };
+		const velocity = { ...ball.velocity };
+		for (const part of ['x', 'y', 'radius', 'weight'] as const) {
+			[at[part], velocity[part]] = springStep(
+				at[part],
+				velocity[part],
+				ball.to[part],
+				seconds,
+				spring
+			);
+		}
+		ball.at = at;
+		ball.velocity = velocity;
+	}
+
+	function atRest({ at, velocity, to }: Shown): boolean {
+		const near = (part: 'x' | 'y' | 'radius', limit: number) =>
+			Math.abs(at[part] - to[part]) < limit && Math.abs(velocity[part]) < REST.speed;
+		return (
+			near('x', REST.distance) &&
+			near('y', REST.distance) &&
+			near('radius', REST.distance) &&
+			Math.abs(at.weight - to.weight) < REST.weight &&
+			Math.abs(velocity.weight) < REST.weight * 10
+		);
+	}
+
+	function draw() {
 		const { sizes, colors } = tokens();
-		const t = progress(now);
 		let pointed: { ball: Ball; at: Frame } | undefined;
 		for (const [key, ball] of shown) {
 			const element = elements.get(key);
 			if (!element) continue;
-			const at = frameAt(ball, t);
-			const scale = ball.size > 0 ? at.radius / ball.size : 0;
+			const { at } = ball;
+			// A spring can carry a ball past its target: never inside out, never brighter than full.
+			const radius = Math.max(0, at.radius);
+			const weight = Math.min(1, Math.max(0, at.weight));
+			const scale = ball.size > 0 ? radius / ball.size : 0;
 			element.style.transform = `translate(${at.x - ball.size}px, ${at.y - ball.size}px) scale(${scale})`;
-			const fill = FAINTEST + (1 - FAINTEST) * at.weight;
+			const fill = FAINTEST + (1 - FAINTEST) * weight;
 			element.style.setProperty('--fill', String(fill));
 			// Its word goes in whichever label color stands out more from the fill as it looks now.
 			const seen = blend(colors.word, colors.under, fill);
@@ -326,15 +356,15 @@
 				contrast(colors.labelBright, seen) > contrast(colors.label, seen)
 			);
 			element.classList.remove('pointed');
-			const hit = Math.max(at.radius, sizes.min * 2);
+			const hit = Math.max(radius, sizes.min * 2);
 			if (
 				!ball.leaving &&
-				at.radius > 0 &&
+				radius > 0 &&
 				pointer &&
 				Math.hypot(pointer.x - at.x, pointer.y - at.y) < hit &&
-				(!pointed || at.weight > pointed.at.weight)
+				(!pointed || weight > pointed.at.weight)
 			) {
-				pointed = { ball: ball.ball, at };
+				pointed = { ball: ball.ball, at: { ...at, radius, weight } };
 			}
 		}
 		if (!pointed) {
@@ -360,12 +390,12 @@
 	function point(event: PointerEvent) {
 		const box = map.getBoundingClientRect();
 		pointer = { x: event.clientX - box.left, y: event.clientY - box.top };
-		if (!gliding) draw(performance.now());
+		if (!moving) draw();
 	}
 
 	function leave() {
 		pointer = undefined;
-		if (!gliding) draw(performance.now());
+		if (!moving) draw();
 	}
 
 	/** Keeps track of each ball’s element while it’s in the page. */

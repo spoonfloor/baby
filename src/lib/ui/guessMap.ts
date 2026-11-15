@@ -252,36 +252,42 @@ export function cssTime(css: string): number {
 	return match[2] === 's' ? value * 1000 : value;
 }
 
+/** A spring’s pull toward its target and the drag on its speed, per second (unit mass). */
+export interface Spring {
+	stiffness: number;
+	damping: number;
+}
+
 /**
- * A CSS `cubic-bezier(x1, y1, x2, y2)` as a function of progress (0–1), for gliding
- * on the same curve a stylesheet would.
+ * The spring that swings once every `response` ms, undamped, and is `dampingRatio`
+ * damped: 1 settles without passing its target, less overshoots a little first.
  */
-export function cubicBezier(css: string): (progress: number) => number {
-	const numbers = /^cubic-bezier\(([^)]*)\)$/.exec(css.trim())?.[1]?.split(',').map(Number);
-	if (numbers?.length !== 4 || numbers.some(Number.isNaN)) {
-		throw new SyntaxError(`Not a cubic-bezier: ${css}`);
+export function spring(response: number, dampingRatio: number): Spring {
+	const frequency = (2 * Math.PI) / (response / 1000);
+	return { stiffness: frequency ** 2, damping: 2 * dampingRatio * frequency };
+}
+
+/** Steps a spring is moved in, at most, in seconds: small enough to stay steady on a slow frame. */
+const SPRING_STEP = 1 / 240;
+
+/**
+ * Where a value on `spring` is after `seconds`, and how fast it’s going (per second),
+ * pulled from `value` at `velocity` toward `target`. Whatever it was doing carries
+ * on, so a new target bends its path instead of restarting it.
+ */
+export function springStep(
+	value: number,
+	velocity: number,
+	target: number,
+	seconds: number,
+	{ stiffness, damping }: Spring
+): [value: number, velocity: number] {
+	for (let left = seconds; left > 0; left -= SPRING_STEP) {
+		const step = Math.min(SPRING_STEP, left);
+		velocity += (-stiffness * (value - target) - damping * velocity) * step;
+		value += velocity * step;
 	}
-	const [x1 = 0, y1 = 0, x2 = 1, y2 = 1] = numbers;
-	const curve = (a: number, b: number) => (t: number) =>
-		3 * a * t * (1 - t) ** 2 + 3 * b * t ** 2 * (1 - t) + t ** 3;
-	const x = curve(x1, x2);
-	const y = curve(y1, y2);
-	return (progress) => {
-		if (progress <= 0) return 0;
-		if (progress >= 1) return 1;
-		// x rises with t on any CSS curve (x1, x2 in 0–1), so halving finds the t for this x.
-		let low = 0;
-		let high = 1;
-		let t = progress;
-		for (let i = 0; i < 40; i++) {
-			const at = x(t);
-			if (Math.abs(at - progress) < 1e-6) break;
-			if (at < progress) low = t;
-			else high = t;
-			t = (low + high) / 2;
-		}
-		return y(t);
-	};
+	return [value, velocity];
 }
 
 /** A color as red, green and blue, each 0–255. */

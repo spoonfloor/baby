@@ -5,9 +5,10 @@ import {
 	DECADES,
 	contrast,
 	cssTime,
-	cubicBezier,
 	END,
 	settle,
+	spring,
+	springStep,
 	toCluster,
 	type Point
 } from './guessMap.ts';
@@ -143,19 +144,32 @@ describe('cssTime', () => {
 	});
 });
 
-describe('cubicBezier', () => {
-	it('follows a CSS curve from 0 to 1', () => {
-		const linear = cubicBezier('cubic-bezier(0, 0, 1, 1)');
-		const glide = cubicBezier('cubic-bezier(0.4, 0.4, 0, 1)');
+describe('springStep', () => {
+	const run = (dampingRatio: number, velocity = 0) => {
+		const settings = spring(350, dampingRatio);
+		let state: [number, number] = [0, velocity];
+		let furthest = 0;
+		for (let frame = 0; frame < 120; frame++) {
+			state = springStep(...state, 100, 1 / 60, settings);
+			furthest = Math.max(furthest, state[0]);
+		}
+		return { end: state, furthest };
+	};
 
-		expect(linear(0.25)).toBeCloseTo(0.25, 4);
-		expect(glide(0)).toBe(0);
-		expect(glide(1)).toBe(1);
-		expect(glide(0.5)).toBeGreaterThan(0.5);
+	it('comes to rest on its target', () => {
+		const { end } = run(0.8);
+		expect(end[0]).toBeCloseTo(100, 1);
+		expect(end[1]).toBeCloseTo(0, 1);
 	});
 
-	it('refuses anything else', () => {
-		expect(() => cubicBezier('ease-in')).toThrow(SyntaxError);
+	it('overshoots a little when underdamped, never when critically damped', () => {
+		expect(run(0.8).furthest).toBeGreaterThan(100);
+		expect(run(1).furthest).toBeLessThanOrEqual(100.001);
+	});
+
+	it('carries on what it was doing: a value already moving away swings out first', () => {
+		const [value] = springStep(0, -500, 100, 1 / 60, spring(350, 0.8));
+		expect(value).toBeLessThan(0);
 	});
 });
 
