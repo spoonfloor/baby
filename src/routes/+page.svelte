@@ -203,6 +203,7 @@
 			<Composer
 				bind:this={composer}
 				bind:value={draft}
+				catchTyping
 				placeholder={chat.teaching !== undefined
 					? 'What should Baby say?'
 					: empty

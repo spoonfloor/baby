@@ -2,6 +2,7 @@
 	Where the user types. Enter sends, Shift+Enter adds a line; the field grows with
 	its text. Typing is always allowed, but sending waits until `ready`. A `note` above
 	the field says what sending will do differently, with ✕ to go back to normal.
+	With `catchTyping`, typing anywhere on the page types here (see `catchKey`).
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -13,6 +14,8 @@
 		ready?: boolean;
 		value?: string;
 		note?: { text: string; oncancel: () => void } | undefined;
+		/** Typing a character anywhere else on the page types it here: for the page’s one main field. */
+		catchTyping?: boolean;
 		/** Controls shown before the field, e.g. the + menu. */
 		start?: Snippet;
 		/** Controls shown after Send, e.g. the settings gear. */
@@ -25,6 +28,7 @@
 		ready = true,
 		value = $bindable(''),
 		note,
+		catchTyping = false,
 		start,
 		end,
 		onsend
@@ -57,11 +61,34 @@
 		}
 	}
 
+	/**
+	 * Moves focus here, caret at the end, when a character is typed with nothing else
+	 * taking it, so the character lands here. Only characters: arrows, Space, Enter,
+	 * Tab and Escape, and anything with Cmd, Ctrl or Alt, do what they always do. Not
+	 * from another field, nor while a dialog or menu is open.
+	 */
+	function catchKey(event: KeyboardEvent) {
+		if (!catchTyping || event.defaultPrevented || event.isComposing) return;
+		if (event.ctrlKey || event.metaKey || event.altKey) return;
+		if ([...event.key].length !== 1 || event.key === ' ') return;
+		const { target } = event;
+		if (
+			target instanceof HTMLElement &&
+			(target.isContentEditable || target.closest('input, textarea, select, dialog, [popover]'))
+		)
+			return;
+		if (document.querySelector('dialog[open], :popover-open')) return;
+		field.setSelectionRange(field.value.length, field.value.length);
+		field.focus();
+	}
+
 	function onsubmit(event: SubmitEvent) {
 		event.preventDefault();
 		send();
 	}
 </script>
+
+<svelte:window onkeydown={catchKey} />
 
 <Surface as="form" {onsubmit}>
 	{#if note}
