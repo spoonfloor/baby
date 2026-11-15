@@ -93,6 +93,8 @@
 	/** The graph and step drawn; a new graph is a new reply, which starts afresh. */
 	let drawnGraph: readonly (readonly Ball[])[] | undefined;
 	let drawnStep = 0;
+	/** The resting places drawn: another step arriving doesn’t change them, so doesn’t redraw. */
+	let drawnRest: ReadonlyMap<string, Point> | undefined;
 	/** Balls are moving, and when the last frame was drawn. */
 	let moving = false;
 	let lastFrame = 0;
@@ -165,9 +167,12 @@
 			if (latest.graph !== drawnGraph) {
 				shown = new Map();
 				drawnGraph = latest.graph;
+				drawnRest = undefined;
 			}
-			if (!latest.places[latest.step]) return;
+			const rest = latest.places[latest.step];
+			if (!rest || rest === drawnRest) return;
 			drawnStep = latest.step;
+			drawnRest = rest;
 			look = tokens();
 			void place(look.spring === undefined);
 		});
@@ -237,18 +242,19 @@
 		if (width === 0 || height === 0 || !balls || !rest) return;
 		look ??= tokens();
 		const next = targets(balls, rest, look.sizes.gap);
-		const still = { x: 0, y: 0, radius: 0, weight: 0 };
+		// Frames move each ball’s own place and speed in place, so no two balls may share one.
+		const still = () => ({ x: 0, y: 0, radius: 0, weight: 0 });
 		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- becomes `shown`, read only by the draw loop
 		const placed = new Map<string, Shown>();
 		for (const ball of balls) {
 			const to = next.get(ball.word);
 			if (!to) continue;
 			const was = shown.get(ball.word);
-			const at = cut ? to : (was?.at ?? { ...to, radius: 0, weight: 0 });
+			const at = cut || !was ? { ...to, ...(cut ? {} : { radius: 0, weight: 0 }) } : was.at;
 			placed.set(ball.word, {
 				ball,
 				at,
-				velocity: cut ? still : (was?.velocity ?? still),
+				velocity: cut || !was ? still() : was.velocity,
 				to,
 				size: to.radius,
 				from: {
@@ -329,7 +335,7 @@
 			if (ball.resting) continue;
 			if (spring) move(ball, seconds, spring);
 			if (!spring || atRest(ball)) {
-				ball.at = ball.to;
+				ball.at = { ...ball.to };
 				ball.velocity = { x: 0, y: 0, radius: 0, weight: 0 };
 				ball.resting = true;
 			} else resting = false;
