@@ -12,7 +12,7 @@
 const APPROVED_ANIMATIONS = [
 	'src/lib/ui/Spinner.svelte',
 	'src/lib/ui/ProgressBar.svelte',
-	// Balls glide by script; labels fade (color, appearing, disappearing) in CSS.
+	// Balls and labels glide by script; a chance fades in and out in CSS.
 	'src/lib/ui/GuessMap.svelte'
 ];
 

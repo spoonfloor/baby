@@ -9,7 +9,10 @@
 	change before it gets there bends its path toward the new place, keeping its
 	speed. Balls are solid, never see-through, and lean gray on the way: a ball
 	losing its chance dims early in its move, one gaining it brightens late, so
-	mid-move only the word headed for the lead stands out. A step not laid out yet waits: the map stays where it is until it is.
+	mid-move only the word headed for the lead stands out. Its label changes color in
+	step, shrinks with it, and fades in or out over the move if the ball is growing
+	big enough for it or shrinking too small. A step not laid out yet waits: the map stays where it is
+	until it is.
 	Approved animation (see APPROVED_ANIMATIONS in stylelint.config.js). Point at a
 	ball (or tap it) to see its word and chance.
 -->
@@ -67,7 +70,7 @@
 		radius: number;
 		weight: number;
 	}
-	/** The parts of a ball that spring; its brightness follows their progress (see `brightness`). */
+	/** The parts of a ball that spring; its brightness and label follow their progress (see `change`). */
 	const SPRUNG = ['x', 'y', 'radius'] as const;
 	interface Shown {
 		ball: Ball;
@@ -75,15 +78,24 @@
 		at: Frame;
 		velocity: Frame;
 		to: Frame;
-		/** The radius its element is laid out at; other sizes scale it. */
+		/**
+		 * The radius its element is laid out at; other sizes scale it down. The bigger of
+		 * where it starts and ends while it moves, so its label only ever shrinks with it,
+		 * never blows up; laid out at its own size once it rests.
+		 */
 		size: number;
-		/** Its brightness and how far it had to go when its move began, for `brightness`. */
-		from: { weight: number; distance: number };
+		/** Its brightness, label color and opacity, and how far it had to go, when its move began, for `change`. */
+		from: { weight: number; label: Rgb; shows: number; distance: number };
+		/** Its label color where it’s going: whichever stands out more from its fill there. */
+		label: Rgb;
+		/** Its label’s opacity where it’s going: 1 if its label fits there, else 0. */
+		shows: number;
 		/** At its target and still, so frames skip it. */
 		resting: boolean;
 		/** What its element was last given, so a frame writes only what changed. */
 		transform: string;
 		fill: number;
+		opacity: number;
 	}
 
 	let map: HTMLDivElement;
@@ -125,6 +137,8 @@
 		return `Baby’s odds at its next word, “${lit}” picked`;
 	});
 
+	type Colors = ReturnType<typeof tokens>['colors'];
+
 	/** Every size, color and timing comes from the design tokens, read as the browser resolved them. */
 	function tokens() {
 		const style = getComputedStyle(map);
@@ -161,6 +175,10 @@
 		reader.fillRect(0, 0, 1, 1);
 		const [r = 0, g = 0, b = 0] = reader.getImageData(0, 0, 1, 1).data;
 		return [r, g, b];
+	}
+
+	function css(color: Rgb): string {
+		return `rgb(${color.map(Math.round).join(' ')})`;
 	}
 
 	function percent(chance: number): string {
@@ -268,19 +286,26 @@
 			if (!to) continue;
 			const was = shown.get(ball.word);
 			const at = cut || !was ? { ...to, ...(cut ? {} : { radius: 0, weight: 0 }) } : was.at;
+			const label = labelOn(to.weight, look.colors);
 			placed.set(ball.word, {
 				ball,
 				at,
 				velocity: cut || !was ? still() : was.velocity,
 				to,
-				size: to.radius,
+				size: cut ? to.radius : Math.max(at.radius, to.radius),
 				from: {
 					weight: cut ? to.weight : was ? brightness(was) : 0,
+					label: !cut && was ? labelColor(was) : label,
+					// A cut shows its label at once (set once it’s measured); a new ball fades its in.
+					shows: cut ? 1 : was ? labelOpacity(was) : 0,
 					distance: cut ? 0 : distance(at, to)
 				},
+				label,
+				shows: 1,
 				resting: false,
 				transform: '',
-				fill: -1
+				fill: -1,
+				opacity: -1
 			});
 		}
 		shown = placed;
@@ -289,12 +314,15 @@
 		const current = ++generation;
 		await tick();
 		if (current !== generation) return;
-		for (const { ball, size } of shown.values()) {
-			const element = elements.get(ball.word);
-			if (element) element.style.width = element.style.height = `${size * 2}px`;
+		// Whether each label fits where its ball is going, then laid out for the way there.
+		const moved = [...shown.values()];
+		layOutAt(moved, ({ to }) => to.radius);
+		for (const ball of moved) {
+			ball.shows = elements.get(ball.ball.word)?.dataset.fit === 'none' ? 0 : 1;
+			if (cut) ball.from.shows = ball.shows;
 		}
+		if (moved.some(({ size, to }) => size !== to.radius)) layOutAt(moved);
 		stack(!cut);
-		fit();
 		if (cut) {
 			moving = false;
 			draw();
@@ -321,13 +349,22 @@
 		}
 	}
 
+	/** Lays out each ball’s element at a radius, its `size` unless given, and fits its text there. */
+	function layOutAt(balls: readonly Shown[], radius = ({ size }: Shown) => size) {
+		for (const shown of balls) {
+			const element = elements.get(shown.ball.word);
+			if (element) element.style.width = element.style.height = `${radius(shown) * 2}px`;
+		}
+		fit(balls);
+	}
+
 	/**
 	 * Writes each ball’s text the first way that fits it at its laid-out size. Each way
 	 * is tried on every ball still unfitted before any is measured, so the page is
 	 * laid out once per way, not once per ball.
 	 */
-	function fit() {
-		let unfitted = [...shown.values()].flatMap(({ ball }) => {
+	function fit(balls: readonly Shown[]) {
+		let unfitted = balls.flatMap(({ ball }) => {
 			const element = elements.get(ball.word);
 			return element ? [{ ball, element }] : [];
 		});
@@ -359,6 +396,7 @@
 		const seconds = Math.min(LONGEST_FRAME, (now - lastFrame) / 1000);
 		lastFrame = now;
 		let resting = true;
+		const shrunk: Shown[] = [];
 		for (const ball of shown.values()) {
 			if (ball.resting) continue;
 			if (spring) move(ball, seconds, spring);
@@ -366,8 +404,15 @@
 				ball.at = { ...ball.to };
 				ball.velocity = { x: 0, y: 0, radius: 0, weight: 0 };
 				ball.resting = true;
+				if (ball.size !== ball.to.radius) {
+					ball.size = ball.to.radius;
+					ball.transform = '';
+					shrunk.push(ball);
+				}
 			} else resting = false;
 		}
+		// A ball that shrank was laid out at its old size: now at rest, it’s laid out and fitted at its own.
+		if (shrunk.length > 0) layOutAt(shrunk);
 		draw();
 		if (resting) {
 			moving = false;
@@ -395,14 +440,43 @@
 	}
 
 	/**
-	 * How bright a ball is now: from its brightness when the move began to its
-	 * target’s, by how far through the move it is, leaning gray (see `GRAY_BIAS`).
+	 * How far a ball’s look has changed from when its move began to its target’s, 0–1:
+	 * by how far through the move it is, leaning gray (see `GRAY_BIAS`).
 	 */
-	function brightness({ at, to, from, resting }: Shown): number {
-		if (resting || from.distance < SMALLEST_MOVE) return to.weight;
+	function change({ at, to, from, resting }: Shown): number {
+		if (resting || from.distance < SMALLEST_MOVE) return 1;
 		const progress = Math.min(1, Math.max(0, 1 - distance(at, to) / from.distance));
-		const eased = to.weight > from.weight ? progress ** GRAY_BIAS : 1 - (1 - progress) ** GRAY_BIAS;
-		return from.weight + (to.weight - from.weight) * eased;
+		return to.weight > from.weight ? progress ** GRAY_BIAS : 1 - (1 - progress) ** GRAY_BIAS;
+	}
+
+	/** How bright a ball is now (see `change`). */
+	function brightness(ball: Shown): number {
+		const { from, to } = ball;
+		return from.weight + (to.weight - from.weight) * change(ball);
+	}
+
+	/** Its label’s color now, changing in step with its brightness (see `change`). */
+	function labelColor(ball: Shown): Rgb {
+		return blend(ball.label, ball.from.label, change(ball));
+	}
+
+	/** Its label’s opacity now, fading in step with its brightness (see `change`). */
+	function labelOpacity(ball: Shown): number {
+		const { from, shows } = ball;
+		return from.shows + (shows - from.shows) * change(ball);
+	}
+
+	/** Whichever label color stands out more from a ball this bright. */
+	function labelOn(weight: number, colors: Colors): Rgb {
+		const seen = fillOf(weight, colors);
+		return contrast(colors.labelBright, seen) > contrast(colors.label, seen)
+			? colors.labelBright
+			: colors.label;
+	}
+
+	/** A ball’s fill this bright, as it looks over the surface: solid, so balls never show through each other. */
+	function fillOf(weight: number, colors: Colors): Rgb {
+		return blend(colors.word, colors.under, FAINTEST + (1 - FAINTEST) * weight);
 	}
 
 	/** Writes each ball’s place, size and fill to its element, where they changed, then the pointer’s tip. */
@@ -424,14 +498,17 @@
 			const fill = FAINTEST + (1 - FAINTEST) * weight;
 			if (Math.abs(fill - ball.fill) >= FILL_STEP || (ball.resting && fill !== ball.fill)) {
 				ball.fill = fill;
-				// Solid: the fill as it would look over the surface, so balls never show through each other.
-				const seen = blend(colors.word, colors.under, fill);
-				element.style.backgroundColor = `rgb(${seen.map(Math.round).join(' ')})`;
-				// Its word goes in whichever label color stands out more from the fill as it looks now.
-				element.classList.toggle(
-					'bright',
-					contrast(colors.labelBright, seen) > contrast(colors.label, seen)
-				);
+				element.style.backgroundColor = css(fillOf(weight, colors));
+				element.style.color = css(labelColor(ball));
+			}
+			const opacity = labelOpacity(ball);
+			if (
+				Math.abs(opacity - ball.opacity) >= FILL_STEP ||
+				(ball.resting && opacity !== ball.opacity)
+			) {
+				ball.opacity = opacity;
+				const text = element.querySelector<HTMLElement>('.text');
+				if (text) text.style.opacity = String(opacity);
 			}
 		}
 		drawPointer();
@@ -547,11 +624,6 @@
 		border-radius: 50%;
 		color: var(--color-guess-label);
 		transform-origin: center;
-		transition: color var(--duration-guess-label);
-	}
-
-	.ball:global(.bright) {
-		color: var(--color-guess-label-bright);
 	}
 
 	.ball:global(.pointed) {
@@ -570,9 +642,6 @@
 		block-size: 70.71%;
 		overflow: hidden;
 		text-align: center;
-		transition:
-			opacity var(--duration-guess-label),
-			visibility var(--duration-guess-label);
 	}
 
 	.word {
@@ -605,15 +674,11 @@
 
 	.ball:global([data-fit='none']) .text {
 		visibility: hidden;
-		opacity: 0;
 	}
 
 	/* A lit word too big for its ball is written just under it, on a tag like the tip’s, so it reads over any ball. */
-	.ball:global([data-fit='spill']) {
-		color: var(--color-text);
-	}
-
 	.ball:global([data-fit='spill']) .text {
+		color: var(--color-text);
 		position: absolute;
 		inset-block-start: 100%;
 		inset-inline-start: 50%;
@@ -646,8 +711,6 @@
 
 	/* No fades when motion is reduced, as no springs: every change cuts. */
 	@media (prefers-reduced-motion: reduce) {
-		.ball,
-		.text,
 		.chance {
 			transition: none;
 		}
