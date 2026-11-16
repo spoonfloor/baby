@@ -12,7 +12,7 @@
 const APPROVED_ANIMATIONS = [
 	'src/lib/ui/Spinner.svelte',
 	'src/lib/ui/ProgressBar.svelte',
-	// Glides on a canvas, so nothing for Stylelint to check; listed as the record of approval.
+	// Balls glide by script; labels fade (color, appearing, disappearing) in CSS.
 	'src/lib/ui/GuessMap.svelte'
 ];
 

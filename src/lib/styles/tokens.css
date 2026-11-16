@@ -111,4 +111,5 @@
 	--duration-progress-stripe: 350ms; /* a progress track’s stripes move one repeat */
 	--spring-guess-response: 800ms; /* words in the Graph spring to their new places: one swing, undamped */
 	--spring-guess-damping: 0.8; /* 1 settles without overshooting; less overshoots a little first */
+	--duration-guess-label: 75ms; /* a word’s label in the Graph fades in or out, or changes color */
 }

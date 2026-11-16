@@ -547,6 +547,7 @@
 		border-radius: 50%;
 		color: var(--color-guess-label);
 		transform-origin: center;
+		transition: color var(--duration-guess-label);
 	}
 
 	.ball:global(.bright) {
@@ -569,16 +570,33 @@
 		block-size: 70.71%;
 		overflow: hidden;
 		text-align: center;
+		transition:
+			opacity var(--duration-guess-label),
+			visibility var(--duration-guess-label);
 	}
 
 	.word {
 		hyphens: manual;
 	}
 
+	.chance {
+		transition:
+			opacity var(--duration-guess-label),
+			display var(--duration-guess-label) allow-discrete;
+	}
+
+	/* A chance coming back fades in from nothing. */
+	@starting-style {
+		.chance {
+			opacity: 0;
+		}
+	}
+
 	/* Set by the fitting and drawing code, which Svelte can’t see: hence :global. */
 	.ball:global([data-fit='word']) .chance,
 	.ball:global([data-fit='hyphenated']) .chance {
 		display: none;
+		opacity: 0;
 	}
 
 	.ball:global([data-fit='hyphenated']) .word {
@@ -587,6 +605,7 @@
 
 	.ball:global([data-fit='none']) .text {
 		visibility: hidden;
+		opacity: 0;
 	}
 
 	/* A lit word too big for its ball is written just under it, on a tag like the tip’s, so it reads over any ball. */
@@ -623,5 +642,14 @@
 		color: var(--color-text);
 		white-space: nowrap;
 		pointer-events: none;
+	}
+
+	/* No fades when motion is reduced, as no springs: every change cuts. */
+	@media (prefers-reduced-motion: reduce) {
+		.ball,
+		.text,
+		.chance {
+			transition: none;
+		}
 	}
 </style>
