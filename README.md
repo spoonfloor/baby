@@ -31,6 +31,7 @@ Anything Baby has read is a **source**, the one word for it on screen. Texts we 
 - **Noise map:** which numbers training has touched vs. leftover randomness.
 - **Peek inside:** step through any prompt’s forward pass, stage by stage, with plain-language labels in parentheses (embedding (coordinates), query (question), key (name tag), value (content), weights (dials)…).
 - **App notices:** deterministic hints in a voice visibly separate from Baby’s, driven by Baby’s actual state (“Baby knows absolutely nothing. Try giving Baby something to read.” / “Baby has never seen ‘cake.’” / “Baby doesn’t know how to take turns yet. Try Chatbot 101.”).
+- **Undo and saves:** Undo last training puts back the model from before the latest reading. Save or load model keeps named copies of the model on this device or on your own save server (`server/`), so you can try a reading, keep what works, and pick up on another device.
 - **Forgetting:** show earlier lessons sagging when Baby reads only new material, and recovering when old docs are mixed back in.
 
 ## Feedback → training

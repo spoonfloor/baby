@@ -5,6 +5,7 @@ export type {
 	BabyEvent,
 	BabyState,
 	Guess,
+	Knowledge,
 	Reading,
 	ReplyStep,
 	ReplyTrace,

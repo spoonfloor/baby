@@ -12,10 +12,11 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
-		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && tsc -p src/lib/baby/worker && tsc -p src/lib/ui/worker && tsc -p lab && eslint . && stylelint \"src/**/*.{css,svelte}\" && prettier --check . && vitest run",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings && tsc -p src/lib/baby/worker && tsc -p src/lib/ui/worker && tsc -p lab && tsc -p server && eslint . && stylelint \"src/**/*.{css,svelte}\" && prettier --check . && vitest run",
 		"format": "prettier --write . && stylelint \"src/**/*.{css,svelte}\" --fix",
 		"test": "vitest",
-		"lab": "node --experimental-strip-types --disable-warning=ExperimentalWarning lab/run.ts"
+		"lab": "node --experimental-strip-types --disable-warning=ExperimentalWarning lab/run.ts",
+		"save-server": "node --experimental-strip-types --disable-warning=ExperimentalWarning server/main.ts"
 	},
 	"dependencies": {
 		"@fontsource-variable/inter": "^5.3.0",

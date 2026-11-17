@@ -101,7 +101,13 @@
 		color: var(--color-text-muted);
 	}
 
+	/*
+	 * Scrolls, which clips whatever reaches past it; it reaches into the dialog’s padding
+	 * a little so content can bleed there (a picked row’s highlight).
+	 */
 	.body {
+		margin-inline: calc(-1 * var(--space-tight));
+		padding-inline: var(--space-tight);
 		overflow-y: auto;
 	}
 

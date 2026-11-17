@@ -66,7 +66,10 @@ describe('createBaby', () => {
 	it('passes state updates to subscribers, including late ones', async () => {
 		const baby = createBaby(
 			fakeWorker((request) => [
-				{ type: 'state', state: { words: ['a', 'b', 'c'], sources: [] } },
+				{
+					type: 'state',
+					state: { words: ['a', 'b', 'c'], sources: [], revision: 'r1', undoable: false }
+				},
 				{ id: request.id, type: 'done' }
 			])
 		);
@@ -77,8 +80,9 @@ describe('createBaby', () => {
 		const late: BabyState[] = [];
 		baby.subscribe((state) => late.push(state));
 
-		expect(early).toEqual([{ words: ['a', 'b', 'c'], sources: [] }]);
-		expect(late).toEqual([{ words: ['a', 'b', 'c'], sources: [] }]);
+		const state = { words: ['a', 'b', 'c'], sources: [], revision: 'r1', undoable: false };
+		expect(early).toEqual([state]);
+		expect(late).toEqual([state]);
 	});
 
 	it('fails the stream when Baby reports an error', async () => {

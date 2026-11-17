@@ -5,7 +5,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
 	plugins: [sveltekit({ adapter: adapter(), paths: { base: base(process.env.BASE_PATH) } })],
 	test: {
-		include: ['src/**/*.test.ts']
+		include: ['src/**/*.test.ts', 'server/**/*.test.ts']
 	}
 });
 

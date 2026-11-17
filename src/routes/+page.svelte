@@ -7,10 +7,12 @@
 		describeReading,
 		readingStats
 	} from '#lib/baby/reading.ts';
-	import { Chat } from '#lib/chat/chat.svelte.ts';
+	import { Chat, TAUGHT_SOURCE } from '#lib/chat/chat.svelte.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
 	import { transcript } from '#lib/chat/transcript.ts';
 	import { groups, type Primer } from '#lib/library/index.ts';
+	import { Saves } from '#lib/saves/saves.svelte.ts';
+	import SavesFlow from '#lib/saves/SavesFlow.svelte';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
@@ -27,6 +29,7 @@
 	import UserMessage from '#lib/ui/UserMessage.svelte';
 
 	const chat = new Chat(spawnBaby());
+	const saves = new Saves(chat);
 	const empty = $derived(chat.messages.length === 0);
 
 	const primers = new Map(
@@ -52,6 +55,18 @@
 
 	/** The Reset model confirmation is open. */
 	let confirmingReset = $state(false);
+
+	/** The Saves dialog is open. */
+	let savesOpen = $state(false);
+
+	/** A name for a new save: the title of what the model read last. */
+	const defaultSaveName = $derived.by(() => {
+		const latest = chat.readSources.at(-1);
+		if (latest === undefined) return 'Untitled';
+		return (
+			primers.get(latest)?.title ?? (latest.startsWith(TAUGHT_SOURCE) ? 'Taught reply' : 'Untitled')
+		);
+	});
 
 	/** What’s in the composer, unsent. */
 	let draft = $state('');
@@ -214,7 +229,7 @@
 					: empty
 						? 'Say hi to Baby'
 						: 'Reply'}
-				ready={chat.teaching !== undefined ? !chat.reading : !chat.replying}
+				ready={!chat.changing && (chat.teaching !== undefined ? !chat.reading : !chat.replying)}
 				note={chat.teaching === undefined
 					? undefined
 					: {
@@ -232,9 +247,12 @@
 				{/snippet}
 				{#snippet end()}
 					<SettingsMenu
-						resetDisabled={chat.reading || chat.replying}
-						oncopytranscript={copyTranscript}
+						busy={chat.busy}
+						undoable={chat.knowledge?.undoable ?? false}
 						onreset={() => (confirmingReset = true)}
+						onsaves={() => (savesOpen = true)}
+						onundo={() => chat.undo()}
+						oncopytranscript={copyTranscript}
 					/>
 				{/snippet}
 			</Composer>
@@ -244,6 +262,10 @@
 
 {#if confirmingReset}
 	<ResetDialog onreset={reset} onclose={() => (confirmingReset = false)} />
+{/if}
+
+{#if savesOpen}
+	<SavesFlow {saves} defaultName={defaultSaveName} onclose={() => (savesOpen = false)} />
 {/if}
 
 {#if previewing}

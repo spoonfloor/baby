@@ -18,7 +18,12 @@ const unread: Primer = {
 };
 
 const options: TranscriptOptions = {
-	knowledge: { words: ['hi', '!', 'not', 'yet'], sources: ['about-baby'] },
+	knowledge: {
+		words: ['hi', '!', 'not', 'yet'],
+		sources: ['about-baby'],
+		revision: 'r1',
+		undoable: false
+	},
 	primers: [unread, aboutBaby],
 	noticeText: (notice) => `[${notice}]`,
 	at: new Date(2026, 9, 27, 14, 32)

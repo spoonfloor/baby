@@ -4,41 +4,53 @@
 	import Row from './Row.svelte';
 
 	interface Props {
-		/** Reset model can’t be chosen (Baby is busy). */
-		resetDisabled?: boolean;
-		/** Copy transcript was chosen. */
-		oncopytranscript: () => void;
+		/** Baby is busy, so the model can’t be reset, saved, loaded, or undone. */
+		busy?: boolean;
+		/** There’s a training to undo. */
+		undoable?: boolean;
 		/** Reset model was chosen; the caller confirms before resetting. */
 		onreset: () => void;
+		/** Save or load model was chosen. */
+		onsaves: () => void;
+		/** Undo last training was chosen. */
+		onundo: () => void;
+		/** Copy transcript was chosen. */
+		oncopytranscript: () => void;
 	}
 
-	let { resetDisabled = false, oncopytranscript, onreset }: Props = $props();
+	let {
+		busy = false,
+		undoable = false,
+		onreset,
+		onsaves,
+		onundo,
+		oncopytranscript
+	}: Props = $props();
+
+	const rows = $derived([
+		{ label: 'Reset model', disabled: busy, onclick: onreset },
+		{ label: 'Save or load model', disabled: busy, onclick: onsaves },
+		{ label: 'Undo last training', disabled: busy || !undoable, onclick: onundo },
+		{ label: 'Copy transcript', disabled: false, onclick: oncopytranscript }
+	]);
 </script>
 
 <Menu icon="gear" label="Settings" placement="above-end">
 	{#snippet children(close)}
 		<ul>
-			<li>
-				<Row
-					onclick={() => {
-						close();
-						oncopytranscript();
-					}}
-				>
-					Copy transcript
-				</Row>
-			</li>
-			<li>
-				<Row
-					disabled={resetDisabled}
-					onclick={() => {
-						close();
-						onreset();
-					}}
-				>
-					Reset model
-				</Row>
-			</li>
+			{#each rows as row (row.label)}
+				<li>
+					<Row
+						disabled={row.disabled}
+						onclick={() => {
+							close();
+							row.onclick();
+						}}
+					>
+						{row.label}
+					</Row>
+				</li>
+			{/each}
 		</ul>
 	{/snippet}
 </Menu>

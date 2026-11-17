@@ -1,5 +1,5 @@
 import { CHAINED_DOCUMENTS, Plateau, practiceBudget, sampleBatch } from './practice.ts';
-import type { BabyEvent, BabyState, Guess, Reading, ReplyTrace, Turn } from './protocol.ts';
+import type { BabyEvent, Guess, Knowledge, Reading, ReplyTrace, Turn } from './protocol.ts';
 import { count, describeReading, readingStats } from './reading.ts';
 import { TURN_START, turnTokens } from './script.ts';
 import {
@@ -79,7 +79,7 @@ export class Model {
 		this.#transformer = Transformer.restore(snapshot.transformer, random);
 	}
 
-	get state(): BabyState {
+	get state(): Knowledge {
 		return { words: this.#vocabulary.words, sources: [...this.#sources] };
 	}
 

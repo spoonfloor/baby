@@ -28,11 +28,14 @@ src/lib/baby/     the model, behind the Baby protocol
   vocabulary.ts   word-level tokenizer (punctuation marks are words); vocabulary starts with only the markers [UNK], [EOS], [YOU], [BABY]
   script.ts       conversation format: `[YOU] … [EOS] [BABY] … [EOS]`, parsed from `you: …` lines (a lesson’s `[UNK]` is the marker)
   reading.ts      documents (exact tokens Baby trains on) + reading stats, shared by preview and status
+  saveFile.ts     the `.baby` file: a whole model as one self-contained file, for saves anywhere
   model.ts        untrained model: mute until it reads, then uniform random picks
   worker/         worker entry, its own TS project (WebWorker globals, not DOM)
 src/lib/library/  primers (texts we supply) in groups for the sources panel: Chatbot 101, then subjects A–Z
+src/lib/saves/    saved models on this device (IndexedDB) and on a save server, behind one SaveStore interface
 src/routes/       / (chat), /kitchen-sink (every component in every state)
 lab/              lesson lab: trains Baby headless on Chatbot 101 and scores replies against probes
+server/           save server: keeps `.baby` files for anyone with its token (`npm run save-server`, see server/README.md)
 ```
 
 ## Rules enforced by tooling

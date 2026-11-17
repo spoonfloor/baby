@@ -13,6 +13,9 @@
 	import AddMenu from '#lib/ui/AddMenu.svelte';
 	import AppMessage from '#lib/ui/AppMessage.svelte';
 	import BabyMessage from '#lib/ui/BabyMessage.svelte';
+	import Choice from '#lib/ui/Choice.svelte';
+	import ConfirmDialog from '#lib/ui/ConfirmDialog.svelte';
+	import ConnectDialog from '#lib/ui/ConnectDialog.svelte';
 	import Composer from '#lib/ui/Composer.svelte';
 	import GuessPanel from '#lib/ui/GuessPanel.svelte';
 	import Button from '#lib/ui/Button.svelte';
@@ -21,6 +24,8 @@
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ProgressBar from '#lib/ui/ProgressBar.svelte';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
+	import SaveNameDialog from '#lib/ui/SaveNameDialog.svelte';
+	import SavesDialog from '#lib/ui/SavesDialog.svelte';
 	import SettingsMenu from '#lib/ui/SettingsMenu.svelte';
 	import ScriptText from '#lib/ui/ScriptText.svelte';
 	import SourceDialog from '#lib/ui/SourceDialog.svelte';
@@ -28,6 +33,7 @@
 	import Spinner from '#lib/ui/Spinner.svelte';
 	import StepDots from '#lib/ui/StepDots.svelte';
 	import StatusLine from '#lib/ui/StatusLine.svelte';
+	import TextField from '#lib/ui/TextField.svelte';
 	import UserMessage from '#lib/ui/UserMessage.svelte';
 
 	const short = 'Hello Baby!';
@@ -113,6 +119,26 @@
 	let previewing: 'unread' | 'read' | 'credited' | undefined = $state();
 	const previewed = $derived(previewing === 'credited' ? therapyBot : greetings);
 	let confirmingReset = $state(false);
+
+	const deviceSaves = [
+		{ id: 'd1', name: 'Story-only experiment', meta: '3,880 words · 9 sources · Nov 9' }
+	];
+	const serverSaves = [
+		{ id: 's2', name: 'After monkeys, before Aesop', meta: '1,240 words · 6 sources · today' },
+		{ id: 's1', name: 'Chatbot 101 done', meta: '412 words · 3 sources · Nov 12' }
+	];
+	const savePlaces: { value: 'device' | 'server'; label: string }[] = [
+		{ value: 'device', label: 'This device' },
+		{ value: 'server', label: 'Server' }
+	];
+	let savesDemo: 'empty' | 'device' | 'server' | 'working' | 'problems' | undefined = $state();
+	let naming: 'new' | 'replace' | 'rename' | 'problem' | undefined = $state();
+	let saveName = $state('Chatbot 101 plus monkeys');
+	let savePlace: 'device' | 'server' = $state('server');
+	let connecting = $state(false);
+	let serverAddress = $state('');
+	let serverToken = $state('');
+	let confirmingSave: 'load' | 'delete' | 'conflict' | undefined = $state();
 </script>
 
 {#snippet teachLink()}
@@ -127,7 +153,13 @@
 				<AddMenu />
 			{/snippet}
 			{#snippet end()}
-				<SettingsMenu oncopytranscript={noop} onreset={() => (confirmingReset = true)} />
+				<SettingsMenu
+					undoable
+					onreset={() => (confirmingReset = true)}
+					onsaves={noop}
+					onundo={noop}
+					oncopytranscript={noop}
+				/>
 			{/snippet}
 		</Composer>
 		<Composer placeholder="Reply" value={short} onsend={noop} />
@@ -198,9 +230,153 @@
 	<section>
 		<h2>Settings menu</h2>
 		<div class="row end">
-			<SettingsMenu oncopytranscript={noop} onreset={() => (confirmingReset = true)} />
-			<SettingsMenu resetDisabled oncopytranscript={noop} onreset={noop} />
+			<SettingsMenu
+				undoable
+				onreset={() => (confirmingReset = true)}
+				onsaves={() => (savesDemo = 'empty')}
+				onundo={noop}
+				oncopytranscript={noop}
+			/>
+			<SettingsMenu onreset={noop} onsaves={noop} onundo={noop} oncopytranscript={noop} />
+			<SettingsMenu
+				busy
+				undoable
+				onreset={noop}
+				onsaves={noop}
+				onundo={noop}
+				oncopytranscript={noop}
+			/>
 		</div>
+	</section>
+
+	<section>
+		<h2>Saves dialog</h2>
+		<div class="row wrap">
+			<Button onclick={() => (savesDemo = 'empty')}>Nothing saved</Button>
+			<Button onclick={() => (savesDemo = 'device')}>Saved on this device</Button>
+			<Button onclick={() => (savesDemo = 'server')}>Server, a save picked</Button>
+			<Button onclick={() => (savesDemo = 'working')}>Loading</Button>
+			<Button onclick={() => (savesDemo = 'problems')}>Problems</Button>
+		</div>
+		{#if savesDemo}
+			{@const connected = savesDemo !== 'empty' && savesDemo !== 'device'}
+			<SavesDialog
+				status={savesDemo === 'empty'
+					? 'The current model has training that isn’t saved.'
+					: 'The current model is saved.'}
+				device={savesDemo === 'empty' ? [] : deviceSaves}
+				server={connected
+					? {
+							host: 'baby.example.com',
+							saves: serverSaves,
+							problem:
+								savesDemo === 'problems'
+									? 'Couldn’t reach the server. Check the address and your connection.'
+									: undefined
+						}
+					: undefined}
+				selected={savesDemo === 'server' || savesDemo === 'working'
+					? { place: 'server', id: 's1' }
+					: undefined}
+				working={savesDemo === 'working' ? 'Loading “Chatbot 101 done”' : undefined}
+				problem={savesDemo === 'problems'
+					? 'That save is gone. It may have been deleted on another device.'
+					: undefined}
+				onselect={noop}
+				onload={noop}
+				onrename={noop}
+				onmove={noop}
+				ondelete={noop}
+				onsave={() => (naming = 'new')}
+				onconnect={() => (connecting = true)}
+				ondisconnect={noop}
+				onclose={() => (savesDemo = undefined)}
+			/>
+		{/if}
+	</section>
+
+	<section>
+		<h2>Save name dialog</h2>
+		<div class="row wrap">
+			<Button onclick={() => (naming = 'new')}>New save</Button>
+			<Button onclick={() => (naming = 'replace')}>Replaces one</Button>
+			<Button onclick={() => (naming = 'rename')}>Rename</Button>
+			<Button onclick={() => (naming = 'problem')}>Problem</Button>
+		</div>
+		{#if naming}
+			<SaveNameDialog
+				title={naming === 'rename' ? 'Rename save' : 'Save current model'}
+				note={naming === 'replace'
+					? 'Replaces the save named “Chatbot 101 done” on the server.'
+					: naming === 'rename'
+						? 'Renames the save on this device.'
+						: 'Saves the model as it is now to the server, to load again later.'}
+				confirm={naming === 'rename' ? 'Rename' : naming === 'replace' ? 'Replace' : 'Save'}
+				bind:name={saveName}
+				places={naming === 'rename' ? undefined : savePlaces}
+				bind:place={savePlace}
+				problem={naming === 'problem' ? 'There’s already a save with that name there.' : undefined}
+				onconfirm={() => (naming = undefined)}
+				onclose={() => (naming = undefined)}
+			/>
+		{/if}
+	</section>
+
+	<section>
+		<h2>Connect dialog</h2>
+		<div class="row">
+			<Button onclick={() => (connecting = true)}>Open</Button>
+		</div>
+		{#if connecting}
+			<ConnectDialog
+				bind:address={serverAddress}
+				bind:token={serverToken}
+				problem={serverAddress === 'nope' ? 'The server didn’t accept the token.' : undefined}
+				onconnect={() => (connecting = false)}
+				onclose={() => (connecting = false)}
+			/>
+		{/if}
+	</section>
+
+	<section>
+		<h2>Confirmations</h2>
+		<div class="row wrap">
+			<Button onclick={() => (confirmingSave = 'load')}>Load over unsaved training</Button>
+			<Button onclick={() => (confirmingSave = 'delete')}>Delete a save</Button>
+			<Button onclick={() => (confirmingSave = 'conflict')}>Changed on another device</Button>
+		</div>
+		{#if confirmingSave === 'load'}
+			<ConfirmDialog
+				title="Replace the current model?"
+				description="It has training that isn’t saved, which loading “Chatbot 101 done” will lose."
+				confirm="Load anyway"
+				onconfirm={() => (confirmingSave = undefined)}
+				onclose={() => (confirmingSave = undefined)}
+			/>
+		{:else if confirmingSave === 'delete'}
+			<ConfirmDialog
+				title="Delete “Chatbot 101 done”?"
+				description="This can’t be undone."
+				confirm="Delete"
+				onconfirm={() => (confirmingSave = undefined)}
+				onclose={() => (confirmingSave = undefined)}
+			/>
+		{:else if confirmingSave === 'conflict'}
+			<ConfirmDialog
+				title="Changed on another device"
+				description="“Chatbot 101 done” was saved from another device after you last loaded or saved it. Saving here would replace that version."
+				confirm="Save as new"
+				alternative={{ label: 'Replace', onclick: () => (confirmingSave = undefined) }}
+				onconfirm={() => (confirmingSave = undefined)}
+				onclose={() => (confirmingSave = undefined)}
+			/>
+		{/if}
+	</section>
+
+	<section>
+		<h2>Text field and choice</h2>
+		<TextField label="Name" bind:value={saveName} />
+		<Choice label="Save to" options={savePlaces} bind:value={savePlace} />
 	</section>
 
 	<section>
@@ -388,6 +564,10 @@
 
 	.end {
 		justify-content: flex-end;
+	}
+
+	.wrap {
+		flex-wrap: wrap;
 	}
 
 	/* Each panel hangs over what's below it when open, so give them room side by side. */

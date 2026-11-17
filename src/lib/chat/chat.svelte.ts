@@ -14,6 +14,9 @@ import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
 import { nudge, type Notice } from './notices.ts';
 
+/** Starts the `source` of every reply the user teaches, so it can be told apart from a primer. */
+export const TAUGHT_SOURCE = 'taught:';
+
 export type UserMessage = {
 	id: string;
 	role: 'user';
@@ -51,6 +54,10 @@ export class Chat {
 	replying = $state(false);
 	/** Baby reads (and practices) one source at a time, and can still chat meanwhile. */
 	reading = $state(false);
+	/** The model is being saved, loaded, or undone. */
+	changing = $state(false);
+	/** Baby is doing something, so the model can’t be reset, saved, loaded, or undone. */
+	busy: boolean = $derived(this.replying || this.reading || this.changing);
 	/** What Baby knows, as last reported by Baby. */
 	knowledge: BabyState | undefined = $state();
 	/** Ids of the sources Baby has finished reading, as Baby reports them. */
@@ -88,6 +95,7 @@ export class Chat {
 
 	async send(text: string) {
 		if (this.replying) throw new Error('Baby is already replying');
+		if (this.changing) throw new Error('Baby is changing');
 		this.replying = true;
 		const history = this.#history();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
@@ -126,7 +134,7 @@ export class Chat {
 		this.teaching = undefined;
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text: reply, replyTo: prompt });
 		await this.#read({
-			source: `taught:${crypto.randomUUID()}`,
+			source: `${TAUGHT_SOURCE}${crypto.randomUUID()}`,
 			title: `Your reply to ‘${prompt}’`,
 			documents: [[...turnTokens('you', prompt), ...turnTokens('baby', reply)]]
 		});
@@ -137,14 +145,63 @@ export class Chat {
 	 * Baby is busy, so no reading can save over the reset.
 	 */
 	async reset() {
-		if (this.replying || this.reading) throw new Error('Baby is busy');
-		try {
-			for await (const event of this.#baby.reset()) if (event.type === 'done') break;
+		await this.#change(async () => {
+			try {
+				for await (const event of this.#baby.reset()) if (event.type === 'done') break;
+				this.messages = [];
+				this.teaching = undefined;
+			} catch (error) {
+				console.error(error);
+				this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
+			}
+		});
+	}
+
+	/**
+	 * Brings back the model from before the latest reading, keeping the conversation,
+	 * and says so. Refused while Baby is busy.
+	 */
+	async undo() {
+		await this.#change(async () => {
+			try {
+				for await (const event of this.#baby.undo()) if (event.type === 'done') break;
+				this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'undone' });
+			} catch (error) {
+				console.error(error);
+				this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
+			}
+		});
+	}
+
+	/** The whole model as a `.baby` file. Throws if Baby is busy or saving fails. */
+	async save(): Promise<Uint8Array<ArrayBuffer>> {
+		return this.#change(async () => {
+			for await (const event of this.#baby.save()) if (event.type === 'file') return event.bytes;
+			throw new Error('Baby sent no file');
+		});
+	}
+
+	/**
+	 * Replaces the model with the one in `bytes` and clears the conversation, which
+	 * came from another model. Throws, changing nothing, if Baby is busy or the file
+	 * can’t be loaded.
+	 */
+	async load(bytes: Uint8Array<ArrayBuffer>) {
+		await this.#change(async () => {
+			for await (const event of this.#baby.load(bytes)) if (event.type === 'done') break;
 			this.messages = [];
 			this.teaching = undefined;
-		} catch (error) {
-			console.error(error);
-			this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
+		});
+	}
+
+	/** Runs `work`, a change to the whole model, unless Baby is busy. */
+	async #change<T>(work: () => Promise<T>): Promise<T> {
+		if (this.busy) throw new Error('Baby is busy');
+		this.changing = true;
+		try {
+			return await work();
+		} finally {
+			this.changing = false;
 		}
 	}
 
@@ -185,6 +242,7 @@ export class Chat {
 
 	async #read(reading: Reading) {
 		if (this.reading) throw new Error('Baby is already reading');
+		if (this.changing) throw new Error('Baby is changing');
 		this.reading = true;
 		await this.#follow('read', this.#baby.read(reading));
 		this.reading = false;

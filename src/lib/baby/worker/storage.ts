@@ -1,19 +1,29 @@
 import type { ModelSnapshot } from '../model.ts';
 
 /**
- * Keeps Baby in IndexedDB, so it survives a reload: one record holding the latest
- * snapshot, saved after each reading.
+ * Keeps Baby in IndexedDB, so it survives a reload: the current model, saved after
+ * each change, and a checkpoint of the model from before the latest reading, for undo.
+ * Each is kept with its revision (see `BabyState.revision`).
  */
 
 const DATABASE = 'baby';
 const STORE = 'snapshots';
-const KEY = 'baby';
 /** Bump when ModelSnapshot changes shape, so older saves are set aside rather than misread. */
 const FORMAT = 1;
+
+/** Which model a record holds. `baby` is the current one (named before checkpoints existed). */
+export type Slot = 'baby' | 'checkpoint';
+
+export interface Kept {
+	snapshot: ModelSnapshot;
+	revision: string;
+}
 
 interface Saved {
 	format: number;
 	snapshot: ModelSnapshot;
+	/** Missing from records written before revisions existed. */
+	revision?: string;
 }
 
 let database: Promise<IDBDatabase> | undefined;
@@ -28,25 +38,26 @@ function open(): Promise<IDBDatabase> {
 	return database;
 }
 
-/** The saved Baby, or undefined if there is none in the current format. */
-export async function loadSnapshot(): Promise<ModelSnapshot | undefined> {
-	const request = (await open()).transaction(STORE).objectStore(STORE).get(KEY);
+/** The model kept in `slot`, or undefined if there is none in the current format. */
+export async function load(slot: Slot): Promise<Kept | undefined> {
+	const request = (await open()).transaction(STORE).objectStore(STORE).get(slot);
 	const saved = await new Promise<Saved | undefined>((resolve, reject) => {
 		request.onsuccess = () => resolve(request.result as Saved | undefined);
 		request.onerror = () => reject(request.error ?? new Error('Couldn’t load Baby'));
 	});
-	return saved?.format === FORMAT ? saved.snapshot : undefined;
+	if (saved?.format !== FORMAT) return undefined;
+	return { snapshot: saved.snapshot, revision: saved.revision ?? crypto.randomUUID() };
 }
 
-/** Saves `snapshot`, resolving once it is safely written. */
-export async function saveSnapshot(snapshot: ModelSnapshot): Promise<void> {
-	const saved: Saved = { format: FORMAT, snapshot };
-	await write((store) => store.put(saved, KEY));
+/** Keeps `kept` in `slot`, resolving once it is safely written. */
+export async function keep(slot: Slot, { snapshot, revision }: Kept): Promise<void> {
+	const saved: Saved = { format: FORMAT, snapshot, revision };
+	await write((store) => store.put(saved, slot));
 }
 
-/** Deletes the saved Baby, resolving once it is gone. */
-export async function clearSnapshot(): Promise<void> {
-	await write((store) => store.delete(KEY));
+/** Empties `slot`, resolving once it is. */
+export async function clear(slot: Slot): Promise<void> {
+	await write((store) => store.delete(slot));
 }
 
 async function write(change: (store: IDBObjectStore) => void): Promise<void> {

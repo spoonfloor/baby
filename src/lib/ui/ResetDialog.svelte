@@ -1,7 +1,6 @@
-<!-- Confirms resetting the model, which can’t be undone. Cancel comes first, so it has focus. -->
+<!-- Confirms resetting the model, which can’t be undone. -->
 <script lang="ts">
-	import Button from './Button.svelte';
-	import Dialog from './Dialog.svelte';
+	import ConfirmDialog from './ConfirmDialog.svelte';
 
 	interface Props {
 		onreset: () => void;
@@ -11,17 +10,10 @@
 	let { onreset, onclose }: Props = $props();
 </script>
 
-<Dialog
+<ConfirmDialog
 	title="Reset model?"
-	size="narrow"
-	line={{
-		description:
-			'Baby will forget everything it has ever read and start over knowing only “Hello”. This can’t be undone.'
-	}}
+	description="Baby will forget everything it has ever read and start over knowing only “Hello”. This can’t be undone."
+	confirm="Reset"
+	onconfirm={onreset}
 	{onclose}
->
-	{#snippet actions(close)}
-		<Button onclick={close}>Cancel</Button>
-		<Button primary onclick={onreset}>Reset</Button>
-	{/snippet}
-</Dialog>
+/>

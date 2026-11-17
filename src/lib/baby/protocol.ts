@@ -20,6 +20,7 @@ export type BabyEvent =
 	| { type: 'token'; text: string } // the next piece of a reply, whitespace included
 	| { type: 'trace'; trace: ReplyTrace } // how a reply came about, for debugging
 	| { type: 'guesses'; guesses: Guess[] } // the odds of each word Baby could say next
+	| { type: 'file'; bytes: Uint8Array<ArrayBuffer> } // the whole model as a `.baby` file (see saveFile.ts)
 	| { type: 'done' };
 
 /**
@@ -66,12 +67,24 @@ export interface Turn {
 	text: string;
 }
 
-/** What Baby knows, for the app to react to (e.g. its notices, a reading preview). */
-export interface BabyState {
+/** What Baby knows: everything a model carries about its own reading. */
+export interface Knowledge {
 	/** Every word Baby has read, not counting the special tokens. */
 	words: string[];
 	/** The `source` of every reading Baby has finished, each once. */
 	sources: string[];
+}
+
+/** What Baby knows, for the app to react to (e.g. its notices, a reading preview). */
+export interface BabyState extends Knowledge {
+	/**
+	 * Names this exact model: it changes whenever the model does (a reading, a reset,
+	 * a load, an undo), and an undo brings back the one from before. So the app can
+	 * tell whether the model is one it has saved.
+	 */
+	revision: string;
+	/** Whether `undo` would bring back the model from before the latest reading. */
+	undoable: boolean;
 }
 
 /** Something for Baby to read in one sitting. */
@@ -90,7 +103,13 @@ export type BabyRequest =
 	| { type: 'reply'; id: string; prompt: string; history: Turn[] }
 	| { type: 'read'; id: string; reading: Reading }
 	/** Forgets everything, saved Baby included, leaving a newborn that knows only its first word. */
-	| { type: 'reset'; id: string };
+	| { type: 'reset'; id: string }
+	/** Brings back the model from before the latest reading (see `BabyState.undoable`). */
+	| { type: 'undo'; id: string }
+	/** Sends the whole model as one `file` event. */
+	| { type: 'save'; id: string }
+	/** Replaces the model with the one in `bytes`, a `.baby` file; fails, changing nothing, if it isn’t one. */
+	| { type: 'load'; id: string; bytes: Uint8Array<ArrayBuffer> };
 
 /**
  * Worker → app: an event tagged with its request, a request that failed (ending it

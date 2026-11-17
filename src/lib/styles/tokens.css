@@ -46,6 +46,10 @@
 	--color-backdrop: var(--raw-black-60); /* behind modal dialogs */
 	--color-action: var(--raw-gray-50); /* primary button fill */
 	--color-on-action: var(--raw-gray-950); /* primary button text */
+	--color-field: var(--color-bg); /* a text field, recessed into the surface it sits on */
+	--color-choice-track: var(--color-bg); /* a choice of a few options, recessed like a field */
+	--color-choice-selected: var(--raw-gray-650); /* the chosen option in it */
+	--color-selected: var(--color-surface-raised); /* a picked row in a list, e.g. a save */
 
 	/* Type: one family for text; hierarchy comes from weight, color and space, and a smaller size only for labels */
 	--font-family: 'Inter Variable', system-ui, sans-serif;
@@ -66,6 +70,7 @@
 	/* Shape */
 	--radius-surface: 12px; /* every surface: composer, user bubble, menus, dialogs, sources panel */
 	--radius-pill: 999px; /* text buttons */
+	--radius-field: 8px; /* text fields and picked rows: a step softer than a surface */
 
 	/*
 	 * Space, all from the scale. Grouping: the closer two things are, the more they

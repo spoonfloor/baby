@@ -20,16 +20,17 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 	let release = () => {};
 	const released = new Promise<void>((resolve) => (release = resolve));
 	const listeners = new Set<(state: BabyState) => void>();
-	let state: BabyState = { words, sources };
+	let state: BabyState = { words, sources, revision: 'r0', undoable: false };
+	const publish = (next: Partial<BabyState>) => {
+		state = { ...state, ...next };
+		for (const listener of listeners) listener(state);
+	};
 	/** Each reply request: the message, and the conversation before it. */
 	const asked: [prompt: string, history: readonly Turn[]][] = [];
 	async function* respond(source?: string): AsyncGenerator<BabyEvent> {
 		yield* events;
 		await released;
-		if (source !== undefined) {
-			state = { ...state, sources: [...state.sources, source] };
-			for (const listener of listeners) listener(state);
-		}
+		if (source !== undefined) publish({ sources: [...state.sources, source], undoable: true });
 		yield { type: 'done' };
 	}
 	const baby: Baby = {
@@ -39,8 +40,21 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 		},
 		read: ({ source }) => respond(source),
 		async *reset() {
-			state = { words: [], sources: [] };
-			for (const listener of listeners) listener(state);
+			publish({ words: [], sources: [], undoable: false });
+			yield { type: 'done' };
+		},
+		async *undo() {
+			publish({ sources: state.sources.slice(0, -1), undoable: false });
+			yield { type: 'done' };
+		},
+		async *save() {
+			yield { type: 'file', bytes: new TextEncoder().encode(state.sources.join(',')) };
+			yield { type: 'done' };
+		},
+		async *load(bytes) {
+			const sources = new TextDecoder().decode(bytes);
+			if (sources === 'broken') throw new Error('Not a saved model');
+			publish({ sources: sources.split(','), undoable: false });
 			yield { type: 'done' };
 		},
 		subscribe(listener) {
@@ -62,6 +76,9 @@ function failingBaby(): Baby {
 		reply: respond,
 		read: respond,
 		reset: respond,
+		undo: respond,
+		save: respond,
+		load: respond,
 		subscribe: () => () => {}
 	};
 }
@@ -416,5 +433,62 @@ describe('Chat', () => {
 		await chat.reset();
 
 		expect(chat.messages).toMatchObject([{ role: 'app', notice: 'failed' }]);
+	});
+
+	it('undoes the latest reading, keeping the conversation and saying so', async () => {
+		const { baby, release } = fakeBaby([], ['a'], born);
+		const chat = new Chat(baby);
+		release();
+		await chat.read(primer);
+		await chat.send('hi');
+		const before = chat.messages.length;
+
+		await chat.undo();
+
+		expect(chat.readSources).toEqual(born);
+		expect(chat.messages).toHaveLength(before + 1);
+		expect(chat.messages.at(-1)).toMatchObject({ role: 'app', notice: 'undone' });
+	});
+
+	it('saves to a file and loads one back, clearing the conversation', async () => {
+		const { baby, release } = fakeBaby([], ['a'], born);
+		const chat = new Chat(baby);
+		release();
+		await chat.read(primer);
+		const file = await chat.save();
+		await chat.reset();
+		await chat.send('hi');
+
+		await chat.load(file);
+
+		expect(chat.readSources).toEqual([...born, primer.id]);
+		expect(chat.messages).toEqual([]);
+		expect(chat.changing).toBe(false);
+	});
+
+	it('keeps the model and conversation when a load fails', async () => {
+		const { baby, release } = fakeBaby([], ['a'], born);
+		const chat = new Chat(baby);
+		release();
+		await chat.send('hi');
+
+		await expect(chat.load(new TextEncoder().encode('broken'))).rejects.toThrow();
+
+		expect(chat.readSources).toEqual(born);
+		expect(chat.messages).toHaveLength(2);
+		expect(chat.changing).toBe(false);
+	});
+
+	it('refuses to save, load, or undo while Baby is reading', async () => {
+		const { baby, release } = fakeBaby([], ['a']);
+		const chat = new Chat(baby);
+
+		const reading = chat.read(primer);
+		await expect(chat.save()).rejects.toThrow();
+		await expect(chat.load(new Uint8Array())).rejects.toThrow();
+		await expect(chat.undo()).rejects.toThrow();
+
+		release();
+		await reading;
 	});
 });

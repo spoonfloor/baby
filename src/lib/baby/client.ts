@@ -8,6 +8,12 @@ export interface Baby {
 	read(reading: Reading): AsyncIterable<BabyEvent>;
 	/** Forgets everything Baby has ever read, leaving a newborn that knows only its first word. */
 	reset(): AsyncIterable<BabyEvent>;
+	/** Brings back the model from before the latest reading, when `BabyState.undoable`. */
+	undo(): AsyncIterable<BabyEvent>;
+	/** Sends the whole model as a `file` event. */
+	save(): AsyncIterable<BabyEvent>;
+	/** Replaces the model with the one in `bytes`, a `.baby` file. */
+	load(bytes: Uint8Array<ArrayBuffer>): AsyncIterable<BabyEvent>;
 	/** Calls `listener` with Baby's state now (once known) and on every change. Returns an unsubscribe. */
 	subscribe(listener: (state: BabyState) => void): () => void;
 }
@@ -70,6 +76,9 @@ export function createBaby(endpoint: Endpoint): Baby {
 			stream((id) => ({ type: 'reply', id, prompt, history: [...history] })),
 		read: (reading) => stream((id) => ({ type: 'read', id, reading })),
 		reset: () => stream((id) => ({ type: 'reset', id })),
+		undo: () => stream((id) => ({ type: 'undo', id })),
+		save: () => stream((id) => ({ type: 'save', id })),
+		load: (bytes) => stream((id) => ({ type: 'load', id, bytes })),
 		subscribe(listener) {
 			listeners.add(listener);
 			if (state) listener(state);
