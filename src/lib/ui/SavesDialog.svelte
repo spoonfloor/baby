@@ -1,11 +1,11 @@
 <!--
 	Saved models, grouped by where they’re kept: this device, then a server. Clicking a
 	save picks it and shows what can be done with it. Without a server, its group
-	offers to connect one. A line under everything says what’s happening or what went wrong.
+	offers to connect one. In select mode (`checked` given), clicking a save checks it
+	instead, for deleting several at once. A line under everything says what’s
+	happening or what went wrong.
 -->
 <script lang="ts" module>
-	export type SavePlace = 'device' | 'server';
-
 	export interface SaveRow {
 		id: string;
 		name: string;
@@ -15,8 +15,10 @@
 </script>
 
 <script lang="ts">
+	import type { Place, SaveKey } from '#lib/saves/store.ts';
 	import ActionNote from './ActionNote.svelte';
 	import Button from './Button.svelte';
+	import Check from './Check.svelte';
 	import Dialog from './Dialog.svelte';
 	import Row from './Row.svelte';
 
@@ -26,19 +28,30 @@
 		device: SaveRow[];
 		/** The connected server, or undefined if none is. */
 		server?: { host: string; saves: SaveRow[]; problem?: string | undefined } | undefined;
-		selected?: { place: SavePlace; id: string } | undefined;
+		/** The save whose actions are showing. */
+		picked?: SaveKey | undefined;
+		/** In select mode, the saves checked so far; undefined otherwise. */
+		checked?: SaveKey[] | undefined;
 		/** What’s under way, e.g. “Loading “Mine””; actions wait until it’s done. */
 		working?: string | undefined;
 		/** What went wrong with the last action, in the app’s voice. */
 		problem?: string | undefined;
-		onselect: (place: SavePlace, id: string) => void;
-		onload: (place: SavePlace, id: string) => void;
-		onrename: (place: SavePlace, id: string) => void;
-		onmove: (place: SavePlace, id: string) => void;
-		ondelete: (place: SavePlace, id: string) => void;
+		onpick: (save: SaveKey) => void;
+		onload: (save: SaveKey) => void;
+		onrename: (save: SaveKey) => void;
+		onmove: (save: SaveKey) => void;
+		ondelete: (save: SaveKey) => void;
 		onsave: () => void;
 		onconnect: () => void;
 		ondisconnect: () => void;
+		/** Select was chosen: the caller enters select mode with nothing checked. */
+		onselect: () => void;
+		/** A save was checked or unchecked in select mode. */
+		oncheck: (save: SaveKey) => void;
+		/** Deleting the checked saves was asked for; the caller confirms first. */
+		ondeletechecked: () => void;
+		/** Select mode was left without deleting. */
+		onstopselecting: () => void;
 		onclose: () => void;
 	}
 
@@ -46,10 +59,11 @@
 		status,
 		device,
 		server,
-		selected,
+		picked,
+		checked,
 		working,
 		problem,
-		onselect,
+		onpick,
 		onload,
 		onrename,
 		onmove,
@@ -57,36 +71,58 @@
 		onsave,
 		onconnect,
 		ondisconnect,
+		onselect,
+		oncheck,
+		ondeletechecked,
+		onstopselecting,
 		onclose
 	}: Props = $props();
 
 	const busy = $derived(working !== undefined);
+	const selecting = $derived(checked !== undefined);
+	const same = (a: SaveKey | undefined, b: SaveKey) => a?.place === b.place && a.id === b.id;
+	const isChecked = (key: SaveKey) => checked?.some((other) => same(other, key)) ?? false;
+	const hasSaves = $derived(device.length > 0 || (server?.saves.length ?? 0) > 0);
 </script>
 
-{#snippet list(place: SavePlace, saves: SaveRow[], empty: string)}
+{#snippet list(place: Place, saves: SaveRow[], empty: string)}
 	{#if saves.length === 0}
 		<p class="muted">{empty}</p>
 	{:else}
 		<ul>
 			{#each saves as save (save.id)}
-				{@const picked = selected?.place === place && selected.id === save.id}
-				<li class={{ picked }}>
-					<Row aria-expanded={picked} onclick={() => onselect(place, save.id)}>
-						<span class="save">
-							{save.name}
-							<span class="muted">{save.meta}</span>
-						</span>
-					</Row>
-					{#if picked}
+				{@const key = { place, id: save.id }}
+				{@const open = !selecting && same(picked, key)}
+				<li class={{ picked: open }}>
+					{#if selecting}
+						{@const on = isChecked(key)}
+						<Row aria-pressed={on} disabled={busy} onclick={() => oncheck(key)}>
+							<span class="choice">
+								<Check checked={on} />
+								<span class="save">
+									{save.name}
+									<span class="muted">{save.meta}</span>
+								</span>
+							</span>
+						</Row>
+					{:else}
+						<Row aria-expanded={open} onclick={() => onpick(key)}>
+							<span class="save">
+								{save.name}
+								<span class="muted">{save.meta}</span>
+							</span>
+						</Row>
+					{/if}
+					{#if open}
 						<div class="actions">
-							<Button primary disabled={busy} onclick={() => onload(place, save.id)}>Load</Button>
-							<Button disabled={busy} onclick={() => onrename(place, save.id)}>Rename</Button>
+							<Button primary disabled={busy} onclick={() => onload(key)}>Load</Button>
+							<Button disabled={busy} onclick={() => onrename(key)}>Rename</Button>
 							{#if server}
-								<Button disabled={busy} onclick={() => onmove(place, save.id)}>
+								<Button disabled={busy} onclick={() => onmove(key)}>
 									{place === 'device' ? 'Move to server' : 'Move to this device'}
 								</Button>
 							{/if}
-							<Button disabled={busy} onclick={() => ondelete(place, save.id)}>Delete</Button>
+							<Button disabled={busy} onclick={() => ondelete(key)}>Delete</Button>
 						</div>
 					{/if}
 				</li>
@@ -95,7 +131,21 @@
 	{/if}
 {/snippet}
 
-<Dialog title="Saves" size="narrow" line={{ meta: status }} {onclose}>
+{#snippet selectButton()}
+	{#if selecting}
+		<span class="muted">{checked?.length ?? 0} selected</span>
+	{:else if hasSaves}
+		<Button inline disabled={busy} onclick={onselect}>Select</Button>
+	{/if}
+{/snippet}
+
+<Dialog
+	title={selecting ? 'Select saves' : 'Saves'}
+	size="narrow"
+	line={{ meta: selecting ? 'Click saves to select them.' : status }}
+	aside={selectButton}
+	{onclose}
+>
 	<div class="groups">
 		<section>
 			<h3>On this device</h3>
@@ -105,14 +155,15 @@
 			{#if server}
 				<div class="heading">
 					<h3>On {server.host}</h3>
-					<Button inline disabled={busy} onclick={ondisconnect}>Disconnect</Button>
+					{#if !selecting}
+						<Button inline disabled={busy} onclick={ondisconnect}>Disconnect</Button>
+					{/if}
 				</div>
-				{#if server.problem}
-					<ActionNote problem={server.problem} />
-				{:else}
+				<ActionNote problem={server.problem} />
+				{#if !server.problem || server.saves.length > 0}
 					{@render list('server', server.saves, 'Nothing saved on this server yet.')}
 				{/if}
-			{:else}
+			{:else if !selecting}
 				<h3>On a server</h3>
 				<p>Keep saves on your own server to open them on any device.</p>
 				<div class="connect">
@@ -123,8 +174,15 @@
 		<ActionNote {working} {problem} />
 	</div>
 	{#snippet actions(close)}
-		<Button onclick={close}>Close</Button>
-		<Button primary disabled={busy} onclick={onsave}>Save current model</Button>
+		{#if selecting}
+			<Button onclick={onstopselecting}>Cancel</Button>
+			<Button primary disabled={busy || !checked?.length} onclick={ondeletechecked}>
+				Delete {checked?.length ?? 0}
+			</Button>
+		{:else}
+			<Button onclick={close}>Close</Button>
+			<Button primary disabled={busy} onclick={onsave}>Save current model</Button>
+		{/if}
 	{/snippet}
 </Dialog>
 
@@ -180,6 +238,12 @@
 	.save {
 		display: flex;
 		flex-direction: column;
+	}
+
+	.choice {
+		display: flex;
+		align-items: center;
+		gap: var(--space-heading);
 	}
 
 	.muted {

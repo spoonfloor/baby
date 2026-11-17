@@ -50,6 +50,9 @@
 	--color-choice-track: var(--color-bg); /* a choice of a few options, recessed like a field */
 	--color-choice-selected: var(--raw-gray-650); /* the chosen option in it */
 	--color-selected: var(--color-surface-raised); /* a picked row in a list, e.g. a save */
+	--color-check-border: var(--color-text-muted); /* an unchecked checkbox’s outline */
+	--color-check: var(--color-action); /* a checked checkbox’s fill */
+	--color-on-check: var(--color-on-action); /* the mark in it */
 
 	/* Type: one family for text; hierarchy comes from weight, color and space, and a smaller size only for labels */
 	--font-family: 'Inter Variable', system-ui, sans-serif;
@@ -71,6 +74,8 @@
 	--radius-surface: 12px; /* every surface: composer, user bubble, menus, dialogs, sources panel */
 	--radius-pill: 999px; /* text buttons */
 	--radius-field: 8px; /* text fields and picked rows: a step softer than a surface */
+	--radius-check: 4px; /* a checkbox */
+	--width-check-border: 1.5px; /* an unchecked checkbox’s outline */
 
 	/*
 	 * Space, all from the scale. Grouping: the closer two things are, the more they

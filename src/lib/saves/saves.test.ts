@@ -161,6 +161,46 @@ describe('Saves', () => {
 		});
 	});
 
+	it('deletes several saves across places, carrying on past ones that fail', async () => {
+		const model = fakeModel();
+		const device = memoryStore();
+		const server = memoryStore();
+		let serverDown = false;
+		const saves = new Saves(model, {
+			settings: memorySettings(),
+			device,
+			server: () =>
+				serverDown
+					? {
+							...server,
+							remove: async () => {
+								throw new StoreError('unreachable', 'Down');
+							}
+						}
+					: server
+		});
+		await saves.connect('https://baby.example.com', 'token');
+		await saves.save('Here', 'device');
+		await saves.save('Also here', 'device');
+		await saves.save('There', 'server');
+		const keys = [
+			...saves.device.map(({ id }) => ({ place: 'device' as const, id })),
+			...saves.server.map(({ id }) => ({ place: 'server' as const, id }))
+		];
+
+		serverDown = true;
+		const { failed, error } = await saves.remove(keys);
+
+		expect(saves.device).toEqual([]);
+		expect(failed).toEqual(keys.filter(({ place }) => place === 'server'));
+		expect(error).toMatchObject({ kind: 'unreachable' });
+		expect(saves.server).toMatchObject([{ name: 'There' }]);
+
+		serverDown = false;
+		expect(await saves.remove(failed)).toEqual({ failed: [] });
+		expect(saves.server).toEqual([]);
+	});
+
 	it('remembers the server between visits, and forgets it on disconnect', async () => {
 		const { model, settings, server, saves } = setUp();
 		await expect(saves.connect('ftp://nope', 'token')).rejects.toMatchObject({ kind: 'address' });

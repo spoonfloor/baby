@@ -1,7 +1,8 @@
 <!--
-	A modal dialog: a title, a line under it, optional content, and actions at the
-	end. The line is either the message itself (`description`, in full text color) or
-	secondary information about the content (`meta`, muted). It opens when mounted;
+	A modal dialog: a title, an optional line under it, optional content, and actions
+	at the end. The line is either the message itself (`description`, in full text
+	color) or secondary information about the content (`meta`, muted). `aside` sits at
+	the title’s end: a control for the whole dialog, e.g. Select. It opens when mounted;
 	Escape, a click outside, or an action calling `close` closes it, then `onclose` runs.
 -->
 <script lang="ts">
@@ -13,15 +14,17 @@
 		/** Narrow for a confirmation; wide for a dialog showing content. */
 		size: 'narrow' | 'wide';
 		/** The line under the title: the message itself, or secondary information. */
-		line: { description: string } | { meta: string };
+		line?: { description: string } | { meta: string } | undefined;
+		/** At the end of the title’s line. */
+		aside?: Snippet | undefined;
 		/** Content between the line and the actions; scrolls if long. */
-		children?: Snippet;
+		children?: Snippet | undefined;
 		/** The buttons, given a function that closes the dialog. */
 		actions: Snippet<[close: () => void]>;
 		onclose: () => void;
 	}
 
-	let { title, size, line, children, actions, onclose }: Props = $props();
+	let { title, size, line, aside, children, actions, onclose }: Props = $props();
 
 	const id = $props.id();
 	let dialog: HTMLDialogElement;
@@ -39,10 +42,13 @@
 	<Surface roomy>
 		<div class="layout">
 			<header>
-				<h2 {id}>{title}</h2>
-				{#if 'meta' in line}
+				<div class="title">
+					<h2 {id}>{title}</h2>
+					{@render aside?.()}
+				</div>
+				{#if line && 'meta' in line}
 					<p class="meta">{line.meta}</p>
-				{:else}
+				{:else if line}
 					<p>{line.description}</p>
 				{/if}
 			</header>
@@ -90,6 +96,13 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-heading);
+	}
+
+	.title {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-inline);
 	}
 
 	h2,

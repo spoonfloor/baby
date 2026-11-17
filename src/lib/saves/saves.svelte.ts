@@ -2,10 +2,16 @@ import type { BabyState } from '#lib/baby/index.ts';
 import { deviceStore } from './deviceStore.ts';
 import { normalizeAddress, serverStore, type Connection } from './serverStore.ts';
 import { problemText, timestamp } from './describe.ts';
-import { StoreError, type Expected, type SaveStore, type StoredSave } from './store.ts';
+import {
+	StoreError,
+	type Expected,
+	type Place,
+	type SaveKey,
+	type SaveStore,
+	type StoredSave
+} from './store.ts';
 
-/** Where a save is kept. */
-export type Place = 'device' | 'server';
+export type { Place, SaveKey } from './store.ts';
 
 /** The part of the chat that saves and loads the model (see `Chat`). */
 export interface Model {
@@ -163,9 +169,18 @@ export class Saves {
 		await Promise.all([this.#refresh(place), this.#refresh(to)]);
 	}
 
-	async remove(place: Place, id: string) {
-		await this.#store(place).remove(id);
-		await this.#refresh(place);
+	/**
+	 * Deletes `saves`, each from where it’s kept, carrying on past any that fail.
+	 * Returns the ones that couldn’t be deleted, and why the first of them couldn’t.
+	 */
+	async remove(saves: readonly SaveKey[]): Promise<{ failed: SaveKey[]; error?: unknown }> {
+		const results = await Promise.allSettled(
+			saves.map(({ place, id }) => this.#store(place).remove(id))
+		);
+		const failed = saves.filter((_, index) => results[index]?.status === 'rejected');
+		const rejection = results.find((result) => result.status === 'rejected');
+		await this.refresh();
+		return rejection ? { failed, error: rejection.reason } : { failed };
 	}
 
 	/** Connects to the server at `address` if `token` works there, and lists its saves. */

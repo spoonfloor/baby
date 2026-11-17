@@ -1,6 +1,7 @@
 <!--
 	Saving and loading the model, from the Saves dialog: the dialogs it opens (naming
-	a save, connecting a server, confirmations) and what each action does.
+	a save, connecting a server, confirmations) and what each action does, deleting
+	several saves at once included.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -8,9 +9,10 @@
 	import ConnectDialog from '#lib/ui/ConnectDialog.svelte';
 	import SaveNameDialog from '#lib/ui/SaveNameDialog.svelte';
 	import SavesDialog from '#lib/ui/SavesDialog.svelte';
+	import { count } from '#lib/baby/reading.ts';
 	import { describeSave, problemText } from './describe.ts';
-	import type { Place, Saves } from './saves.svelte.ts';
-	import { StoreError, type StoredSave } from './store.ts';
+	import type { Saves } from './saves.svelte.ts';
+	import { StoreError, type Place, type SaveKey, type StoredSave } from './store.ts';
 
 	interface Props {
 		saves: Saves;
@@ -22,13 +24,18 @@
 	let { saves, defaultName, onclose }: Props = $props();
 
 	const PLACES = { device: 'this device', server: 'the server' } as const;
+	/** Where a save is kept, as a label after its name. */
+	const PLACE_LABELS = { device: 'this device', server: 'server' } as const;
 	const STANDING = {
 		untrained: 'The current model hasn’t trained on anything yet.',
 		unsaved: 'The current model has training that isn’t saved.',
 		saved: 'The current model is saved.'
 	} as const;
 
-	let selected: { place: Place; id: string } | undefined = $state();
+	/** The save whose actions are showing. */
+	let picked: SaveKey | undefined = $state();
+	/** In select mode, the saves checked so far; undefined otherwise. */
+	let checked: SaveKey[] | undefined = $state();
 	let working: string | undefined = $state();
 	let problem: string | undefined = $state();
 
@@ -39,7 +46,8 @@
 		| undefined = $state();
 	let connecting: { address: string; token: string } | undefined = $state();
 	let confirming:
-		| { kind: 'load' | 'delete'; save: StoredSave; place: Place }
+		| { kind: 'load'; save: StoredSave; place: Place }
+		| { kind: 'delete'; saves: Found[] }
 		| { kind: 'conflict'; name: string; place: Place }
 		| undefined = $state();
 
@@ -72,13 +80,27 @@
 		}
 	}
 
-	function find(place: Place, id: string): StoredSave | undefined {
-		return (place === 'device' ? saves.device : saves.server).find((save) => save.id === id);
+	/** A save as listed, and where it’s kept. */
+	type Found = StoredSave & { place: Place };
+
+	function find({ place, id }: SaveKey): Found | undefined {
+		const save = (place === 'device' ? saves.device : saves.server).find((s) => s.id === id);
+		return save && { ...save, place };
 	}
 
-	function select(place: Place, id: string) {
+	const same = (a: SaveKey | undefined, b: SaveKey) => a?.place === b.place && a.id === b.id;
+
+	function pick(key: SaveKey) {
 		problem = undefined;
-		selected = selected?.place === place && selected.id === id ? undefined : { place, id };
+		picked = same(picked, key) ? undefined : key;
+	}
+
+	function check(key: SaveKey) {
+		if (!checked) return;
+		problem = undefined;
+		checked = checked.some((other) => same(other, key))
+			? checked.filter((other) => !same(other, key))
+			: [...checked, key];
 	}
 
 	function startSaving() {
@@ -112,7 +134,7 @@
 			problem = undefined;
 			await saves.save(name, place);
 			naming = undefined;
-			selected = undefined;
+			picked = undefined;
 		} catch (error) {
 			if (error instanceof StoreError && error.kind === 'conflict') {
 				naming = undefined;
@@ -126,11 +148,11 @@
 		}
 	}
 
-	function load(place: Place, id: string) {
-		const target = find(place, id);
+	function load(key: SaveKey) {
+		const target = find(key);
 		if (!target) return;
-		if (saves.unsaved) confirming = { kind: 'load', save: target, place };
-		else void loadNow(target, place);
+		if (saves.unsaved) confirming = { kind: 'load', save: target, place: key.place };
+		else void loadNow(target, key.place);
 	}
 
 	async function loadNow(target: StoredSave, place: Place) {
@@ -143,30 +165,58 @@
 		if (loaded) onclose();
 	}
 
-	function rename(place: Place, id: string) {
-		const target = find(place, id);
-		if (target) naming = { mode: 'rename', name: target.name, place, id };
+	function rename(key: SaveKey) {
+		const target = find(key);
+		if (target) naming = { mode: 'rename', name: target.name, ...key };
 	}
 
-	function move(place: Place, id: string) {
-		const target = find(place, id);
+	function move({ place, id }: SaveKey) {
+		const target = find({ place, id });
 		if (!target) return;
 		const to: Place = place === 'device' ? 'server' : 'device';
 		void run(`Moving “${target.name}” to ${PLACES[to]}`, async () => {
 			await saves.move(place, id);
-			selected = { place: to, id };
+			picked = { place: to, id };
 		});
 	}
 
-	function removeNow(target: StoredSave, place: Place) {
-		confirming = undefined;
-		selected = undefined;
-		void run(`Deleting “${target.name}”`, () => saves.remove(place, target.id));
+	/** Asks before deleting `keys`: one save from its actions, or the ones checked. */
+	function askToRemove(keys: readonly SaveKey[]) {
+		const found = keys.flatMap((key) => find(key) ?? []);
+		if (found.length > 0) confirming = { kind: 'delete', saves: found };
 	}
 
-	function remove(place: Place, id: string) {
-		const target = find(place, id);
-		if (target) confirming = { kind: 'delete', save: target, place };
+	/**
+	 * Deletes `targets`. Any that couldn’t be deleted stay checked (in select mode),
+	 * and the problem line says how many went and why the rest didn’t.
+	 */
+	async function removeNow(targets: Found[]) {
+		confirming = undefined;
+		picked = undefined;
+		const [only] = targets;
+		working =
+			targets.length === 1 && only
+				? `Deleting “${only.name}”`
+				: `Deleting ${count(targets.length, 'save')}`;
+		problem = undefined;
+		try {
+			const { failed, error } = await saves.remove(targets);
+			if (failed.length === 0) {
+				checked = undefined;
+				return;
+			}
+			if (checked) checked = failed;
+			const went = targets.length - failed.length;
+			problem =
+				targets.length === 1
+					? problemText(error)
+					: `Deleted ${went} of ${targets.length}. ${problemText(error)}`;
+		} catch (error) {
+			console.error(error);
+			problem = problemText(error);
+		} finally {
+			working = undefined;
+		}
 	}
 
 	async function connect() {
@@ -176,7 +226,7 @@
 	}
 
 	function disconnect() {
-		if (selected?.place === 'server') selected = undefined;
+		if (picked?.place === 'server') picked = undefined;
 		saves.disconnect();
 	}
 </script>
@@ -185,14 +235,26 @@
 	status={STANDING[saves.standing]}
 	device={rows(saves.device)}
 	server={host ? { host, saves: rows(saves.server), problem: saves.serverProblem } : undefined}
-	{selected}
+	{picked}
+	{checked}
 	working={naming || connecting ? undefined : working}
 	problem={naming || connecting ? undefined : problem}
-	onselect={select}
+	onpick={pick}
 	onload={load}
 	onrename={rename}
 	onmove={move}
-	ondelete={remove}
+	ondelete={(key) => askToRemove([key])}
+	onselect={() => {
+		problem = undefined;
+		picked = undefined;
+		checked = [];
+	}}
+	oncheck={check}
+	ondeletechecked={() => askToRemove(checked ?? [])}
+	onstopselecting={() => {
+		problem = undefined;
+		checked = undefined;
+	}}
 	onsave={startSaving}
 	onconnect={() => {
 		problem = undefined;
@@ -254,12 +316,21 @@
 		onclose={() => (confirming = undefined)}
 	/>
 {:else if confirming?.kind === 'delete'}
-	{@const { save: target, place } = confirming}
+	{@const targets = confirming.saves}
+	{@const [only] = targets}
 	<ConfirmDialog
-		title={`Delete “${target.name}”?`}
-		description="This can’t be undone."
-		confirm="Delete"
-		onconfirm={() => removeNow(target, place)}
+		title={targets.length === 1 && only
+			? `Delete “${only.name}”?`
+			: `Delete ${count(targets.length, 'save')}?`}
+		confirm="Delete forever"
+		items={targets.length > 1
+			? targets.map((target) => ({
+					key: `${target.place}:${target.id}`,
+					label: target.name,
+					note: PLACE_LABELS[target.place]
+				}))
+			: undefined}
+		onconfirm={() => removeNow(targets)}
 		onclose={() => (confirming = undefined)}
 	/>
 {:else if confirming?.kind === 'conflict'}

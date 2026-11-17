@@ -26,6 +26,7 @@
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SaveNameDialog from '#lib/ui/SaveNameDialog.svelte';
 	import SavesDialog from '#lib/ui/SavesDialog.svelte';
+	import type { SaveKey } from '#lib/saves/store.ts';
 	import SettingsMenu from '#lib/ui/SettingsMenu.svelte';
 	import ScriptText from '#lib/ui/ScriptText.svelte';
 	import SourceDialog from '#lib/ui/SourceDialog.svelte';
@@ -131,14 +132,19 @@
 		{ value: 'device', label: 'This device' },
 		{ value: 'server', label: 'Server' }
 	];
-	let savesDemo: 'empty' | 'device' | 'server' | 'working' | 'problems' | undefined = $state();
+	let savesDemo:
+		'empty' | 'device' | 'server' | 'working' | 'problems' | 'selecting' | 'partial' | undefined =
+		$state();
+	/** The saves checked in the select-mode demos. */
+	let demoChecked: SaveKey[] = $state([]);
+	const sameSave = (a: SaveKey, b: SaveKey) => a.place === b.place && a.id === b.id;
 	let naming: 'new' | 'replace' | 'rename' | 'problem' | undefined = $state();
 	let saveName = $state('Chatbot 101 plus monkeys');
 	let savePlace: 'device' | 'server' = $state('server');
 	let connecting = $state(false);
 	let serverAddress = $state('');
 	let serverToken = $state('');
-	let confirmingSave: 'load' | 'delete' | 'conflict' | undefined = $state();
+	let confirmingSave: 'load' | 'delete' | 'deleteMany' | 'conflict' | undefined = $state();
 </script>
 
 {#snippet teachLink()}
@@ -257,6 +263,21 @@
 			<Button onclick={() => (savesDemo = 'server')}>Server, a save picked</Button>
 			<Button onclick={() => (savesDemo = 'working')}>Loading</Button>
 			<Button onclick={() => (savesDemo = 'problems')}>Problems</Button>
+			<Button
+				onclick={() => {
+					demoChecked = [];
+					savesDemo = 'selecting';
+				}}>Selecting</Button
+			>
+			<Button
+				onclick={() => {
+					demoChecked = [
+						{ place: 'server', id: 's2' },
+						{ place: 'server', id: 's1' }
+					];
+					savesDemo = 'partial';
+				}}>Some couldn’t be deleted</Button
+			>
 		</div>
 		{#if savesDemo}
 			{@const connected = savesDemo !== 'empty' && savesDemo !== 'device'}
@@ -275,18 +296,31 @@
 									: undefined
 						}
 					: undefined}
-				selected={savesDemo === 'server' || savesDemo === 'working'
+				picked={savesDemo === 'server' || savesDemo === 'working'
 					? { place: 'server', id: 's1' }
 					: undefined}
+				checked={savesDemo === 'selecting' || savesDemo === 'partial' ? demoChecked : undefined}
 				working={savesDemo === 'working' ? 'Loading “Chatbot 101 done”' : undefined}
 				problem={savesDemo === 'problems'
 					? 'That save is gone. It may have been deleted on another device.'
-					: undefined}
-				onselect={noop}
+					: savesDemo === 'partial'
+						? 'Deleted 1 of 3. Couldn’t reach the server. Check the address and your connection.'
+						: undefined}
+				onpick={noop}
 				onload={noop}
 				onrename={noop}
 				onmove={noop}
-				ondelete={noop}
+				ondelete={() => (confirmingSave = 'delete')}
+				onselect={() => {
+					demoChecked = [];
+					savesDemo = 'selecting';
+				}}
+				oncheck={(key) =>
+					(demoChecked = demoChecked.some((other) => sameSave(other, key))
+						? demoChecked.filter((other) => !sameSave(other, key))
+						: [...demoChecked, key])}
+				ondeletechecked={() => (confirmingSave = 'deleteMany')}
+				onstopselecting={() => (savesDemo = 'device')}
 				onsave={() => (naming = 'new')}
 				onconnect={() => (connecting = true)}
 				ondisconnect={noop}
@@ -343,6 +377,7 @@
 		<div class="row wrap">
 			<Button onclick={() => (confirmingSave = 'load')}>Load over unsaved training</Button>
 			<Button onclick={() => (confirmingSave = 'delete')}>Delete a save</Button>
+			<Button onclick={() => (confirmingSave = 'deleteMany')}>Delete several</Button>
 			<Button onclick={() => (confirmingSave = 'conflict')}>Changed on another device</Button>
 		</div>
 		{#if confirmingSave === 'load'}
@@ -356,8 +391,19 @@
 		{:else if confirmingSave === 'delete'}
 			<ConfirmDialog
 				title="Delete “Chatbot 101 done”?"
-				description="This can’t be undone."
-				confirm="Delete"
+				confirm="Delete forever"
+				onconfirm={() => (confirmingSave = undefined)}
+				onclose={() => (confirmingSave = undefined)}
+			/>
+		{:else if confirmingSave === 'deleteMany'}
+			<ConfirmDialog
+				title="Delete 3 saves?"
+				items={[
+					{ key: 'd1', label: 'Story-only experiment', note: 'this device' },
+					{ key: 's2', label: 'After monkeys, before Aesop', note: 'server' },
+					{ key: 's1', label: 'Chatbot 101 done', note: 'server' }
+				]}
+				confirm="Delete forever"
 				onconfirm={() => (confirmingSave = undefined)}
 				onclose={() => (confirmingSave = undefined)}
 			/>

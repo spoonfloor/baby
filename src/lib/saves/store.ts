@@ -4,6 +4,15 @@
  * behind this one interface, so everything above it works the same for both.
  */
 
+/** Where a save is kept. */
+export type Place = 'device' | 'server';
+
+/** One save, by where it’s kept and its id there. */
+export interface SaveKey {
+	place: Place;
+	id: string;
+}
+
 /** What a save is, without its file: enough to list it. */
 export interface SaveInfo {
 	id: string;
