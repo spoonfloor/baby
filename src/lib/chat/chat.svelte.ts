@@ -13,9 +13,7 @@ import { graphWords } from '#lib/ui/guessMap.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
 import { nudge, type Notice } from './notices.ts';
-
-/** Starts the `source` of every reply the user teaches, so it can be told apart from a primer. */
-export const TAUGHT_SOURCE = 'taught:';
+import { TAUGHT_SOURCE } from './taught.ts';
 
 export type UserMessage = {
 	id: string;
@@ -61,7 +59,7 @@ export class Chat {
 	/** What Baby knows, as last reported by Baby. */
 	knowledge: BabyState | undefined = $state();
 	/** Ids of the sources Baby has finished reading, as Baby reports them. */
-	readSources: string[] = $derived(this.knowledge?.sources ?? []);
+	readSources: string[] = $derived(this.knowledge?.sources.map(({ id }) => id) ?? []);
 	/** Baby knows only the first word it was born knowing, and isn’t reading anything else yet. */
 	untrained: boolean = $derived(
 		!this.reading && this.readSources.every((source) => source === firstWord.id)
@@ -136,7 +134,8 @@ export class Chat {
 		await this.#read({
 			source: `${TAUGHT_SOURCE}${crypto.randomUUID()}`,
 			title: `Your reply to ‘${prompt}’`,
-			documents: [[...turnTokens('you', prompt), ...turnTokens('baby', reply)]]
+			documents: [[...turnTokens('you', prompt), ...turnTokens('baby', reply)]],
+			keep: true
 		});
 	}
 

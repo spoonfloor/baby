@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Model } from './model.ts';
+import { Model, upgradeSources } from './model.ts';
 import type { BabyEvent, Reading, Turn } from './protocol.ts';
 import { seededRandom } from './random.ts';
 import { parseScripts } from './script.ts';
@@ -8,9 +8,11 @@ import { tokenize } from './vocabulary.ts';
 
 /** Small enough that practice takes moments. */
 const SMALL: TransformerConfig = { dim: 16, layers: 2, heads: 2, hidden: 32, context: 16 };
+/** When every reading finishes. */
+const DATE = Date.UTC(2026, 10, 17);
 
 const newModel = (seed = 1) =>
-	new Model({ random: seededRandom(seed), idle: async () => {}, config: SMALL });
+	new Model({ random: seededRandom(seed), idle: async () => {}, date: () => DATE, config: SMALL });
 
 const rhyme: Reading = {
 	source: 'rhyme',
@@ -52,7 +54,7 @@ describe('Model', () => {
 
 		expect(model.state).toEqual({
 			words: ['the', 'cow', 'jumped', 'over', 'moon'],
-			sources: ['rhyme']
+			sources: [{ id: 'rhyme', at: DATE }]
 		});
 		expect(
 			events.some((event) => event.type === 'status' && /^Practicing “Rhyme”/.test(event.text))
@@ -228,6 +230,25 @@ describe('Model', () => {
 		await collect(first);
 	});
 
+	it('keeps what it read only when asked, and each source once', async () => {
+		const model = newModel();
+		await collect(model.read({ ...hi, keep: true }));
+		await collect(model.read(rhyme));
+		await collect(model.read({ ...hi, keep: true }));
+
+		expect(model.state.sources).toEqual([
+			{ id: 'hi', at: DATE, documents: hi.documents },
+			{ id: 'rhyme', at: DATE }
+		]);
+	});
+
+	it('reads sources kept before readings were dated', () => {
+		expect(upgradeSources(['hi', { id: 'rhyme', at: DATE }])).toEqual([
+			{ id: 'hi' },
+			{ id: 'rhyme', at: DATE }
+		]);
+	});
+
 	it('carries on from a snapshot exactly where it left off', async () => {
 		const model = newModel();
 		await collect(model.read(hi));
@@ -255,7 +276,7 @@ describe('Model', () => {
 
 		await collect(restored.read(rhyme));
 
-		expect(restored.state.sources).toEqual(['hi', 'rhyme']);
+		expect(restored.state.sources.map(({ id }) => id)).toEqual(['hi', 'rhyme']);
 		expect(restored.state.words.slice(0, model.state.words.length)).toEqual(model.state.words);
 	});
 

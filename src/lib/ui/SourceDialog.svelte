@@ -16,18 +16,23 @@
 		summary: string;
 		documents: Document[];
 		/** Baby has read this before, so reading it is reading it again. */
-		read: boolean;
-		onread: () => void;
+		read?: boolean;
+		/** Reads it; without one, it can only be looked at (a day of replies the user taught). */
+		onread?: (() => void) | undefined;
 		onclose: () => void;
 	}
 
-	let { title, credit, summary, documents, read, onread, onclose }: Props = $props();
+	let { title, credit, summary, documents, read = false, onread, onclose }: Props = $props();
 </script>
 
 <Dialog {title} size="wide" line={{ meta: credit ? `${credit} · ${summary}` : summary }} {onclose}>
 	<ScriptText {documents} />
 	{#snippet actions(close)}
-		<Button onclick={close}>Cancel</Button>
-		<Button primary onclick={onread}>{read ? 'Train again' : 'Train'}</Button>
+		{#if onread}
+			<Button onclick={close}>Cancel</Button>
+			<Button primary onclick={onread}>{read ? 'Train again' : 'Train'}</Button>
+		{:else}
+			<Button onclick={close}>Close</Button>
+		{/if}
 	{/snippet}
 </Dialog>

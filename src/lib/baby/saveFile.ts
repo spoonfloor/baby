@@ -1,4 +1,5 @@
-import type { ModelSnapshot } from './model.ts';
+import { upgradeSources, type ModelSnapshot } from './model.ts';
+import type { ReadSource } from './protocol.ts';
 import type { TransformerConfig } from './transformer.ts';
 
 /**
@@ -23,7 +24,8 @@ interface Header {
 	vocabularySize: number;
 	steps: number;
 	words: string[];
-	sources: string[];
+	/** Plain ids in files saved before readings were dated. */
+	sources: (string | ReadSource)[];
 	documentLengths: number[];
 	paramLengths: number[];
 }
@@ -131,7 +133,7 @@ export function decodeSave(bytes: Uint8Array): ModelSnapshot {
 	return {
 		words: header.words,
 		documents,
-		sources: header.sources,
+		sources: upgradeSources(header.sources),
 		transformer: {
 			config: header.config,
 			vocabularySize: header.vocabularySize,

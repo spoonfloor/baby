@@ -8,6 +8,8 @@
 		readingStats
 	} from '#lib/baby/reading.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
+	import { describeDay, repliesGroup, TAUGHT_SOURCE, taughtDays } from '#lib/chat/taught.ts';
+	import { turnTokens } from '#lib/baby/script.ts';
 	import { chatbot101 } from '#lib/library/chatbot-101.ts';
 	import { therapyBot } from '#lib/library/therapy-bot/index.ts';
 	import AddMenu from '#lib/ui/AddMenu.svelte';
@@ -99,7 +101,10 @@
 					id,
 					title,
 					read: index < read,
-					newWords: describeNewWords(newWordCounts[index % newWordCounts.length] ?? 0)
+					note:
+						index < read
+							? undefined
+							: describeNewWords(newWordCounts[index % newWordCounts.length] ?? 0)
 				}))
 			},
 			{
@@ -109,15 +114,38 @@
 						id: therapyBot.id,
 						title: therapyBot.title,
 						read: false,
-						newWords: describeNewWords(812)
+						note: describeNewWords(812)
 					}
 				]
 			}
 		];
 	}
 
-	/** Which source preview is open: never read, read before, or adapted from something. */
-	let previewing: 'unread' | 'read' | 'credited' | undefined = $state();
+	/** Replies taught today, yesterday, and a week before: 4, 12, and 1 of them. */
+	const DAY = 24 * 60 * 60 * 1000;
+	const taughtReplies = [
+		{ daysAgo: 0, replies: 4 },
+		{ daysAgo: 1, replies: 12 },
+		{ daysAgo: 8, replies: 1 }
+	].flatMap(({ daysAgo, replies }) =>
+		Array.from({ length: replies }, (_, n) => ({
+			id: `${TAUGHT_SOURCE}${daysAgo}-${n}`,
+			at: Date.now() - daysAgo * DAY,
+			documents: [
+				[...turnTokens('you', n % 2 ? 'hi !' : 'hi baby !'), ...turnTokens('baby', 'hi !')]
+			]
+		}))
+	);
+	const days = taughtDays(taughtReplies, new Date());
+
+	/** Sources panel groups as `panelGroups(3)`, with a group of replies taught on three days. */
+	function groupsWithReplies() {
+		const [first, ...rest] = panelGroups(3);
+		return [...(first ? [first] : []), repliesGroup(days), ...rest];
+	}
+
+	/** Which source preview is open: never read, read before, adapted from something, or a day of taught replies. */
+	let previewing: 'unread' | 'read' | 'credited' | 'taught' | undefined = $state();
 	const previewed = $derived(previewing === 'credited' ? therapyBot : greetings);
 	let confirmingReset = $state(false);
 
@@ -210,6 +238,12 @@
 				disabled
 				onopen={noop}
 			/>
+			<SourcesPanel
+				summary={describeKnowledge(412)}
+				groups={groupsWithReplies()}
+				open
+				onopen={(id) => (previewing = id.startsWith('taught-day:') ? 'taught' : 'unread')}
+			/>
 		</div>
 	</section>
 
@@ -219,8 +253,17 @@
 			<Button onclick={() => (previewing = 'unread')}>Never read</Button>
 			<Button onclick={() => (previewing = 'read')}>Read before</Button>
 			<Button onclick={() => (previewing = 'credited')}>Inspired by</Button>
+			<Button onclick={() => (previewing = 'taught')}>Taught replies</Button>
 		</div>
-		{#if previewing}
+		{#if previewing === 'taught' && days[0]}
+			{@const day = days[0]}
+			<SourceDialog
+				title={day.title}
+				summary={describeDay(day)}
+				documents={day.documents}
+				onclose={() => (previewing = undefined)}
+			/>
+		{:else if previewing}
 			<SourceDialog
 				title={previewed.title}
 				credit={previewed.credit}

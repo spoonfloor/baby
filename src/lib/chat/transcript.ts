@@ -29,7 +29,7 @@ export function transcript(
 	{ knowledge, primers, noticeText, at }: TranscriptOptions
 ): string {
 	const read = (knowledge?.sources ?? []).flatMap(
-		(source) => primers.find((primer) => primer.id === source) ?? []
+		(source) => primers.find((primer) => primer.id === source.id) ?? []
 	);
 	const lines = [
 		`Baby transcript · ${at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`,

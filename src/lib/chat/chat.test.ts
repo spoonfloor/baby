@@ -20,7 +20,12 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 	let release = () => {};
 	const released = new Promise<void>((resolve) => (release = resolve));
 	const listeners = new Set<(state: BabyState) => void>();
-	let state: BabyState = { words, sources, revision: 'r0', undoable: false };
+	let state: BabyState = {
+		words,
+		sources: sources.map((id) => ({ id })),
+		revision: 'r0',
+		undoable: false
+	};
 	const publish = (next: Partial<BabyState>) => {
 		state = { ...state, ...next };
 		for (const listener of listeners) listener(state);
@@ -30,7 +35,8 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 	async function* respond(source?: string): AsyncGenerator<BabyEvent> {
 		yield* events;
 		await released;
-		if (source !== undefined) publish({ sources: [...state.sources, source], undoable: true });
+		if (source !== undefined)
+			publish({ sources: [...state.sources, { id: source }], undoable: true });
 		yield { type: 'done' };
 	}
 	const baby: Baby = {
@@ -48,13 +54,16 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 			yield { type: 'done' };
 		},
 		async *save() {
-			yield { type: 'file', bytes: new TextEncoder().encode(state.sources.join(',')) };
+			yield {
+				type: 'file',
+				bytes: new TextEncoder().encode(state.sources.map(({ id }) => id).join(','))
+			};
 			yield { type: 'done' };
 		},
 		async *load(bytes) {
 			const sources = new TextDecoder().decode(bytes);
 			if (sources === 'broken') throw new Error('Not a saved model');
-			publish({ sources: sources.split(','), undoable: false });
+			publish({ sources: sources.split(',').map((id) => ({ id })), undoable: false });
 			yield { type: 'done' };
 		},
 		subscribe(listener) {

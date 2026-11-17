@@ -7,8 +7,15 @@
 		describeReading,
 		readingStats
 	} from '#lib/baby/reading.ts';
-	import { Chat, TAUGHT_SOURCE } from '#lib/chat/chat.svelte.ts';
+	import { Chat } from '#lib/chat/chat.svelte.ts';
 	import { noticeText } from '#lib/chat/notices.ts';
+	import {
+		describeDay,
+		repliesGroup,
+		TAUGHT_SOURCE,
+		taughtDays,
+		type TaughtDay
+	} from '#lib/chat/taught.ts';
 	import { transcript } from '#lib/chat/transcript.ts';
 	import { groups, type Primer } from '#lib/library/index.ts';
 	import { Saves } from '#lib/saves/saves.svelte.ts';
@@ -36,22 +43,38 @@
 		groups.flatMap((group) => group.primers.map((primer) => [primer.id, primer]))
 	);
 	const known = $derived(new Set(chat.knowledge?.words));
-	const panelGroups = $derived(
-		groups.map(({ title, primers }) => ({
+	/** Replies the user taught, a day to a source; listed after the first group (Chatbot 101). */
+	const days = $derived(taughtDays(chat.knowledge?.sources ?? [], new Date()));
+	const panelGroups = $derived.by(() => {
+		const library = groups.map(({ title, primers }) => ({
 			title,
-			sources: primers.map(({ id, title, documents }) => ({
-				id,
-				title,
-				read: chat.readSources.includes(id),
-				newWords: describeNewWords(readingStats(documents, (word) => known.has(word)).newWords)
-			}))
-		}))
-	);
+			sources: primers.map(({ id, title, documents }) => {
+				const read = chat.readSources.includes(id);
+				return {
+					id,
+					title,
+					read,
+					note: read
+						? undefined
+						: describeNewWords(readingStats(documents, (word) => known.has(word)).newWords)
+				};
+			})
+		}));
+		if (days.length === 0) return library;
+		return [...library.slice(0, 1), repliesGroup(days), ...library.slice(1)];
+	});
 	const bottom = stickToBottom();
 	let composer: Composer;
 
 	/** The primer being previewed. Raw, not deeply reactive: primers never change, and Baby’s worker can only be sent plain data. */
 	let previewing: Primer | undefined = $state.raw();
+	/** The day of taught replies being previewed. */
+	let previewingDay: TaughtDay | undefined = $state.raw();
+
+	function preview(id: string) {
+		previewing = primers.get(id);
+		previewingDay = days.find((day) => day.id === id);
+	}
 
 	/** The Reset model confirmation is open. */
 	let confirmingReset = $state(false);
@@ -153,7 +176,7 @@
 			summary={describeKnowledge(known.size)}
 			groups={panelGroups}
 			disabled={chat.reading}
-			onopen={(id) => (previewing = primers.get(id))}
+			onopen={preview}
 		/>
 	</header>
 
@@ -278,6 +301,16 @@
 		read={chat.readSources.includes(primer.id)}
 		onread={() => read(primer)}
 		onclose={() => (previewing = undefined)}
+	/>
+{/if}
+
+{#if previewingDay}
+	{@const day = previewingDay}
+	<SourceDialog
+		title={day.title}
+		summary={describeDay(day)}
+		documents={day.documents}
+		onclose={() => (previewingDay = undefined)}
 	/>
 {/if}
 

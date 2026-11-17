@@ -15,12 +15,14 @@
 		title: string;
 		/** Baby has read it, so it's marked. */
 		read: boolean;
-		/** What reading it would add, e.g. “28 new words”; shown until it's read. */
-		newWords: string;
+		/** Shown at the end of the row in place of the read mark, e.g. “28 new words”, “4 replies”. */
+		note?: string | undefined;
 	}
 
 	interface PanelGroup {
 		title: string;
+		/** Shown at the end of the group’s row in place of how many are read (“1 of 5”), e.g. “41 replies”. */
+		tally?: string;
 		sources: PanelSource[];
 	}
 
@@ -72,7 +74,8 @@
 									{group.title}
 									<Icon name={expanded ? 'collapse' : 'expand'} small />
 								</span>
-								{group.sources.filter((source) => source.read).length} of {group.sources.length}
+								{group.tally ??
+									`${group.sources.filter((source) => source.read).length} of ${group.sources.length}`}
 							</Row>
 							{#if expanded}
 								<ul>
@@ -80,10 +83,10 @@
 										<li>
 											<Row {disabled} onclick={() => onopen(source.id)}>
 												{source.title}
-												{#if source.read}
+												{#if source.note !== undefined}
+													<span class="mark">{source.note}</span>
+												{:else if source.read}
 													<span class="mark" aria-label="Read"><Icon name="check" /></span>
-												{:else}
-													<span class="mark">{source.newWords}</span>
 												{/if}
 											</Row>
 										</li>
@@ -130,18 +133,18 @@
 		cursor: pointer;
 	}
 
-	/* The summary hugs the title as its subtitle; groups stand apart as sections. */
+	/*
+	 * The summary hugs the title as its subtitle and stands apart from the groups, which
+	 * stack like the rows inside them, spaced by the rows’ own padding.
+	 */
 	.body {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-section);
 		margin-block-start: var(--space-subtitle);
 		max-block-size: var(--height-panel-max);
 		overflow-y: auto;
 	}
 
 	p {
-		margin: 0;
+		margin: 0 0 var(--space-section);
 	}
 
 	.label {

@@ -71,8 +71,18 @@ export interface Turn {
 export interface Knowledge {
 	/** Every word Baby has read, not counting the special tokens. */
 	words: string[];
-	/** The `source` of every reading Baby has finished, each once. */
-	sources: string[];
+	/** Every reading Baby has finished, each once, in the order it first finished them. */
+	sources: ReadSource[];
+}
+
+/** A reading Baby has finished. */
+export interface ReadSource {
+	/** The reading’s `source`. */
+	id: string;
+	/** When Baby first finished it, in milliseconds since 1970; missing for readings from before this was kept. */
+	at?: number;
+	/** The exact tokens read, kept for a reading that asked for it (see `Reading.keep`). */
+	documents?: Document[];
 }
 
 /** What Baby knows, for the app to react to (e.g. its notices, a reading preview). */
@@ -95,6 +105,11 @@ export interface Reading {
 	title: string;
 	/** The exact tokens to train on. */
 	documents: Document[];
+	/**
+	 * Baby keeps `documents` with the source, so the app can show them later: for text
+	 * that exists nowhere else, like a reply the user taught. Primers live in the app.
+	 */
+	keep?: boolean;
 }
 
 /** App → worker. */

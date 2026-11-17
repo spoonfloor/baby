@@ -57,14 +57,19 @@ function fakeModel(): FakeModel {
 		knowledge: undefined as BabyState | undefined,
 		untrained: false,
 		read(source: string) {
-			const sources = [...(model.knowledge?.sources ?? []), source];
+			const sources = [...(model.knowledge?.sources ?? []), { id: source }];
 			model.knowledge = { words: ['a'], sources, revision: `r${++revision}`, undoable: true };
 		},
 		async save() {
-			return new TextEncoder().encode((model.knowledge?.sources ?? []).join(','));
+			return new TextEncoder().encode(
+				(model.knowledge?.sources ?? []).map(({ id }) => id).join(',')
+			);
 		},
 		async load(bytes: Uint8Array) {
-			const sources = new TextDecoder().decode(bytes).split(',');
+			const sources = new TextDecoder()
+				.decode(bytes)
+				.split(',')
+				.map((id) => ({ id }));
 			model.knowledge = { words: ['a'], sources, revision: `r${++revision}`, undoable: false };
 		}
 	};
@@ -118,7 +123,7 @@ describe('Saves', () => {
 
 		model.read('aesop');
 		await saves.load('device', first(saves.device).id);
-		expect(model.knowledge?.sources).toEqual(['hello', 'monkeys']);
+		expect(model.knowledge?.sources.map(({ id }) => id)).toEqual(['hello', 'monkeys']);
 		expect(saves.unsaved).toBe(false);
 	});
 

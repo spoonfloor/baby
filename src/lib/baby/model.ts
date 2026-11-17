@@ -1,5 +1,13 @@
 import { CHAINED_DOCUMENTS, Plateau, practiceBudget, sampleBatch } from './practice.ts';
-import type { BabyEvent, Guess, Knowledge, Reading, ReplyTrace, Turn } from './protocol.ts';
+import type {
+	BabyEvent,
+	Guess,
+	Knowledge,
+	Reading,
+	ReadSource,
+	ReplyTrace,
+	Turn
+} from './protocol.ts';
 import { count, describeReading, readingStats } from './reading.ts';
 import { TURN_START, turnTokens } from './script.ts';
 import {
@@ -27,6 +35,8 @@ export interface ModelOptions {
 	idle: () => Promise<void>;
 	/** Milliseconds from any fixed start, for estimating how long practice has left. */
 	now?: () => number;
+	/** Milliseconds since 1970, for when Baby finished each reading. */
+	date?: () => number;
 	config?: TransformerConfig;
 	/** A Baby saved earlier, to carry on from. Must match `config`. */
 	snapshot?: ModelSnapshot;
@@ -37,7 +47,7 @@ export interface ModelSnapshot {
 	/** Real words in id order, so restoring gives every word its old id. */
 	words: string[];
 	documents: number[][];
-	sources: string[];
+	sources: ReadSource[];
 	transformer: TransformerSnapshot;
 }
 
@@ -45,24 +55,27 @@ export class Model {
 	#vocabulary = new Vocabulary();
 	/** Everything Baby has read, as word ids, one array per document. */
 	#documents: number[][] = [];
-	/** The `source` of every finished reading, each once. */
-	#sources: string[] = [];
+	/** Every finished reading, each once. */
+	#sources: ReadSource[] = [];
 	#transformer: Transformer;
 	#random: () => number;
 	#idle: () => Promise<void>;
 	#now: () => number;
+	#date: () => number;
 	#practicing = false;
 
 	constructor({
 		random,
 		idle,
 		now = () => performance.now(),
+		date = () => Date.now(),
 		config = BABY_CONFIG,
 		snapshot
 	}: ModelOptions) {
 		this.#random = random;
 		this.#idle = idle;
 		this.#now = now;
+		this.#date = date;
 		if (!snapshot) {
 			this.#transformer = new Transformer(config, this.#vocabulary.tokenCount, random);
 			return;
@@ -75,12 +88,12 @@ export class Model {
 			throw new RangeError('Snapshot’s words don’t match its numbers');
 		}
 		this.#documents = snapshot.documents.map((document) => [...document]);
-		this.#sources = [...snapshot.sources];
+		this.#sources = snapshot.sources.map(copySource);
 		this.#transformer = Transformer.restore(snapshot.transformer, random);
 	}
 
 	get state(): Knowledge {
-		return { words: this.#vocabulary.words, sources: [...this.#sources] };
+		return { words: this.#vocabulary.words, sources: this.#sources.map(copySource) };
 	}
 
 	/** A copy of everything Baby is right now. */
@@ -88,12 +101,12 @@ export class Model {
 		return {
 			words: this.#vocabulary.words,
 			documents: this.#documents.map((document) => [...document]),
-			sources: [...this.#sources],
+			sources: this.#sources.map(copySource),
 			transformer: this.#transformer.snapshot()
 		};
 	}
 
-	async *read({ source, title, documents }: Reading): AsyncGenerator<BabyEvent> {
+	async *read({ source, title, documents, keep }: Reading): AsyncGenerator<BabyEvent> {
 		if (this.#practicing) throw new Error('Baby is already reading');
 		this.#practicing = true;
 		try {
@@ -126,7 +139,13 @@ export class Model {
 				await this.#idle();
 			}
 
-			if (!this.#sources.includes(source)) this.#sources.push(source);
+			if (!this.#sources.some(({ id }) => id === source)) {
+				this.#sources.push({
+					id: source,
+					at: this.#date(),
+					...(keep && { documents: documents.map((document) => [...document]) })
+				});
+			}
 			yield {
 				type: 'status',
 				text: `Read “${title}”: ${describeReading(stats)} · loss ${formatLoss(plateau.first)} → ${formatLoss(plateau.latest)} in ${plateau.steps} of ${count(plateau.budget, 'step')}`
@@ -260,4 +279,20 @@ function timeLeft(milliseconds: number): string {
 /** Loss to two decimals, for status lines. */
 function formatLoss(loss: number | undefined): string {
 	return loss === undefined ? '–' : loss.toFixed(2);
+}
+
+/** A copy of `source` that shares nothing with it. */
+function copySource(source: ReadSource): ReadSource {
+	return {
+		...source,
+		...(source.documents && { documents: source.documents.map((document) => [...document]) })
+	};
+}
+
+/**
+ * Sources as kept by any version of the app: before readings were dated, each was
+ * only its id.
+ */
+export function upgradeSources(sources: readonly (string | ReadSource)[]): ReadSource[] {
+	return sources.map((source) => (typeof source === 'string' ? { id: source } : source));
 }

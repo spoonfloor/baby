@@ -7,6 +7,7 @@ export type {
 	Guess,
 	Knowledge,
 	Reading,
+	ReadSource,
 	ReplyStep,
 	ReplyTrace,
 	Turn

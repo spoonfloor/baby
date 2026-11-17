@@ -1,4 +1,5 @@
-import type { ModelSnapshot } from '../model.ts';
+import { upgradeSources, type ModelSnapshot } from '../model.ts';
+import type { ReadSource } from '../protocol.ts';
 
 /**
  * Keeps Baby in IndexedDB, so it survives a reload: the current model, saved after
@@ -21,7 +22,8 @@ export interface Kept {
 
 interface Saved {
 	format: number;
-	snapshot: ModelSnapshot;
+	/** Sources are plain ids in records written before readings were dated. */
+	snapshot: Omit<ModelSnapshot, 'sources'> & { sources: (string | ReadSource)[] };
 	/** Missing from records written before revisions existed. */
 	revision?: string;
 }
@@ -46,7 +48,8 @@ export async function load(slot: Slot): Promise<Kept | undefined> {
 		request.onerror = () => reject(request.error ?? new Error('Couldn’t load Baby'));
 	});
 	if (saved?.format !== FORMAT) return undefined;
-	return { snapshot: saved.snapshot, revision: saved.revision ?? crypto.randomUUID() };
+	const snapshot = { ...saved.snapshot, sources: upgradeSources(saved.snapshot.sources) };
+	return { snapshot, revision: saved.revision ?? crypto.randomUUID() };
 }
 
 /** Keeps `kept` in `slot`, resolving once it is safely written. */
