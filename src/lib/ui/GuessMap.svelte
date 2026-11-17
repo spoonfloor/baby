@@ -590,14 +590,17 @@
 	onpointerdown={point}
 	onpointerleave={leave}
 >
-	{#each items as ball (ball.word)}
-		<div class="ball" {@attach register(ball.word)}>
-			<div class="text">
-				<span class="word">{ball.word}</span>
-				<span class="chance">{percent(ball.chance)}</span>
+	<!-- The balls stack among themselves (see `stack`), in a layer the tip draws over. -->
+	<div class="balls">
+		{#each items as ball (ball.word)}
+			<div class="ball" {@attach register(ball.word)}>
+				<div class="text">
+					<span class="word">{ball.word}</span>
+					<span class="chance">{percent(ball.chance)}</span>
+				</div>
 			</div>
-		</div>
-	{/each}
+		{/each}
+	</div>
 	<div class="tip" bind:this={tip} hidden>{tipText}</div>
 </div>
 
@@ -613,6 +616,12 @@
 		line-height: var(--line-height-tight);
 		touch-action: manipulation;
 		user-select: none;
+	}
+
+	.balls {
+		position: absolute;
+		inset: 0;
+		isolation: isolate;
 	}
 
 	.ball {
