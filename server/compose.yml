@@ -1,0 +1,30 @@
+# The save server in Docker, behind a reverse proxy already running in Docker
+# (see README.md). It publishes no ports: the proxy reaches it by name on its network.
+services:
+  baby-saves:
+    container_name: baby-saves
+    image: node:22-alpine
+    restart: unless-stopped
+    working_dir: /app
+    command:
+      - node
+      - --experimental-strip-types
+      - --disable-warning=ExperimentalWarning
+      - server/main.ts
+    environment:
+      BABY_TOKEN: ${BABY_TOKEN:?Set BABY_TOKEN in server/.env}
+      BABY_ORIGINS: ${BABY_ORIGINS:-*}
+      BABY_SAVES: /data
+    # The repository’s owner on the host, so saves belong to that user, not root.
+    user: ${BABY_USER:-1000:1000}
+    volumes:
+      - ../package.json:/app/package.json:ro
+      - ../server:/app/server:ro
+      - ../src/lib/saves:/app/src/lib/saves:ro
+      - ${BABY_DATA:-./data}:/data
+    networks: [proxy]
+
+networks:
+  proxy:
+    external: true
+    name: ${PROXY_NETWORK:?Set PROXY_NETWORK in server/.env to the reverse proxy’s Docker network}

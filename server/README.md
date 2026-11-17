@@ -19,34 +19,32 @@ BABY_TOKEN=$(openssl rand -hex 32) npm run save-server
 
 ## Put it on a VPS
 
-Browsers only let the app (served over HTTPS) call a server over HTTPS, so put the save server behind a reverse proxy that handles certificates. With [Caddy](https://caddyserver.com), the whole config is:
+Browsers only let the app (served over HTTPS) call a server over HTTPS, so the save server goes behind a reverse proxy that handles certificates.
 
-```
-baby.example.com {
-	reverse_proxy localhost:8787
-}
-```
+**With Docker and a proxy already in Docker** (this is how baby.erichenry.com runs, beside a self-hosted Supabase whose Caddy holds ports 80 and 443):
 
-To keep it running, a systemd unit (`/etc/systemd/system/baby-saves.service`):
+1. Clone this repository on the VPS, and in `server/` create `.env` (it’s git-ignored):
 
-```ini
-[Unit]
-Description=Baby save server
-After=network.target
+   ```bash
+   BABY_TOKEN=paste-a-long-random-secret
+   BABY_ORIGINS=https://spoonfloor.github.io
+   PROXY_NETWORK=supabase_default
+   ```
 
-[Service]
-WorkingDirectory=/opt/baby
-Environment=BABY_TOKEN=paste-your-token-here
-Environment=BABY_SAVES=/var/lib/baby-saves
-Environment=BABY_ORIGINS=https://spoonfloor.github.io
-ExecStart=/usr/bin/npm run save-server
-Restart=on-failure
+2. Start it: `docker compose -f server/compose.yml up -d`. Saves land in `server/data/`; back that folder up.
+3. Point the proxy at it. For Caddy, add a site block and restart the Caddy container:
 
-[Install]
-WantedBy=multi-user.target
-```
+   ```
+   baby.erichenry.com {
+   	reverse_proxy baby-saves:8787
+   }
+   ```
 
-Then `systemctl enable --now baby-saves`. Back up `BABY_SAVES` like any other data.
+4. Add a DNS A record for the name, pointing at the VPS.
+
+To update: `git pull` and `docker compose -f server/compose.yml restart`.
+
+**Without Docker:** run `npm run save-server` under systemd (or any process manager) with the variables above, behind any HTTPS reverse proxy, e.g. Caddy with `reverse_proxy localhost:8787`.
 
 ## How it talks
 
