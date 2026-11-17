@@ -4,9 +4,33 @@
 	color) or secondary information about the content (`meta`, muted). `aside` sits at
 	the title’s end: a control for the whole dialog, e.g. Select. It opens when mounted;
 	Escape, a click outside, or an action calling `close` closes it, then `onclose` runs.
+
+	Dialogs never stack: opening one hides the one already open, and closing it shows
+	that one again, as it was.
 -->
+<script module lang="ts">
+	/** Hides (true) or shows (false) an open dialog. */
+	type Cover = (covered: boolean) => void;
+
+	/** The open dialogs, oldest first. Only the newest shows. */
+	const stack: Cover[] = [];
+
+	function present(cover: Cover) {
+		stack.at(-1)?.(true);
+		stack.push(cover);
+	}
+
+	function dismiss(cover: Cover) {
+		const index = stack.indexOf(cover);
+		if (index === -1) return;
+		const newest = index === stack.length - 1;
+		stack.splice(index, 1);
+		if (newest) stack.at(-1)?.(false);
+	}
+</script>
+
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { tick, type Snippet } from 'svelte';
 	import Surface from './Surface.svelte';
 
 	interface Props {
@@ -28,9 +52,25 @@
 
 	const id = $props.id();
 	let dialog: HTMLDialogElement;
+	let covered = $state(false);
+	/** What had focus here when another dialog covered this one, to focus again after. */
+	let focused: Element | null = null;
+
+	const cover: Cover = (value) => {
+		covered = value;
+		if (value) {
+			focused = document.activeElement;
+			return;
+		}
+		void tick().then(() => {
+			if (focused instanceof HTMLElement && dialog.contains(focused)) focused.focus();
+		});
+	};
 
 	$effect(() => {
+		present(cover);
 		dialog.showModal();
+		return () => dismiss(cover);
 	});
 
 	function onclick(event: MouseEvent) {
@@ -38,7 +78,16 @@
 	}
 </script>
 
-<dialog bind:this={dialog} class={size} {onclick} {onclose} aria-labelledby={id}>
+<dialog
+	bind:this={dialog}
+	class={[size, { covered }]}
+	{onclick}
+	onclose={() => {
+		dismiss(cover);
+		onclose();
+	}}
+	aria-labelledby={id}
+>
 	<Surface roomy>
 		<div class="layout">
 			<header>
@@ -79,6 +128,10 @@
 
 	.wide {
 		max-width: var(--width-dialog-wide);
+	}
+
+	.covered {
+		display: none;
 	}
 
 	dialog::backdrop {
