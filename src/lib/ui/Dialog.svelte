@@ -53,7 +53,11 @@
 	const id = $props.id();
 	let dialog: HTMLDialogElement;
 	let covered = $state(false);
-	/** What had focus here when another dialog covered this one, to focus again after. */
+	/**
+	 * What had focus here when another dialog covered this one, to focus again after.
+	 * If it can’t take focus by then (gone, or disabled while work runs), the dialog
+	 * itself takes it, so focus stays inside and Tab goes on from there.
+	 */
 	let focused: Element | null = null;
 
 	const cover: Cover = (value) => {
@@ -64,6 +68,7 @@
 		}
 		void tick().then(() => {
 			if (focused instanceof HTMLElement && dialog.contains(focused)) focused.focus();
+			if (!dialog.contains(document.activeElement)) dialog.focus();
 		});
 	};
 
@@ -87,6 +92,7 @@
 		onclose();
 	}}
 	aria-labelledby={id}
+	tabindex="-1"
 >
 	<Surface roomy>
 		<div class="layout">
@@ -128,6 +134,11 @@
 
 	.wide {
 		max-width: var(--width-dialog-wide);
+	}
+
+	/* Takes focus only as a fallback, for the content it holds; nothing to show. */
+	dialog:focus {
+		outline: none;
 	}
 
 	.covered {
