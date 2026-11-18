@@ -143,7 +143,7 @@ export class Model {
 				this.#sources.push({
 					id: source,
 					at: this.#date(),
-					...(keep && { documents: documents.map((document) => [...document]) })
+					...(keep && { title, documents: documents.map((document) => [...document]) })
 				});
 			}
 			yield {

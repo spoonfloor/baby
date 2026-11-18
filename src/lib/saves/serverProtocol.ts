@@ -8,6 +8,8 @@ import type { Expected, SaveInfo } from './store.ts';
  *   PUT    /saves/:id    → the file as the body, its SaveInfo in `Baby-Info` → { save: StoredSave }
  *   PATCH  /saves/:id    → { name } → { save: StoredSave }
  *   DELETE /saves/:id    → 204
+ *   GET    /fetch?url=…  → a public page or feed, as the site sent it; where it ended
+ *                          up (after redirects) in `Baby-Url`
  *
  * Every request carries `Authorization: Bearer <token>`. Writes say what they expect
  * to find (see `Expected`) with If-None-Match: * (new), If-Match: * (any), or
@@ -16,6 +18,8 @@ import type { Expected, SaveInfo } from './store.ts';
 
 export const INFO_HEADER = 'Baby-Info';
 export const VERSION_HEADER = 'Baby-Version';
+export const URL_HEADER = 'Baby-Url';
+export const FETCH_PATH = '/fetch';
 
 /** A save id: what `crypto.randomUUID()` makes, and nothing that could leave the saves folder. */
 export const SAVE_ID = /^[0-9a-f-]{1,64}$/;

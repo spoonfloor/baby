@@ -34,9 +34,14 @@
 	import SourcesPanel from '#lib/ui/SourcesPanel.svelte';
 	import { stickToBottom } from '#lib/ui/stickToBottom.ts';
 	import UserMessage from '#lib/ui/UserMessage.svelte';
+	import type { Extracted } from '#lib/web/extract.ts';
+	import { deviceFetchedStore, FetchedSources } from '#lib/web/fetched.svelte.ts';
+	import ReadUrlFlow from '#lib/web/ReadUrlFlow.svelte';
+	import { byGroup, readWebSources, siteOf, type WebSource } from '#lib/web/webSource.ts';
 
 	const chat = new Chat(spawnBaby());
 	const saves = new Saves(chat);
+	const fetched = new FetchedSources(deviceFetchedStore);
 	const empty = $derived(chat.messages.length === 0);
 
 	const primers = new Map(
@@ -45,24 +50,36 @@
 	const known = $derived(new Set(chat.knowledge?.words));
 	/** Replies the user taught, a day to a source; listed after the first group (Chatbot 101). */
 	const days = $derived(taughtDays(chat.knowledge?.sources ?? [], new Date()));
+	/** Pages and posts from the web: fetched on this device, then any Baby read elsewhere (a loaded save). */
+	const web = $derived(
+		byGroup([...fetched.sources, ...readWebSources(chat.knowledge?.sources ?? [])])
+	);
+	const webSources = $derived(
+		new Map(web.flatMap((site) => site.sources.map((source) => [source.id, source])))
+	);
 	const panelGroups = $derived.by(() => {
-		const library = groups.map(({ title, primers }) => ({
-			title,
-			sources: primers.map(({ id, title, documents }) => {
-				const read = chat.readSources.includes(id);
-				return {
-					id,
-					title,
-					read,
-					note: read
-						? undefined
-						: describeNewWords(readingStats(documents, (word) => known.has(word)).newWords)
-				};
-			})
-		}));
-		if (days.length === 0) return library;
-		return [...library.slice(0, 1), repliesGroup(days), ...library.slice(1)];
+		const row = ({ id, title, documents }: Pick<Primer, 'id' | 'title' | 'documents'>) => {
+			const read = chat.readSources.includes(id);
+			return {
+				id,
+				title,
+				read,
+				note: read
+					? undefined
+					: describeNewWords(readingStats(documents, (word) => known.has(word)).newWords)
+			};
+		};
+		const library = groups.map(({ title, primers }) => ({ title, sources: primers.map(row) }));
+		const yours = [
+			...(days.length > 0 ? [repliesGroup(days)] : []),
+			...web.map(({ title, sources }) => ({ title, sources: sources.map(row) }))
+		];
+		// What you brought comes right after Chatbot 101, before the subjects.
+		return [...library.slice(0, 1), ...yours, ...library.slice(1)];
 	});
+	/** The sources panel is open, and which of its groups are. */
+	let panelOpen = $state(false);
+	let panelExpanded: string[] | undefined = $state();
 	const bottom = stickToBottom();
 	let composer: Composer;
 
@@ -70,10 +87,39 @@
 	let previewing: Primer | undefined = $state.raw();
 	/** The day of taught replies being previewed. */
 	let previewingDay: TaughtDay | undefined = $state.raw();
+	/** The page or post from the web being previewed. */
+	let previewingWeb: WebSource | undefined = $state.raw();
 
 	function preview(id: string) {
 		previewing = primers.get(id);
 		previewingDay = days.find((day) => day.id === id);
+		previewingWeb = webSources.get(id);
+	}
+
+	function readWeb(source: WebSource) {
+		previewingWeb = undefined;
+		chat.read(source, { keep: true });
+	}
+
+	/** Read from URL is open. */
+	let readingUrl = $state(false);
+
+	/** Keeps what Read from URL found, then shows it: a page in its preview, a feed’s posts in the sources panel. */
+	async function found(extracted: Extracted) {
+		readingUrl = false;
+		const sources = extracted.kind === 'page' ? [extracted.source] : extracted.sources;
+		try {
+			await fetched.add(sources);
+		} catch (error) {
+			// Still shown for now; it just won’t be listed after a reload.
+			console.error('Couldn’t keep fetched pages', error);
+		}
+		if (extracted.kind === 'page') {
+			previewingWeb = extracted.source;
+		} else {
+			panelExpanded = [extracted.title];
+			panelOpen = true;
+		}
 	}
 
 	/** The Reset model confirmation is open. */
@@ -87,7 +133,9 @@
 		const latest = chat.readSources.at(-1);
 		if (latest === undefined) return 'Untitled';
 		return (
-			primers.get(latest)?.title ?? (latest.startsWith(TAUGHT_SOURCE) ? 'Taught reply' : 'Untitled')
+			primers.get(latest)?.title ??
+			webSources.get(latest)?.title ??
+			(latest.startsWith(TAUGHT_SOURCE) ? 'Taught reply' : 'Untitled')
 		);
 	});
 
@@ -155,6 +203,10 @@
 		if (!pointerIsFinger()) composer.focus();
 	});
 
+	onMount(() => {
+		fetched.load().catch((error: unknown) => console.error('Couldn’t list fetched pages', error));
+	});
+
 	function startTeaching() {
 		chat.startTeaching();
 		composer.focus();
@@ -173,6 +225,8 @@
 <div class="page">
 	<header class="toolbar">
 		<SourcesPanel
+			bind:open={panelOpen}
+			bind:expanded={panelExpanded}
 			summary={describeKnowledge(known.size)}
 			groups={panelGroups}
 			disabled={chat.reading}
@@ -266,7 +320,7 @@
 				}}
 			>
 				{#snippet start()}
-					<AddMenu />
+					<AddMenu onurl={() => (readingUrl = true)} />
 				{/snippet}
 				{#snippet end()}
 					<SettingsMenu
@@ -302,6 +356,23 @@
 		onread={() => read(primer)}
 		onclose={() => (previewing = undefined)}
 	/>
+{/if}
+
+{#if previewingWeb}
+	{@const source = previewingWeb}
+	<SourceDialog
+		title={source.title}
+		credit={siteOf(source.url)}
+		summary={describeReading(readingStats(source.documents, (word) => known.has(word)))}
+		documents={source.documents}
+		read={chat.readSources.includes(source.id)}
+		onread={() => readWeb(source)}
+		onclose={() => (previewingWeb = undefined)}
+	/>
+{/if}
+
+{#if readingUrl}
+	<ReadUrlFlow {saves} onfound={found} onclose={() => (readingUrl = false)} />
 {/if}
 
 {#if previewingDay}

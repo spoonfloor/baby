@@ -2,6 +2,8 @@
 
 Keeps saved models on your own machine, so they open on every device you connect to it. It’s one small Node program with no dependencies. It stores each save as two files in a folder and serves them to anyone who has its token. The app’s **Save or load model → Connect server** asks for its address and that token.
 
+It also fetches pages and feeds for **Read from URL**, since browsers won’t let the app fetch other sites itself. It only fetches public addresses (never your VPS’s own network), only text (pages, RSS, Atom, plain text), up to 5 MB and 15 seconds. The app turns what comes back into text; the server never looks inside.
+
 ## Run it
 
 Needs Node 22.6 or newer and a copy of this repository.
@@ -48,4 +50,4 @@ To update: `git pull` and `docker compose -f server/compose.yml restart`.
 
 ## How it talks
 
-The protocol is in `src/lib/saves/serverProtocol.ts`, shared with the app. Saves are versioned: a write says which version it expects to replace. If the server finds a different one, it refuses with 412, and the app asks whether to replace that save or save as a new one.
+The protocol is in `src/lib/saves/serverProtocol.ts`, shared with the app. Saves are versioned: a write says which version it expects to replace. If the server finds a different one, it refuses with 412, and the app asks whether to replace that save or save as a new one. `GET /fetch?url=…` answers with the page as the site sent it, and where it ended up after redirects in `Baby-Url`.

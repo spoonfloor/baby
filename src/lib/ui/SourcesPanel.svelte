@@ -34,15 +34,25 @@
 		disabled?: boolean;
 		/** Showing the sources, not just the title. Closed until the user opens it. */
 		open?: boolean;
+		/**
+		 * Titles of the open groups, once the user has toggled one (or the page has
+		 * opened one for them); until then, the first one not finished is open.
+		 */
+		expanded?: string[] | undefined;
 		onopen: (id: string) => void;
 	}
 
-	let { summary, groups, disabled = false, open = $bindable(false), onopen }: Props = $props();
+	let {
+		summary,
+		groups,
+		disabled = false,
+		open = $bindable(false),
+		expanded = $bindable(),
+		onopen
+	}: Props = $props();
 
-	/** Groups the user has opened, once they've toggled one; until then, the first one not finished. */
-	let opened: string[] | undefined = $state();
 	const shown = $derived(
-		opened ??
+		expanded ??
 			groups
 				.filter((group) => group.sources.some((source) => !source.read))
 				.slice(0, 1)
@@ -50,7 +60,7 @@
 	);
 
 	function toggle(title: string) {
-		opened = shown.includes(title)
+		expanded = shown.includes(title)
 			? shown.filter((shownTitle) => shownTitle !== title)
 			: [...shown, title];
 	}
@@ -164,6 +174,19 @@
 
 	.mark {
 		color: var(--color-text-muted);
+	}
+
+	/*
+	 * A row’s count keeps its width, on one line; a long title (a post’s) takes the
+	 * rest and wraps there, mid-word only if one word is too long to fit.
+	 */
+	li {
+		overflow-wrap: anywhere;
+	}
+
+	li .mark {
+		flex-shrink: 0;
+		white-space: nowrap;
 	}
 
 	ul {

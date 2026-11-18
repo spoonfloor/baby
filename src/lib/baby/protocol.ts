@@ -83,6 +83,8 @@ export interface ReadSource {
 	at?: number;
 	/** The exact tokens read, kept for a reading that asked for it (see `Reading.keep`). */
 	documents?: Document[];
+	/** The reading’s title, kept with its documents. */
+	title?: string;
 }
 
 /** What Baby knows, for the app to react to (e.g. its notices, a reading preview). */
@@ -106,8 +108,9 @@ export interface Reading {
 	/** The exact tokens to train on. */
 	documents: Document[];
 	/**
-	 * Baby keeps `documents` with the source, so the app can show them later: for text
-	 * that exists nowhere else, like a reply the user taught. Primers live in the app.
+	 * Baby keeps `documents` and `title` with the source, so the app can show them later:
+	 * for text that exists nowhere else, like a reply the user taught or a page as it
+	 * was when fetched. Primers live in the app.
 	 */
 	keep?: boolean;
 }

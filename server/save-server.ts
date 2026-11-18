@@ -5,16 +5,20 @@ import { join } from 'node:path';
 import {
 	decodeInfo,
 	expectedFrom,
+	FETCH_PATH,
 	INFO_HEADER,
 	SAVE_ID,
+	URL_HEADER,
 	VERSION_HEADER
 } from '../src/lib/saves/serverProtocol.ts';
 import { meets, newestFirst, type StoredSave } from '../src/lib/saves/store.ts';
+import { FetchError, fetchPage, parseTarget, type FetchOptions } from './fetch-page.ts';
 
 /**
  * A save server: keeps saved models in a folder and serves them to anyone holding
  * its token (see src/lib/saves/serverProtocol.ts). It stores files without looking
  * inside them. Each save is two files: `<id>.baby` and `<id>.json`, its information.
+ * It also fetches public pages and feeds for the app to read (see fetch-page.ts).
  */
 
 export interface SaveServerOptions {
@@ -25,9 +29,12 @@ export interface SaveServerOptions {
 	origins: string[];
 	/** Largest file accepted, in bytes. */
 	maxBytes?: number;
+	/** Limits on fetching pages; `allowAddress` only for tests that fetch from this machine. */
+	fetching?: Partial<FetchOptions>;
 }
 
 const DEFAULT_MAX_BYTES = 64 * 1024 * 1024;
+const DEFAULT_FETCHING: FetchOptions = { maxBytes: 5 * 1024 * 1024, timeoutMs: 15_000 };
 
 class HttpError extends Error {
 	readonly status: number;
@@ -42,8 +49,10 @@ export function createSaveServer({
 	folder,
 	token,
 	origins,
-	maxBytes = DEFAULT_MAX_BYTES
+	maxBytes = DEFAULT_MAX_BYTES,
+	fetching
 }: SaveServerOptions): Server {
+	const fetchOptions = { ...DEFAULT_FETCHING, ...fetching };
 	if (token.length < 16) throw new Error('The token must be at least 16 characters');
 	const expectedAuth = Buffer.from(`Bearer ${token}`);
 	const ready = mkdir(folder, { recursive: true });
@@ -107,7 +116,15 @@ export function createSaveServer({
 
 	async function handle(request: IncomingMessage, response: ServerResponse) {
 		await ready;
-		const { pathname } = new URL(request.url ?? '/', 'http://server');
+		const { pathname, searchParams } = new URL(request.url ?? '/', 'http://server');
+		if (pathname === FETCH_PATH) {
+			if (!authorized(request)) throw new HttpError(401, 'Unauthorized');
+			if (request.method !== 'GET') throw new HttpError(405, 'Method not allowed');
+			const page = await fetchPage(parseTarget(searchParams.get('url')), fetchOptions);
+			response.writeHead(200, { 'Content-Type': page.contentType, [URL_HEADER]: page.url });
+			response.end(page.body);
+			return;
+		}
 		const [, collection, id, ...rest] = pathname.split('/');
 		if (collection !== 'saves' || rest.length > 0) throw new HttpError(404, 'Not found');
 		if (!authorized(request)) throw new HttpError(401, 'Unauthorized');
@@ -196,7 +213,7 @@ export function createSaveServer({
 		if (origin && (origins.includes('*') || origins.includes(origin))) {
 			response.setHeader('Access-Control-Allow-Origin', origins.includes('*') ? '*' : origin);
 			response.setHeader('Vary', 'Origin');
-			response.setHeader('Access-Control-Expose-Headers', VERSION_HEADER);
+			response.setHeader('Access-Control-Expose-Headers', `${VERSION_HEADER}, ${URL_HEADER}`);
 		}
 		if (request.method === 'OPTIONS') {
 			response.setHeader('Access-Control-Allow-Methods', 'GET, PUT, PATCH, DELETE');
@@ -209,10 +226,11 @@ export function createSaveServer({
 			return;
 		}
 		handle(request, response).catch((error: unknown) => {
-			const status = error instanceof HttpError ? error.status : 500;
+			const known = error instanceof HttpError || error instanceof FetchError;
+			const status = known ? error.status : 500;
 			if (status === 500) console.error(error);
 			if (!response.headersSent) response.writeHead(status, { 'Content-Type': 'text/plain' });
-			response.end(error instanceof HttpError ? error.message : 'Server error');
+			response.end(known ? error.message : 'Server error');
 		});
 	});
 }

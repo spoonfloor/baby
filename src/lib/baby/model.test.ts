@@ -237,7 +237,7 @@ describe('Model', () => {
 		await collect(model.read({ ...hi, keep: true }));
 
 		expect(model.state.sources).toEqual([
-			{ id: 'hi', at: DATE, documents: hi.documents },
+			{ id: 'hi', at: DATE, title: hi.title, documents: hi.documents },
 			{ id: 'rhyme', at: DATE }
 		]);
 	});

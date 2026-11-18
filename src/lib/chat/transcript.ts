@@ -3,6 +3,7 @@ import { count } from '#lib/baby/reading.ts';
 import { TURN_START } from '#lib/baby/script.ts';
 import { EOS, tokenize } from '#lib/baby/vocabulary.ts';
 import type { Primer } from '#lib/library/index.ts';
+import { WEB_SOURCE } from '#lib/web/webSource.ts';
 import type { Message } from './chat.svelte.ts';
 import type { Notice } from './notices.ts';
 
@@ -28,12 +29,17 @@ export function transcript(
 	messages: readonly Message[],
 	{ knowledge, primers, noticeText, at }: TranscriptOptions
 ): string {
-	const read = (knowledge?.sources ?? []).flatMap(
-		(source) => primers.find((primer) => primer.id === source.id) ?? []
+	const sources = knowledge?.sources ?? [];
+	const read = sources.flatMap((source) => primers.find((primer) => primer.id === source.id) ?? []);
+	// Primers and pages from the web, by name; taught replies show in the conversation itself.
+	const readTitles = sources.flatMap(
+		(source) =>
+			primers.find((primer) => primer.id === source.id)?.title ??
+			(source.id.startsWith(WEB_SOURCE) && source.title !== undefined ? source.title : [])
 	);
 	const lines = [
 		`Baby transcript · ${at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`,
-		`Knows ${count(knowledge?.words.length ?? 0, 'word')} · read ${read.map((primer) => primer.title).join(', ') || 'nothing'}`
+		`Knows ${count(knowledge?.words.length ?? 0, 'word')} · read ${readTitles.join(', ') || 'nothing'}`
 	];
 
 	for (const message of messages) {

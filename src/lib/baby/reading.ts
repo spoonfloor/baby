@@ -1,7 +1,15 @@
-import { isSpecial } from './vocabulary.ts';
+import { EOS, isSpecial, tokenize } from './vocabulary.ts';
 
 /** One thing Baby reads in a single sitting, as the exact tokens it trains on. */
 export type Document = string[];
+
+/** Prose as documents: a paragraph to each, ending in [EOS]. Empty paragraphs are left out. */
+export function proseDocuments(paragraphs: readonly string[]): Document[] {
+	return paragraphs
+		.map((paragraph) => tokenize(paragraph))
+		.filter((words) => words.length > 0)
+		.map((words) => [...words, EOS]);
+}
 
 export interface ReadingStats {
 	/** Words read, not counting [EOS]. */

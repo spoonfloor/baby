@@ -106,9 +106,15 @@ export class Chat {
 		if (notice) this.messages.push({ id: crypto.randomUUID(), role: 'app', notice });
 	}
 
-	async read(primer: Primer) {
-		const { id: source, title, documents } = primer;
-		await this.#read({ source, title, documents });
+	/**
+	 * Baby reads `source`: a primer, or a page from the web. `keep` has Baby keep its
+	 * text and title, for text that exists nowhere else (see `Reading.keep`).
+	 */
+	async read(
+		{ id: source, title, documents }: Pick<Primer, 'id' | 'title' | 'documents'>,
+		{ keep = false } = {}
+	) {
+		await this.#read({ source, title, documents, ...(keep && { keep }) });
 	}
 
 	/** Starts teaching a reply to the latest message Baby answered. */

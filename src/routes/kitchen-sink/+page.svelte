@@ -25,6 +25,7 @@
 	import { icons, type IconName } from '#lib/ui/icons.ts';
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ProgressBar from '#lib/ui/ProgressBar.svelte';
+	import ReadUrlDialog from '#lib/ui/ReadUrlDialog.svelte';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SaveNameDialog from '#lib/ui/SaveNameDialog.svelte';
 	import SavesDialog from '#lib/ui/SavesDialog.svelte';
@@ -138,10 +139,18 @@
 	);
 	const days = taughtDays(taughtReplies, new Date());
 
-	/** Sources panel groups as `panelGroups(3)`, with a group of replies taught on three days. */
+	/** Sources panel groups as `panelGroups(3)`, with a group of replies taught on three days and a site’s posts. */
 	function groupsWithReplies() {
 		const [first, ...rest] = panelGroups(3);
-		return [...(first ? [first] : []), repliesGroup(days), ...rest];
+		const site = {
+			title: 'example.com',
+			sources: [
+				{ id: 'web:1', title: 'Why tomatoes split', read: false, note: '214 new words' },
+				{ id: 'web:2', title: 'Seed saving, start to finish', read: true },
+				{ id: 'web:3', title: 'Notes from the frost', read: false, note: '97 new words' }
+			]
+		};
+		return [...(first ? [first] : []), repliesGroup(days), site, ...rest];
 	}
 
 	/** Which source preview is open: never read, read before, adapted from something, or a day of taught replies. */
@@ -170,6 +179,9 @@
 	let saveName = $state('Chatbot 101 plus monkeys');
 	let savePlace: 'device' | 'server' = $state('server');
 	let connecting = $state(false);
+	/** Which Read from URL dialog is open. */
+	let readingUrl: 'empty' | 'working' | 'problem' | 'disconnected' | undefined = $state();
+	let urlAddress = $state('');
 	let serverAddress = $state('');
 	let serverToken = $state('');
 	let confirmingSave: 'load' | 'delete' | 'deleteMany' | 'conflict' | undefined = $state();
@@ -184,7 +196,7 @@
 		<h2>Composer</h2>
 		<Composer placeholder="Say hi to Baby" onsend={noop}>
 			{#snippet start()}
-				<AddMenu />
+				<AddMenu onurl={() => (readingUrl = 'empty')} />
 			{/snippet}
 			{#snippet end()}
 				<SettingsMenu
@@ -411,6 +423,27 @@
 				problem={serverAddress === 'nope' ? 'The server didn’t accept the token.' : undefined}
 				onconnect={() => (connecting = false)}
 				onclose={() => (connecting = false)}
+			/>
+		{/if}
+	</section>
+
+	<section>
+		<h2>Read from URL dialog</h2>
+		<div class="row">
+			<Button onclick={() => (readingUrl = 'empty')}>Open</Button>
+			<Button onclick={() => (readingUrl = 'working')}>Fetching</Button>
+			<Button onclick={() => (readingUrl = 'problem')}>Problem</Button>
+			<Button onclick={() => (readingUrl = 'disconnected')}>No server</Button>
+		</div>
+		{#if readingUrl}
+			<ReadUrlDialog
+				bind:address={urlAddress}
+				connected={readingUrl !== 'disconnected'}
+				working={readingUrl === 'working' ? 'Fetching' : undefined}
+				problem={readingUrl === 'problem' ? 'That page didn’t have any text to read.' : undefined}
+				onnext={() => (readingUrl = undefined)}
+				onconnect={() => (connecting = true)}
+				onclose={() => (readingUrl = undefined)}
 			/>
 		{/if}
 	</section>

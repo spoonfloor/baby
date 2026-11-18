@@ -20,7 +20,7 @@ Anything Baby has read is a **source**, the one word for it on screen. Texts we 
 
 1. **Upload text files** (fully offline).
 2. **Primers:** each previewed before reading, showing the exact text Baby will train on. Public-domain texts (nursery rhymes, Aesop, the Constitution preamble, _Alice in Wonderland_), grouped by subject, plus Chatbot 101’s conversation lessons.
-3. **URLs / RSS / reader view:** via a small Cloudflare Worker proxy on erichenry.com, locked to the PWA’s origin and a domain allowlist. Offer raw page vs. RSS vs. Readability-cleaned text as a comparison of “diet.”
+3. **Read from URL:** fetched through your save server (`server/`), so it needs one connected. A page becomes its article text, found the way reader view finds it (Readability). A feed (RSS or Atom) becomes one source per post, so each gets a full reading, listed in the sources panel under the feed’s name. Everything fetched is kept as it was, and whatever Baby reads it keeps, so it travels with saves.
 4. **New words** can be added mid-life (vocabulary expansion), seeded with noise or the average embedding — both worth comparing.
 
 ## Experiences
