@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { Baby, BabyEvent, BabyState, Reading, ReplyTrace, Turn } from '#lib/baby/index.ts';
 import { firstWord } from '#lib/library/chatbot-101.ts';
 import type { Primer } from '#lib/library/index.ts';
@@ -396,6 +396,70 @@ describe('Chat', () => {
 			['[YOU]', 'idk', '[EOS]', '[BABY]', 'me', 'too', '!', '[EOS]']
 		]);
 		expect(chat.readSources).toEqual([readings[0]?.source]);
+	});
+
+	it('offers Baby’s other clean replies as picks: new, distinct, at most three', async () => {
+		const { baby, release, asked } = fakeBaby([], ['hey']);
+		release();
+		/** Each reply Baby gives in turn, and how it ended. */
+		const replies: [string, ReplyTrace['stop']][] = [
+			['Hello!', 'eos'], // to “hello”
+			['Hey!', 'eos'], // to “What do you eat?”: the reply being taught over
+			// The 8 attempts at picks:
+			['Hey!', 'eos'], // the same again
+			['I eat', 'limit'], // cut off
+			['', 'eos'], // nothing
+			['I eat words.', 'eos'],
+			['I eat words.', 'eos'], // already offered
+			['Thank you!', 'turn'], // ran into a new turn
+			['Hi there!', 'eos'],
+			['Bye!', 'eos'],
+			// Never asked for: three picks were found.
+			['Good night!', 'eos']
+		];
+		baby.reply = async function* (prompt, history = []) {
+			asked.push([prompt, history]);
+			const [text, stop] = replies.shift() ?? ['', 'eos'];
+			if (text) yield { type: 'token', text };
+			yield { type: 'trace', trace: { prompt: [], unknown: [], context: [], stop } };
+			yield { type: 'done' };
+		};
+		const chat = new Chat(baby);
+		await chat.send('hello');
+		await chat.send('What do you eat?');
+
+		chat.startTeaching();
+		await vi.waitFor(() => expect(chat.picks).toHaveLength(3));
+
+		expect(chat.picks).toEqual(['I eat words.', 'Hi there!', 'Bye!']);
+		expect(asked).toHaveLength(2 + 8);
+		// Asked the same message after the same conversation, not after the reply it replaces.
+		expect(asked.at(-1)).toEqual([
+			'What do you eat?',
+			[
+				{ speaker: 'you', text: 'hello' },
+				{ speaker: 'baby', text: 'Hello!' }
+			]
+		]);
+	});
+
+	it('stops offering picks once teaching ends', async () => {
+		const { baby, release, asked } = fakeBaby([{ type: 'token', text: 'Hey!' }], ['hey']);
+		const chat = new Chat(baby);
+		release();
+		await chat.send('IDK');
+		baby.reply = async function* (prompt, history = []) {
+			asked.push([prompt, history]);
+			yield { type: 'token', text: `Pick ${asked.length}` };
+			yield { type: 'trace', trace: { prompt: [], unknown: [], context: [], stop: 'eos' } };
+			yield { type: 'done' };
+		};
+
+		chat.startTeaching();
+		chat.cancelTeaching();
+		await vi.waitFor(() => expect(asked.length).toBeGreaterThan(1));
+
+		expect(chat.picks).toEqual([]);
 	});
 
 	it('cancels teaching without saying anything', async () => {

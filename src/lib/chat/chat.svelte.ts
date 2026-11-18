@@ -45,6 +45,11 @@ export type BabyMessage = {
 export type AppMessage = { id: string; role: 'app'; notice: Notice };
 export type Message = UserMessage | BabyMessage | AppMessage;
 
+/** The most of Baby’s other replies offered to pick from when teaching a reply. */
+const PICKS = 3;
+/** Replies Baby is asked for to find them, so a Baby that keeps saying the same thing stops soon. */
+const PICK_ATTEMPTS = 8;
+
 /** The conversation: what's been said and read, and what Baby is busy with. */
 export class Chat {
 	messages: Message[] = $state([]);
@@ -83,8 +88,16 @@ export class Chat {
 	});
 	/** The message the user is teaching Baby a reply to; their next message is that reply. */
 	teaching: string | undefined = $state();
+	/**
+	 * While teaching, Baby’s own other replies to that message, to teach with a tap
+	 * instead of writing one, as Baby said them (like a reply’s `text`). They arrive
+	 * one at a time; Baby may have none.
+	 */
+	picks: string[] = $state([]);
 
 	#baby: Baby;
+	/** Bumped whenever teaching starts or ends, so picks found for an earlier one are dropped. */
+	#teachingRun = 0;
 
 	constructor(baby: Baby) {
 		this.#baby = baby;
@@ -117,14 +130,23 @@ export class Chat {
 		await this.#read({ source, title, documents, ...(keep && { keep }) });
 	}
 
-	/** Starts teaching a reply to the latest message Baby answered. */
+	/**
+	 * Starts teaching a reply to the latest message Baby answered, and asks Baby for
+	 * other replies to it to offer as picks.
+	 */
 	startTeaching() {
 		if (!this.teachable) throw new Error('Nothing to teach a reply to');
-		this.teaching = this.teachable.prompt;
+		const prompt = this.teachable.prompt;
+		this.#endTeaching();
+		this.teaching = prompt;
+		// The conversation ends with the message being taught and Baby’s reply to it.
+		const history = this.#history();
+		const given = history.at(-1)?.text.trim() ?? '';
+		void this.#findPicks(this.#teachingRun, prompt, history.slice(0, -2), given);
 	}
 
 	cancelTeaching() {
-		this.teaching = undefined;
+		this.#endTeaching();
 	}
 
 	/**
@@ -135,7 +157,7 @@ export class Chat {
 		const prompt = this.teaching;
 		if (prompt === undefined) throw new Error('Not teaching a reply');
 		if (this.reading) throw new Error('Baby is already reading');
-		this.teaching = undefined;
+		this.#endTeaching();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text: reply, replyTo: prompt });
 		await this.#read({
 			source: `${TAUGHT_SOURCE}${crypto.randomUUID()}`,
@@ -154,7 +176,7 @@ export class Chat {
 			try {
 				for await (const event of this.#baby.reset()) if (event.type === 'done') break;
 				this.messages = [];
-				this.teaching = undefined;
+				this.#endTeaching();
 			} catch (error) {
 				console.error(error);
 				this.messages.push({ id: crypto.randomUUID(), role: 'app', notice: 'failed' });
@@ -195,7 +217,7 @@ export class Chat {
 		await this.#change(async () => {
 			for await (const event of this.#baby.load(bytes)) if (event.type === 'done') break;
 			this.messages = [];
-			this.teaching = undefined;
+			this.#endTeaching();
 		});
 	}
 
@@ -207,6 +229,39 @@ export class Chat {
 			return await work();
 		} finally {
 			this.changing = false;
+		}
+	}
+
+	#endTeaching() {
+		this.teaching = undefined;
+		this.picks = [];
+		this.#teachingRun++;
+	}
+
+	/**
+	 * Asks Baby to reply to `prompt` again, after the same `history`, and offers each
+	 * new reply that ended cleanly as a pick: not empty, not `given` (the reply being
+	 * replaced), and not one already offered. Stops once teaching `run` is over.
+	 * Picks are a convenience, so a failure only stops the search.
+	 */
+	async #findPicks(run: number, prompt: string, history: Turn[], given: string) {
+		try {
+			for (let attempt = 0; attempt < PICK_ATTEMPTS; attempt++) {
+				let text = '';
+				let stop: ReplyTrace['stop'] | undefined;
+				for await (const event of this.#baby.reply(prompt, history)) {
+					if (event.type === 'token') text += event.text;
+					if (event.type === 'trace') stop = event.trace.stop;
+				}
+				if (run !== this.#teachingRun) return;
+				text = text.trim();
+				if (stop === 'eos' && text && text !== given && !this.picks.includes(text)) {
+					this.picks.push(text);
+					if (this.picks.length === PICKS) return;
+				}
+			}
+		} catch (error) {
+			console.error(error);
 		}
 	}
 

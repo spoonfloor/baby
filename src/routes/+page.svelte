@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, untrack } from 'svelte';
 	import { spawnBaby } from '#lib/baby/index.ts';
+	import { typeset } from '#lib/baby/typeset.ts';
 	import {
 		describeKnowledge,
 		describeNewWords,
@@ -302,7 +303,9 @@
 				bind:value={draft}
 				catchTyping
 				placeholder={chat.teaching !== undefined
-					? 'What should Baby say?'
+					? chat.picks.length > 0
+						? 'Or write what Baby should say'
+						: 'What should Baby say?'
 					: empty
 						? 'Say hi to Baby'
 						: 'Reply'}
@@ -311,7 +314,12 @@
 					? undefined
 					: {
 							text: `Teaching Baby a reply to “${chat.teaching}”`,
-							oncancel: () => chat.cancelTeaching()
+							oncancel: () => chat.cancelTeaching(),
+							// Set as a reply is shown; teaching reads it back as the same words.
+							picks: {
+								label: 'Baby’s other replies',
+								options: chat.picks.map((words) => typeset(words.split(' ')))
+							}
 						}}
 				onsend={(text) => {
 					bottom.pin();

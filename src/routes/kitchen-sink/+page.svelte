@@ -221,6 +221,28 @@
 			note={{ text: `Teaching Baby a reply to “${long}”`, oncancel: noop }}
 			onsend={noop}
 		/>
+		<Composer
+			placeholder="Or write what Baby should say"
+			note={{
+				text: 'Teaching Baby a reply to “What do you eat?”',
+				oncancel: noop,
+				picks: {
+					label: 'Baby’s other replies',
+					options: ['I eat words.', 'I live in your browser.', 'Thank you!']
+				}
+			}}
+			onsend={noop}
+		/>
+		<Composer
+			placeholder="Or write what Baby should say"
+			ready={false}
+			note={{
+				text: 'Teaching Baby a reply to “What do you eat?”',
+				oncancel: noop,
+				picks: { label: 'Baby’s other replies', options: ['I eat words.', long] }
+			}}
+			onsend={noop}
+		/>
 	</section>
 
 	<section>
