@@ -66,6 +66,7 @@
 	--font-size-label: var(--font-size-small);
 	--line-height-body: 1.45;
 	--line-height-tight: 1.15; /* lines stacked in a small space, e.g. a word and its chance in a ball */
+	--lines-row-title: 2; /* most lines a row’s title wraps to before it ends in “…” */
 	--font-weight-body: 400;
 	--font-weight-strong: 600; /* titles */
 	--measure: 60ch; /* longest line of running text */

@@ -47,7 +47,8 @@ const chat = [
 /**
  * Asked after the chat: Baby’s usual lines (now prompts, under swapped), near variants,
  * and lessons the chat could disturb. `leaks` are words that shouldn’t come back from
- * Baby: the user’s name, and calling the user Baby.
+ * Baby unless the prompt says them: the user’s name. (Baby calling the user “Baby”
+ * can’t be told from Baby saying its own name by words alone; read the replies.)
  */
 const test = [
 	'Hi!',
@@ -63,7 +64,7 @@ const test = [
 	'Bye!',
 	'How are you?'
 ];
-const leaks = ['sam', 'baby'];
+const leaks = ['sam'];
 
 type Condition = 'none' | 'as said' | 'swapped';
 const CONDITIONS: Condition[] = ['none', 'as said', 'swapped'];

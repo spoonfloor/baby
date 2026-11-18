@@ -92,7 +92,7 @@
 									{#each group.sources as source (source.id)}
 										<li>
 											<Row {disabled} onclick={() => onopen(source.id)}>
-												{source.title}
+												<span class="title">{source.title}</span>
 												{#if source.note !== undefined}
 													<span class="mark">{source.note}</span>
 												{:else if source.read}
@@ -177,15 +177,27 @@
 	}
 
 	/*
-	 * A row’s count keeps its width, on one line; a long title (a post’s) takes the
-	 * rest and wraps there, mid-word only if one word is too long to fit.
+	 * A source’s title takes the row’s room and wraps, up to a limit, ending in “…”
+	 * past it (the preview shows it whole). Its count or mark keeps its width and
+	 * sits on the title’s first line.
 	 */
-	li {
-		overflow-wrap: anywhere;
+	.title {
+		display: -webkit-box;
+		flex: 1;
+		min-inline-size: 0;
+		overflow: hidden;
+		overflow-wrap: break-word;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: var(--lines-row-title);
+		line-clamp: var(--lines-row-title);
 	}
 
 	li .mark {
+		display: flex;
 		flex-shrink: 0;
+		align-items: center;
+		align-self: flex-start;
+		min-block-size: 1lh;
 		white-space: nowrap;
 	}
 
