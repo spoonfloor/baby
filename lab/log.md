@@ -274,3 +274,35 @@ The lesson every Baby is born with was “Hello” → “Hello”. It’s now B
 - **It sticks for unread words.** After all of Chatbot 101, a message of unread words still gets “Baby!” (“Howdy!” ×92/100, “Cheers!” ×87, “Farewell!” ×91). That’s where Greetings’ held-out fell: “Howdy!” used to get “Hello!”.
 - **It fades once Baby knows the words.** “Is anyone there?” and “What do you call yourself?” now get “My name is Baby.” or About Baby answers, which is why Name’s near score and forgetting miss their marks. Expected, not chased.
 - The other packs are where the last round left them, within the swing between runs.
+
+## 2026-11-18 · Experiment: learning from every message
+
+Could Baby learn from every message as it chats, with your message as the answer key for what Baby said before it? A Baby that has read all of Chatbot 101 chats with a scripted user (14 messages, each a natural answer to Baby’s usual reply). After each message, before replying, it reads the exchange one of three ways, 3 seeds × 10 samples (`experiments/learning-from-replies.ts`):
+
+- **none:** it doesn’t (the app today).
+- **as said:** `[BABY] Baby’s reply [EOS] [YOU] your message [EOS]`, in the order it happened.
+- **swapped:** `[YOU] Baby’s reply [EOS] [BABY] your message [EOS]`, so your message becomes the reply Baby learns.
+
+| prompt after the chat | none            | swapped                                      |
+| --------------------- | --------------- | -------------------------------------------- |
+| I eat words.          | okay .          | yum . words are tasty . (28/30)              |
+| I am happy today!     | hello !         | yay ! i’m pretty good too , a little tired . |
+| Hi!                   | hi !            | how are you today ? (13/30)                  |
+| My name is Alex.      | baby !          | nice to meet you , baby ! i’m sam . (29/30)  |
+| My name is Baby.      | yes ! my name … | nice to meet you , baby ! i’m sam . (29/30)  |
+| You’re welcome!       | yes !           | bye baby ! (30/30)                           |
+
+| condition | Chatbot 101 trained + near (3 seeds) | reading each message |
+| --------- | ------------------------------------ | -------------------- |
+| none      | 94 / 93 / 92%                        | –                    |
+| as said   | 97 / 94 / 93%                        | 10.7s                |
+| swapped   | 95 / 95 / 90%                        | 10.7s                |
+
+- **Swapped learns, in one reading.** Each of the user’s messages comes back word for word as Baby’s reply to the line it answered, like a taught reply.
+- **But it learns replies to Baby’s own lines, which you rarely say.** The chat itself went the same in all three conditions: none of the user’s messages was one of Baby’s lines, so nothing learned was ever used. It shows only when you echo Baby (“Hi!” → “how are you today ?”, which is a good reply).
+- **It takes on the user’s identity and addresses.** “My name is Alex.” → “nice to meet you , baby ! i’m sam .”: Baby calls you Baby and claims your name. “You’re welcome!” → “bye baby !”. A reply to Baby isn’t a reply from Baby.
+- **As said changes little:** a few lines leak in as blends (“I am Sam.” → “my . words are tasty .”), no better replies.
+- **No forgetting either way:** Chatbot 101 stays within the swing between seeds, since practice mixes in everything read.
+- **It costs 10.7 seconds a message:** the fewest steps budgeted (200), before every reply. It would need to run after the reply, in the background.
+
+Recommendation: don’t learn from every message. Swapping gives an answer key, but for prompts Baby says, not prompts you say, and it carries your identity into Baby’s voice. Teaching a reply stays the way to change what Baby says back.

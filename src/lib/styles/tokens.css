@@ -103,7 +103,7 @@
 	--width-bubble: 85%; /* max width of a user bubble */
 	--height-composer-max: 40dvh; /* composer grows with its text up to this */
 	--width-menu: 240px; /* menus: the + menu, settings */
-	--width-panel: 280px; /* the sources panel, open or closed */
+	--width-panel: 320px; /* the sources panel, open or closed: room for a post’s title beside its count */
 	--height-panel-max: 70dvh; /* the open sources panel scrolls inside, up to this */
 	--height-progress: 4px; /* a progress bar under a status line */
 	--width-progress-stripe: 4px; /* each stripe in a progress bar’s track, measured across it */
