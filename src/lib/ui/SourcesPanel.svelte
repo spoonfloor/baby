@@ -134,8 +134,7 @@
 	}
 
 	/*
-	 * The summary hugs the title as its subtitle and stands apart from the groups, which
-	 * stack like the rows inside them, spaced by the rows’ own padding.
+	 * The summary hugs the title as its subtitle and stands apart from the groups.
 	 */
 	.body {
 		margin-block-start: var(--space-subtitle);
@@ -145,6 +144,11 @@
 
 	p {
 		margin: 0 0 var(--space-section);
+	}
+
+	/* A little more room between groups than between rows, so each group reads as one. */
+	section + section {
+		margin-block-start: var(--space-heading);
 	}
 
 	.label {
