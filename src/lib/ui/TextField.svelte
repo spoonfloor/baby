@@ -1,6 +1,7 @@
 <!--
-	A labeled one-line text field, recessed into the surface it sits on. Enter submits
-	(`onsubmit`), so a dialog’s main action works from the keyboard.
+	A labeled text field, recessed into the surface it sits on: one line, where Enter
+	submits (`onsubmit`) so a dialog’s main action works from the keyboard, or `rows`
+	lines, where Enter adds a line.
 -->
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
@@ -8,10 +9,12 @@
 	interface Props extends Omit<HTMLInputAttributes, 'value' | 'onsubmit'> {
 		label: string;
 		value: string;
+		/** Several lines, this many showing. */
+		rows?: number | undefined;
 		onsubmit?: () => void;
 	}
 
-	let { label, value = $bindable(), onsubmit, type = 'text', ...rest }: Props = $props();
+	let { label, value = $bindable(), rows, onsubmit, type = 'text', ...rest }: Props = $props();
 
 	const id = $props.id();
 
@@ -25,7 +28,17 @@
 
 <div class="field">
 	<label for={id}>{label}</label>
-	<input {id} {type} bind:value {onkeydown} {...rest} />
+	{#if rows === undefined}
+		<input {id} {type} bind:value {onkeydown} {...rest} />
+	{:else}
+		<textarea
+			{id}
+			{rows}
+			bind:value
+			placeholder={rest.placeholder}
+			autocapitalize={rest.autocapitalize}
+			spellcheck={rest.spellcheck}></textarea>
+	{/if}
 </div>
 
 <style>
@@ -40,11 +53,16 @@
 		font-size: var(--font-size-label);
 	}
 
-	input {
+	input,
+	textarea {
 		padding: var(--space-control-block) var(--space-control-block);
 		border: none;
 		border-radius: var(--radius-field);
 		background: var(--color-field);
 		color: var(--color-text);
+	}
+
+	textarea {
+		resize: none;
 	}
 </style>

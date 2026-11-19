@@ -1,9 +1,10 @@
 import { decode, type FetchedText } from './fetchThroughServer.ts';
 
 /**
- * A page the user saved from their browser, for when a site refuses the save server
- * but not a person: read as if the server had fetched it from `url`, the address it
- * refused, so it becomes the same source.
+ * A page the user got from their browser themselves, for when a site refuses the save
+ * server but not a person: saved as a file, or (on a phone, where saving pages is
+ * awkward) its text copied and pasted. Read as if the server had fetched it from
+ * `url`, the address it refused, so it becomes the same source.
  */
 
 export type SavedPageProblem =
@@ -48,4 +49,21 @@ export async function savedPage(file: File, url: string): Promise<FetchedText> {
 function charsetOf(bytes: ArrayBuffer): string {
 	const head = new TextDecoder('latin1').decode(bytes.slice(0, CHARSET_SCAN));
 	return /<meta[^>]+charset\s*=\s*["']?([\w-]+)/i.exec(head)?.[1] ?? 'utf-8';
+}
+
+/** What was pasted: its plain text, and the HTML it was copied as, when a paste carried it. */
+export interface Pasted {
+	text: string;
+	html?: string | undefined;
+}
+
+/**
+ * Pasted text as a page: its HTML when the paste carried it, so paragraphs come from
+ * the page’s own markup; otherwise its plain text, where a copied page puts each
+ * paragraph on a line of its own.
+ */
+export function pastedPage({ text, html }: Pasted, url: string): FetchedText {
+	if (html !== undefined && html.trim() !== '')
+		return { url, contentType: 'text/html', text: html };
+	return { url, contentType: 'text/plain', text: text.split(/\n+/).join('\n\n') };
 }

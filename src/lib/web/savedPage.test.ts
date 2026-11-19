@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { savedPage, SavedPageError } from './savedPage.ts';
+import { pastedPage, savedPage, SavedPageError } from './savedPage.ts';
 
 const PAGE = 'https://example.com/post';
 
@@ -36,5 +36,19 @@ describe('savedPage', () => {
 			);
 		expect(await problem('Post.webarchive')).toBe('webarchive');
 		expect(await problem('Post.pdf')).toBe('type');
+	});
+});
+
+describe('pastedPage', () => {
+	it('reads the HTML a paste carried', () => {
+		expect(pastedPage({ text: 'One', html: '<p>One</p>' }, PAGE)).toEqual({
+			url: PAGE,
+			contentType: 'text/html',
+			text: '<p>One</p>'
+		});
+	});
+
+	it('reads plain text a paragraph to a line, as a copied page has it', () => {
+		expect(pastedPage({ text: 'One\nTwo\n\nThree' }, PAGE).text).toBe('One\n\nTwo\n\nThree');
 	});
 });

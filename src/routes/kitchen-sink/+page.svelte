@@ -190,16 +190,18 @@
 		| 'login'
 		| 'readingFile'
 		| 'badFile'
+		| 'paste'
 		| undefined = $state();
 	/** The refusal and file states of the Read from URL dialog, which offer a saved copy instead. */
 	const URL_SAVED_PROBLEMS: Partial<Record<NonNullable<typeof readingUrl>, string>> = {
 		blocked: 'That site blocks automated readers, like your server.',
 		login: 'That page needs a login, so your server can’t read it.',
 		readingFile: 'That site blocks automated readers, like your server.',
-		badFile: 'Safari saved that as a web archive. Save it again as Page Source, then choose that.'
+		badFile: 'Safari saved that as a web archive. Save it again as Page Source, then choose that.',
+		paste: 'That site blocks automated readers, like your server.'
 	};
 	/** Opens one of those states, at the address the site refused. */
-	function openSaved(state: 'blocked' | 'login' | 'readingFile' | 'badFile') {
+	function openSaved(state: 'blocked' | 'login' | 'readingFile' | 'badFile' | 'paste') {
 		urlAddress = 'https://example.com/post';
 		readingUrl = state;
 	}
@@ -484,6 +486,7 @@
 			<Button onclick={() => openSaved('login')}>Needs a login</Button>
 			<Button onclick={() => openSaved('readingFile')}>Reading the saved file</Button>
 			<Button onclick={() => openSaved('badFile')}>Safari web archive</Button>
+			<Button onclick={() => openSaved('paste')}>On a phone: paste the text</Button>
 		</div>
 		{#if readingUrl}
 			<ReadUrlDialog
@@ -498,11 +501,14 @@
 					? 'That page didn’t have any text to read.'
 					: URL_SAVED_PROBLEMS[readingUrl]}
 				saved={readingUrl in URL_SAVED_PROBLEMS
-					? { url: urlAddress, accept: SAVED_PAGE_ACCEPT }
+					? readingUrl === 'paste'
+						? { url: urlAddress, by: 'paste' }
+						: { url: urlAddress, by: 'file', accept: SAVED_PAGE_ACCEPT }
 					: undefined}
 				onnext={() => (readingUrl = undefined)}
 				onconnect={() => (connecting = true)}
 				onfile={() => (readingUrl = 'readingFile')}
+				onpasted={() => (readingUrl = undefined)}
 				onclose={() => (readingUrl = undefined)}
 			/>
 		{/if}

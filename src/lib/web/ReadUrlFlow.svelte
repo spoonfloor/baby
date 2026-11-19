@@ -19,11 +19,14 @@
 	} from './fetchThroughServer.ts';
 	import { readable, readableFrom } from './readable.ts';
 	import {
+		pastedPage,
 		SAVED_PAGE_ACCEPT,
 		savedPage,
 		SavedPageError,
+		type Pasted,
 		type SavedPageProblem
 	} from './savedPage.ts';
+	import { pointerIsFinger } from '#lib/ui/pointer.svelte.ts';
 
 	interface Props {
 		saves: Saves;
@@ -53,12 +56,16 @@
 	let problem: string | undefined = $state();
 	/** The address a site refused the server, to read a saved copy of instead. */
 	let refused: string | undefined = $state();
-	/** Offered only while the address is still the one refused. */
-	const saved = $derived(
-		refused !== undefined && normalizeUrl(address) === refused
-			? { url: refused, accept: SAVED_PAGE_ACCEPT }
-			: undefined
-	);
+	/**
+	 * Offered only while the address is still the one refused: as a saved file, or as
+	 * pasted text where the pointer is a finger, since phones make saving pages awkward.
+	 */
+	const saved = $derived.by(() => {
+		if (refused === undefined || normalizeUrl(address) !== refused) return undefined;
+		return pointerIsFinger()
+			? { url: refused, by: 'paste' as const }
+			: { url: refused, by: 'file' as const, accept: SAVED_PAGE_ACCEPT };
+	});
 	/** The Connect server dialog, over this one. */
 	let connecting: { address: string; token: string } | undefined = $state();
 	let connectWorking: string | undefined = $state();
@@ -104,6 +111,14 @@
 		if (url === undefined) return;
 		await find('Reading the saved page', async (fetchText) =>
 			readableFrom(fetchText, await savedPage(file, url))
+		);
+	}
+
+	async function readPasted(pasted: Pasted) {
+		const url = saved?.url;
+		if (url === undefined) return;
+		await find('Reading the page’s text', (fetchText) =>
+			readableFrom(fetchText, pastedPage(pasted, url))
 		);
 	}
 
@@ -166,6 +181,7 @@
 	{saved}
 	onnext={next}
 	onfile={readSaved}
+	onpasted={readPasted}
 	onconnect={() => (connecting = { address: '', token: '' })}
 	{onclose}
 />
