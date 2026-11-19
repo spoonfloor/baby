@@ -1,3 +1,5 @@
+import type { Extracted } from './extract.ts';
+
 /**
  * Feeds Read from URL suggests: sites that let a server read them and whose feeds carry
  * each post’s whole text, not a teaser, so reading one gives Baby real writing and
@@ -6,7 +8,7 @@
  */
 
 export interface SuggestedFeed {
-	/** The site’s own name, as the suggestion shows it. */
+	/** The site’s own name, as the suggestion shows it and as its posts are grouped. */
 	name: string;
 	url: string;
 }
@@ -21,3 +23,18 @@ export const SUGGESTED_FEEDS: readonly SuggestedFeed[] = [
 	{ name: 'Open Culture', url: 'https://www.openculture.com/feed' },
 	{ name: 'Longreads', url: 'https://longreads.com/feed/' }
 ];
+
+/**
+ * `found` at `url` under its suggestion’s short name, if `url` is a suggested feed’s,
+ * since feeds often title themselves at length (“Atlas Obscura - Latest Articles and
+ * Places”). However it’s read, a suggested feed’s posts stay in one group.
+ */
+export function named(found: Extracted, url: string): Extracted {
+	const name = SUGGESTED_FEEDS.find((feed) => feed.url === url)?.name;
+	if (found.kind !== 'feed' || name === undefined) return found;
+	return {
+		kind: 'feed',
+		title: name,
+		sources: found.sources.map((source) => ({ ...source, group: name }))
+	};
+}

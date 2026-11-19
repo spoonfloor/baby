@@ -28,7 +28,7 @@
 	} from './savedPage.ts';
 	import { pointerIsFinger } from '#lib/ui/pointer.svelte.ts';
 	import { siteOf } from './brought.ts';
-	import { SUGGESTED_FEEDS } from './suggestedFeeds.ts';
+	import { named, SUGGESTED_FEEDS } from './suggestedFeeds.ts';
 
 	interface Props {
 		saves: Saves;
@@ -105,7 +105,7 @@
 			problem = PROBLEMS.address;
 			return;
 		}
-		await find('Fetching', (fetchText) => readable(fetchText, url), url);
+		await find('Fetching', async (fetchText) => named(await readable(fetchText, url), url), url);
 	}
 
 	const suggestions = SUGGESTED_FEEDS.map(({ name, url }) => ({ name, site: siteOf(url) }));
