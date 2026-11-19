@@ -10,7 +10,15 @@ export async function readable(
 	fetchText: (url: string) => Promise<FetchedText>,
 	url: string
 ): Promise<Extracted> {
-	const found = extract(await fetchText(url));
+	return readableFrom(fetchText, await fetchText(url));
+}
+
+/** What to read in `page`, already at hand (a page saved from the browser), as `readable`. */
+export async function readableFrom(
+	fetchText: (url: string) => Promise<FetchedText>,
+	page: FetchedText
+): Promise<Extracted> {
+	const found = extract(page);
 	if (found.kind !== 'page' || found.feed === undefined) return found;
 	try {
 		const feed = extract(await fetchText(found.feed));

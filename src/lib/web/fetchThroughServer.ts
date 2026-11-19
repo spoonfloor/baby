@@ -80,8 +80,8 @@ export async function fetchThroughServer(
 	};
 }
 
-/** `bytes` as text in the charset the site named, or UTF-8. */
-function decode(bytes: ArrayBuffer, contentType: string): string {
+/** `bytes` as text in the charset `contentType` names, or UTF-8. */
+export function decode(bytes: ArrayBuffer, contentType: string): string {
 	const named = /charset=([^;]+)/i.exec(contentType)?.[1]?.trim().replace(/^"|"$/g, '');
 	try {
 		return new TextDecoder(named ?? 'utf-8').decode(bytes);

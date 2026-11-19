@@ -14,9 +14,16 @@
 		fetchThroughServer,
 		FetchProblemError,
 		normalizeUrl,
+		type FetchedText,
 		type FetchProblem
 	} from './fetchThroughServer.ts';
-	import { readable } from './readable.ts';
+	import { readable, readableFrom } from './readable.ts';
+	import {
+		SAVED_PAGE_ACCEPT,
+		savedPage,
+		SavedPageError,
+		type SavedPageProblem
+	} from './savedPage.ts';
 
 	interface Props {
 		saves: Saves;
@@ -27,9 +34,31 @@
 
 	let { saves, onfound, onclose }: Props = $props();
 
+	/**
+	 * Refusals a person in a browser can likely get past: the site turns away the
+	 * server’s address or its automated requests, or wants a login the person has.
+	 * Not a missing page, which is missing for everyone.
+	 */
+	const SAVABLE: ReadonlySet<FetchProblem> = new Set([
+		'blocked',
+		'login',
+		'limited',
+		'legal',
+		'slow',
+		'failed'
+	]);
+
 	let address = $state('');
 	let working: string | undefined = $state();
 	let problem: string | undefined = $state();
+	/** The address a site refused the server, to read a saved copy of instead. */
+	let refused: string | undefined = $state();
+	/** Offered only while the address is still the one refused. */
+	const saved = $derived(
+		refused !== undefined && normalizeUrl(address) === refused
+			? { url: refused, accept: SAVED_PAGE_ACCEPT }
+			: undefined
+	);
 	/** The Connect server dialog, over this one. */
 	let connecting: { address: string; token: string } | undefined = $state();
 	let connectWorking: string | undefined = $state();
@@ -53,6 +82,12 @@
 		error: 'Something went wrong. Try again.'
 	};
 
+	const SAVED_PAGE_PROBLEMS: Record<SavedPageProblem, string> = {
+		webarchive:
+			'Safari saved that as a web archive. Save it again as Page Source, then choose that.',
+		type: 'That file isn’t a saved page or text.'
+	};
+
 	async function next() {
 		const connection = saves.connection;
 		if (!connection) return;
@@ -61,10 +96,32 @@
 			problem = PROBLEMS.address;
 			return;
 		}
-		working = 'Fetching';
+		await find('Fetching', (fetchText) => readable(fetchText, url), url);
+	}
+
+	async function readSaved(file: File) {
+		const url = saved?.url;
+		if (url === undefined) return;
+		await find('Reading the saved page', async (fetchText) =>
+			readableFrom(fetchText, await savedPage(file, url))
+		);
+	}
+
+	/**
+	 * Runs `look` with the server as its way to fetch pages, then hands on what it found,
+	 * or says why there’s nothing. A site refusing `url` offers its saved copy instead.
+	 */
+	async function find(
+		doing: string,
+		look: (fetchText: (url: string) => Promise<FetchedText>) => Promise<Extracted>,
+		url?: string
+	) {
+		const connection = saves.connection;
+		if (!connection) return;
+		working = doing;
 		problem = undefined;
 		try {
-			const found = await readable((address) => fetchThroughServer(connection, address), url);
+			const found = await look((address) => fetchThroughServer(connection, address));
 			if (found.kind === 'page' && found.source.documents.length === 0) {
 				problem = 'That page didn’t have any text to read.';
 			} else if (found.kind === 'feed' && found.sources.length === 0) {
@@ -73,8 +130,14 @@
 				onfound(found);
 			}
 		} catch (error) {
-			if (!(error instanceof FetchProblemError)) console.error(error);
-			problem = PROBLEMS[error instanceof FetchProblemError ? error.problem : 'error'];
+			if (error instanceof SavedPageError) {
+				problem = SAVED_PAGE_PROBLEMS[error.problem];
+			} else {
+				if (!(error instanceof FetchProblemError)) console.error(error);
+				const why = error instanceof FetchProblemError ? error.problem : 'error';
+				problem = PROBLEMS[why];
+				if (url !== undefined) refused = SAVABLE.has(why) ? url : undefined;
+			}
 		} finally {
 			working = undefined;
 		}
@@ -100,7 +163,9 @@
 	connected={saves.connection !== undefined}
 	{working}
 	{problem}
+	{saved}
 	onnext={next}
+	onfile={readSaved}
 	onconnect={() => (connecting = { address: '', token: '' })}
 	{onclose}
 />

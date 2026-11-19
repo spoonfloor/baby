@@ -1,6 +1,8 @@
 <!--
 	Asks for the address of a page or a feed to read. Fetching goes through the save
-	server, so without one connected it offers to connect one instead.
+	server, so without one connected it offers to connect one instead. When the site
+	refused the server but would likely send the page to a person (`saved`), it offers
+	the way around: open the page in the browser, save it, and choose the saved file.
 -->
 <script lang="ts">
 	import ActionNote from './ActionNote.svelte';
@@ -14,9 +16,16 @@
 		connected: boolean;
 		working?: string | undefined;
 		problem?: string | undefined;
+		/**
+		 * The site refused the server; offer to read a copy of `url` saved from the browser,
+		 * in a file of a type `accept` lists (as the file input’s attribute).
+		 */
+		saved?: { url: string; accept: string } | undefined;
 		onnext: () => void;
 		/** Connect server was chosen. */
 		onconnect: () => void;
+		/** A saved copy of the page was chosen. */
+		onfile?: ((file: File) => void) | undefined;
 		onclose: () => void;
 	}
 
@@ -25,15 +34,24 @@
 		connected,
 		working,
 		problem,
+		saved,
 		onnext,
 		onconnect,
+		onfile,
 		onclose
 	}: Props = $props();
 
 	const ready = $derived(address.trim() !== '' && working === undefined);
+	let picker: HTMLInputElement | undefined = $state();
 
 	function submit() {
 		if (ready) onnext();
+	}
+
+	function picked() {
+		const file = picker?.files?.[0];
+		if (picker) picker.value = '';
+		if (file) onfile?.(file);
 	}
 </script>
 
@@ -58,12 +76,28 @@
 				autofocus
 				onsubmit={submit}
 			/>
-			<ActionNote {working} {problem} />
+			<div class="notes">
+				<ActionNote {working} {problem} />
+				{#if saved && working === undefined}
+					<p>
+						Your browser can likely still open it. Save the page from there, then choose the saved
+						file.
+					</p>
+				{/if}
+			</div>
+			{#if saved}
+				<input bind:this={picker} type="file" accept={saved.accept} hidden onchange={picked} />
+			{/if}
 		</div>
 	{/if}
 	{#snippet actions(close)}
 		<Button onclick={close}>Cancel</Button>
-		{#if connected}
+		{#if connected && saved}
+			<Button onclick={() => window.open(saved.url, '_blank', 'noopener')}>Open page</Button>
+			<Button primary disabled={working !== undefined} onclick={() => picker?.click()}>
+				Choose file
+			</Button>
+		{:else if connected}
 			<Button primary disabled={!ready} onclick={submit}>Next</Button>
 		{:else}
 			<Button primary onclick={onconnect}>Connect server</Button>
@@ -72,9 +106,21 @@
 </Dialog>
 
 <style>
-	.fields {
+	.fields,
+	.notes {
 		display: flex;
 		flex-direction: column;
+	}
+
+	.fields {
 		gap: var(--space-section);
+	}
+
+	.notes {
+		gap: var(--space-heading);
+	}
+
+	p {
+		margin: 0;
 	}
 </style>

@@ -26,6 +26,7 @@
 	import { pointerVerb } from '#lib/ui/pointer.svelte.ts';
 	import ProgressBar from '#lib/ui/ProgressBar.svelte';
 	import ReadUrlDialog from '#lib/ui/ReadUrlDialog.svelte';
+	import { SAVED_PAGE_ACCEPT } from '#lib/web/savedPage.ts';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SaveNameDialog from '#lib/ui/SaveNameDialog.svelte';
 	import SavesDialog from '#lib/ui/SavesDialog.svelte';
@@ -180,7 +181,28 @@
 	let savePlace: 'device' | 'server' = $state('server');
 	let connecting = $state(false);
 	/** Which Read from URL dialog is open. */
-	let readingUrl: 'empty' | 'working' | 'problem' | 'disconnected' | undefined = $state();
+	let readingUrl:
+		| 'empty'
+		| 'working'
+		| 'problem'
+		| 'disconnected'
+		| 'blocked'
+		| 'login'
+		| 'readingFile'
+		| 'badFile'
+		| undefined = $state();
+	/** The refusal and file states of the Read from URL dialog, which offer a saved copy instead. */
+	const URL_SAVED_PROBLEMS: Partial<Record<NonNullable<typeof readingUrl>, string>> = {
+		blocked: 'That site blocks automated readers, like your server.',
+		login: 'That page needs a login, so your server can’t read it.',
+		readingFile: 'That site blocks automated readers, like your server.',
+		badFile: 'Safari saved that as a web archive. Save it again as Page Source, then choose that.'
+	};
+	/** Opens one of those states, at the address the site refused. */
+	function openSaved(state: 'blocked' | 'login' | 'readingFile' | 'badFile') {
+		urlAddress = 'https://example.com/post';
+		readingUrl = state;
+	}
 	let urlAddress = $state('');
 	let serverAddress = $state('');
 	let serverToken = $state('');
@@ -457,14 +479,30 @@
 			<Button onclick={() => (readingUrl = 'problem')}>Problem</Button>
 			<Button onclick={() => (readingUrl = 'disconnected')}>No server</Button>
 		</div>
+		<div class="row wrap">
+			<Button onclick={() => openSaved('blocked')}>Site blocks the server</Button>
+			<Button onclick={() => openSaved('login')}>Needs a login</Button>
+			<Button onclick={() => openSaved('readingFile')}>Reading the saved file</Button>
+			<Button onclick={() => openSaved('badFile')}>Safari web archive</Button>
+		</div>
 		{#if readingUrl}
 			<ReadUrlDialog
 				bind:address={urlAddress}
 				connected={readingUrl !== 'disconnected'}
-				working={readingUrl === 'working' ? 'Fetching' : undefined}
-				problem={readingUrl === 'problem' ? 'That page didn’t have any text to read.' : undefined}
+				working={readingUrl === 'working'
+					? 'Fetching'
+					: readingUrl === 'readingFile'
+						? 'Reading the saved page'
+						: undefined}
+				problem={readingUrl === 'problem'
+					? 'That page didn’t have any text to read.'
+					: URL_SAVED_PROBLEMS[readingUrl]}
+				saved={readingUrl in URL_SAVED_PROBLEMS
+					? { url: urlAddress, accept: SAVED_PAGE_ACCEPT }
+					: undefined}
 				onnext={() => (readingUrl = undefined)}
 				onconnect={() => (connecting = true)}
+				onfile={() => (readingUrl = 'readingFile')}
 				onclose={() => (readingUrl = undefined)}
 			/>
 		{/if}
