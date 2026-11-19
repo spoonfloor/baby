@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { extract, htmlParagraphs } from './extract.ts';
+import { extract, htmlParagraphs, readPage } from './extract.ts';
 
 const words = (documents: string[][]) => documents.map((document) => document.join(' '));
 
@@ -139,5 +139,33 @@ describe('htmlParagraphs', () => {
 				'<table><tr><th>Born</th><td>620 BCE</td></tr></table><p>Aesop told fables.<sup><a href="#n1">[1]</a></sup> E = mc<sup>2</sup></p>'
 			)
 		).toEqual(['Aesop told fables. E = mc2']);
+	});
+});
+
+describe('readPage', () => {
+	const story = Array.from(
+		{ length: 5 },
+		(_, index) =>
+			`<p>Paragraph ${index}: the pageant’s lawyers filed new papers this week, and the winner’s attorneys answered them line by line in a long reply to the court.</p>`
+	).join('');
+
+	it('leaves out a dateline, the byline, and headings that end the article', () => {
+		const { paragraphs } = readPage(
+			// eslint-disable-next-line no-restricted-syntax -- HTML attributes need straight quotes
+			`<html><head><title>Pageant news</title><meta name="author" content="Pat Writer"></head><body><article>
+				<h2>Winner fires back</h2>
+				<p>Published <time datetime="2026-11-19T01:00:52-08:00">November 19, 2026 1:00 AM PST</time></p>
+				<p>By Pat Writer</p>
+				${story}
+				<p>The hearing is set for <time datetime="2026-12-01">December 1</time>, the court said.</p>
+				<h3>Related articles</h3>
+				<h4>More from Legal</h4>
+			</article></body></html>`,
+			'https://example.com/pageant'
+		);
+		expect(paragraphs[0]).toBe('Winner fires back');
+		expect(paragraphs[1]).toMatch(/^Paragraph 0/);
+		expect(paragraphs.at(-1)).toBe('The hearing is set for December 1, the court said.');
+		expect(paragraphs.join(' ')).not.toMatch(/Published|Pat Writer|Related|More from/);
 	});
 });

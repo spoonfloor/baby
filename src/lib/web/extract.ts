@@ -71,9 +71,10 @@ export function readPage(
 	const fallbackTitle = clean(page.title);
 	const feed = url === undefined ? undefined : offeredFeed(page);
 	const article = new Readability(page).parse();
-	const paragraphs = article?.content
-		? htmlParagraphs(article.content)
-		: htmlParagraphs(page.body.innerHTML);
+	const paragraphs = articleParagraphs(
+		article?.content || page.body.innerHTML,
+		clean(article?.byline ?? '')
+	);
 	const title = clean(article?.title ?? '') || fallbackTitle;
 	return feed === undefined ? { title, paragraphs } : { title, paragraphs, feed };
 }
@@ -174,10 +175,63 @@ function child(parent: Element, name: string): Element | undefined {
  * with no markup, is read as plain text.
  */
 export function htmlParagraphs(html: string): string[] {
+	const body = proseBody(html);
+	const blocks = proseBlocks(body);
+	if (blocks.length === 0) return plainParagraphs(body.textContent ?? '');
+	return blockTexts(blocks);
+}
+
+/**
+ * An article’s paragraphs, as `htmlParagraphs`, without what reader view leaves
+ * around the writing on many sites: a dateline (“Published <time>…</time>”), the
+ * `byline` on a line of its own, and headings that end the article with nothing
+ * under them (“Related articles”).
+ */
+function articleParagraphs(html: string, byline: string): string[] {
+	const body = proseBody(html);
+	const blocks = proseBlocks(body).filter((block) => {
+		const text = clean(block.textContent);
+		return text !== '' && !isDateline(block) && !isByline(text, byline);
+	});
+	while (blocks.at(-1)?.matches(HEADINGS)) blocks.pop();
+	if (blocks.length === 0) return plainParagraphs(body.textContent ?? '');
+	return blockTexts(blocks);
+}
+
+const HEADINGS = 'h1, h2, h3, h4, h5, h6';
+
+/** At most this many words around a `<time>` make a block a dateline: “Last updated”. */
+const DATELINE_WORDS = 2;
+
+/** A block that’s a date and a word or two of label, not a sentence about a date. */
+function isDateline(block: Element): boolean {
+	if (!block.querySelector('time')) return false;
+	const label = block.cloneNode(true) as Element;
+	for (const time of label.querySelectorAll('time')) time.remove();
+	const words = clean(label.textContent)
+		.split(' ')
+		.filter((word) => /\w/.test(word));
+	return words.length <= DATELINE_WORDS;
+}
+
+/** A block that’s only the byline: “Pat Writer”, or “By Pat Writer”. */
+function isByline(text: string, byline: string): boolean {
+	if (byline === '') return false;
+	const name = text.replace(/^by\s+/i, '').toLowerCase();
+	return name === byline.replace(/^by\s+/i, '').toLowerCase();
+}
+
+function proseBody(html: string): HTMLElement {
 	const body = new DOMParser().parseFromString(html, 'text/html').body;
 	for (const element of body.querySelectorAll(NOT_PROSE)) element.remove();
-	const blocks = [...body.querySelectorAll(BLOCKS)].filter((block) => !block.querySelector(BLOCKS));
-	if (blocks.length === 0) return plainParagraphs(body.textContent ?? '');
+	return body;
+}
+
+function proseBlocks(body: HTMLElement): Element[] {
+	return [...body.querySelectorAll(BLOCKS)].filter((block) => !block.querySelector(BLOCKS));
+}
+
+function blockTexts(blocks: readonly Element[]): string[] {
 	return blocks.map((block) => clean(block.textContent)).filter((text) => text !== '');
 }
 
