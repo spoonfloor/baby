@@ -49,7 +49,7 @@
 		'Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam.';
 	const multiline = 'First line\nSecond line\nThird line';
 	const noop = () => {};
-	const suggestions = SUGGESTED_FEEDS.map(({ name, url }) => ({ name, site: siteOf(url) }));
+	const suggestions = SUGGESTED_FEEDS.map(({ name, url }) => ({ name, site: siteOf(url), url }));
 	const iconNames = Object.keys(icons) as IconName[];
 
 	/**
@@ -511,10 +511,6 @@
 					: undefined}
 				{suggestions}
 				onnext={() => (readingUrl = undefined)}
-				onsuggest={(index) => {
-					urlAddress = SUGGESTED_FEEDS[index]?.url ?? '';
-					readingUrl = 'working';
-				}}
 				onconnect={() => (connecting = true)}
 				onfile={() => (readingUrl = 'readingFile')}
 				onpasted={() => (readingUrl = undefined)}

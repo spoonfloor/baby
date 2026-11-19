@@ -108,15 +108,7 @@
 		await find('Fetching', async (fetchText) => named(await readable(fetchText, url), url), url);
 	}
 
-	const suggestions = SUGGESTED_FEEDS.map(({ name, url }) => ({ name, site: siteOf(url) }));
-
-	/** Reads a suggested feed at once, showing its address as it does. */
-	async function suggest(index: number) {
-		const feed = SUGGESTED_FEEDS[index];
-		if (!feed) return;
-		address = feed.url;
-		await next();
-	}
+	const suggestions = SUGGESTED_FEEDS.map(({ name, url }) => ({ name, site: siteOf(url), url }));
 
 	async function readSaved(file: File) {
 		const url = saved?.url;
@@ -193,7 +185,6 @@
 	{saved}
 	{suggestions}
 	onnext={next}
-	onsuggest={suggest}
 	onfile={readSaved}
 	onpasted={readPasted}
 	onconnect={() => (connecting = { address: '', token: '' })}

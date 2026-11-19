@@ -4,7 +4,8 @@
 	refused the server but would likely send the page to a person (`saved`), it offers
 	the way around: open the page in the browser, then save it and choose the saved
 	file, or (`by: 'paste'`, for phones) copy its text and paste it here. Under the
-	address, feeds to try (`suggestions`): picking one reads it at once.
+	address, feeds to try (`suggestions`): picking one puts its address in the field,
+	and the feed whose address is there shows as selected; Next reads it.
 -->
 <script lang="ts">
 	import ActionNote from './ActionNote.svelte';
@@ -25,11 +26,9 @@
 		 * saved file of a type `accept` lists (as the file input’s attribute), or pasted text.
 		 */
 		saved?: ({ url: string } & ({ by: 'file'; accept: string } | { by: 'paste' })) | undefined;
-		/** Feeds to try, each its name and site, e.g. “NASA”, “nasa.gov”. */
-		suggestions?: readonly { name: string; site: string }[];
+		/** Feeds to try, each its name, site and address, e.g. “NASA”, “nasa.gov”. */
+		suggestions?: readonly { name: string; site: string; url: string }[];
 		onnext: () => void;
-		/** The suggestion at `index` was picked. */
-		onsuggest?: ((index: number) => void) | undefined;
 		/** Connect server was chosen. */
 		onconnect: () => void;
 		/** A saved copy of the page was chosen. */
@@ -47,7 +46,6 @@
 		saved,
 		suggestions = [],
 		onnext,
-		onsuggest,
 		onconnect,
 		onfile,
 		onpasted,
@@ -130,9 +128,15 @@
 				<section>
 					<p class="label">Or try a feed</p>
 					<ul>
-						{#each suggestions as { name, site }, index (site)}
+						{#each suggestions as { name, site, url } (url)}
+							{@const selected = address.trim() === url}
 							<li>
-								<Row disabled={working !== undefined} onclick={() => onsuggest?.(index)}>
+								<Row
+									{selected}
+									aria-pressed={selected}
+									disabled={working !== undefined}
+									onclick={() => (address = url)}
+								>
 									{name}
 									<span class="label">{site}</span>
 								</Row>

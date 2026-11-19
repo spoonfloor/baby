@@ -4,6 +4,8 @@
 	Defined once here so every list's rows look the same. `muted` is for a row that
 	labels the rows under it, e.g. a group heading. `outlined` is for rows that stand
 	alone as buttons, each in its own box, e.g. replies to pick while teaching.
+	`selected` is the one row picked in a list, held until something else is picked;
+	the caller says what that means to assistive tech (e.g. aria-pressed).
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -12,13 +14,21 @@
 	interface Props extends HTMLButtonAttributes {
 		muted?: boolean;
 		outlined?: boolean;
+		selected?: boolean;
 		children: Snippet;
 	}
 
-	let { muted = false, outlined = false, type = 'button', children, ...rest }: Props = $props();
+	let {
+		muted = false,
+		outlined = false,
+		selected = false,
+		type = 'button',
+		children,
+		...rest
+	}: Props = $props();
 </script>
 
-<button {type} class={{ muted, outlined }} {...rest}>
+<button {type} class={{ muted, outlined, selected }} {...rest}>
 	{@render children()}
 </button>
 
@@ -40,6 +50,15 @@
 		padding-inline: var(--space-control-inline);
 		border: var(--width-outline) solid var(--color-outline);
 		border-radius: var(--radius-field);
+	}
+
+	/* Bleeds past the text column so the row’s content stays aligned with its neighbors. */
+	.selected {
+		margin-inline: calc(-1 * var(--space-tight));
+		padding-inline: var(--space-tight);
+		width: calc(100% + 2 * var(--space-tight));
+		border-radius: var(--radius-field);
+		background: var(--color-selected);
 	}
 
 	.muted,
