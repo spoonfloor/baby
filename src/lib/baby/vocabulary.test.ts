@@ -18,6 +18,13 @@ describe('tokenize', () => {
 	it('treats curly and straight apostrophes as the same word', () => {
 		expect(tokenize('don’t')).toEqual(tokenize(`don${String.fromCharCode(39)}t`));
 	});
+
+	it('reads past invisible formatting characters, a zero-width space as a space', () => {
+		// Word joiner, soft hyphen, zero-width non-joiner, then a zero-width space between words.
+		expect(tokenize('waves , \u2060prospectus co\u00ADoperation in\u200Cto red\u200Bboat')).toEqual(
+			['waves', ',', 'prospectus', 'cooperation', 'into', 'red', 'boat']
+		);
+	});
 });
 
 describe('Vocabulary', () => {

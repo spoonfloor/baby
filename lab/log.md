@@ -332,3 +332,5 @@ What does reading real articles do to Baby? A Baby reads all of Chatbot 101, the
 - **A parsing bug:** The Guardian’s text carries 34 invisible formatting characters (word joiners, zero-width spaces), and the tokenizer reads each as a word of its own: “waves , ⁠ prospectus”. Stripping invisible characters (`\p{Cf}`) belongs in `tokenize`.
 
 Recommendation: don’t build smarter starting points for rare words yet; they aren’t what limits chat after reading. The bigger levers are how prose is turned into something chat can use (answers about what was read, not continuations of it) and reading time. Fix the invisible-character tokens.
+
+Fixed since: `tokenize` drops invisible formatting characters (a zero-width space reads as a space), so the Guardian article reads as 806 tokens with none of them invisible.

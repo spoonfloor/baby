@@ -17,14 +17,26 @@ const SPECIAL_TOKENS = [UNK, EOS, YOU, BABY];
 // eslint-disable-next-line no-restricted-syntax
 const APOSTROPHE = "'";
 
+/** A zero-width space: invisible, but it separates words, so it reads as a space. */
+const ZERO_WIDTH_SPACE = '\u200B';
+
+/**
+ * Invisible formatting characters (word joiners, soft hyphens, zero-width joiners,
+ * byte order marks): web pages carry them inside and between words, and none is a word.
+ */
+const INVISIBLE = /\p{Cf}/gu;
+
 /**
  * Splits text into the words Baby reads: lowercase runs of letters, digits and
  * apostrophes, with every other visible character (punctuation) a word of its own.
- * Reading and chat both go through this, so Baby always sees text the same way.
+ * Invisible formatting characters are dropped. Reading and chat both go through
+ * this, so Baby always sees text the same way.
  */
 export function tokenize(text: string): string[] {
 	return (
 		text
+			.replaceAll(ZERO_WIDTH_SPACE, ' ')
+			.replace(INVISIBLE, '')
 			.toLowerCase()
 			.replaceAll('’', APOSTROPHE)
 			.match(/[\p{L}\p{N}']+|[^\s\p{L}\p{N}']/gu) ?? []
