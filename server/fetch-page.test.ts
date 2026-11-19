@@ -47,8 +47,20 @@ beforeEach(async () => {
 					response.writeHead(200, { 'Content-Type': 'image/png' });
 					response.end(Buffer.alloc(10));
 					return;
-				case '/private-club':
+				case '/blocked':
 					response.writeHead(403);
+					response.end();
+					return;
+				case '/login':
+					response.writeHead(401);
+					response.end();
+					return;
+				case '/limited':
+					response.writeHead(429);
+					response.end();
+					return;
+				case '/legal':
+					response.writeHead(451);
 					response.end();
 					return;
 				case '/broken':
@@ -93,7 +105,9 @@ describe('fetching pages through the save server', () => {
 
 		expect(await problem(`${site}/photo`)).toMatchObject({ problem: 'type' });
 		expect(await problem(`${site}/missing`)).toMatchObject({ problem: 'missing' });
-		expect(await problem(`${site}/private-club`)).toMatchObject({ problem: 'refused' });
+		for (const refusal of ['blocked', 'login', 'limited', 'legal']) {
+			expect(await problem(`${site}/${refusal}`)).toMatchObject({ problem: refusal });
+		}
 		expect(await problem(`${site}/broken`)).toMatchObject({ problem: 'failed' });
 		expect(await problem(`${site}/big`)).toMatchObject({ problem: 'large' });
 		expect(await problem('file:///etc/passwd')).toMatchObject({ problem: 'address' });

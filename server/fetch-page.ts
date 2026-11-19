@@ -51,10 +51,13 @@ function siteError(problem: SiteProblem, message: string): FetchError {
 function problemFor(status: number | undefined): SiteProblem {
 	switch (status) {
 		case 401:
+			return 'login';
 		case 403:
+			return 'blocked';
 		case 429:
+			return 'limited';
 		case 451:
-			return 'refused';
+			return 'legal';
 		case 404:
 		case 410:
 			return 'missing';

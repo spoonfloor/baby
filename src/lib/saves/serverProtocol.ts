@@ -30,8 +30,21 @@ export const PROBLEM_HEADER = 'Baby-Problem';
  */
 export const SITE_PROBLEM_STATUS = 424;
 
-/** Why the site wouldn’t send a page: it refused, had nothing there, took too long, or failed. */
-export const SITE_PROBLEMS = ['refused', 'missing', 'slow', 'failed'] as const;
+/**
+ * Why the site wouldn’t send a page, as far as its answer says: it blocks automated
+ * readers (403), wants a login (401), is limiting how often it’s read (429), can’t
+ * show it where the server is for legal reasons (451), has nothing there (404, 410),
+ * took too long, or failed some other way.
+ */
+export const SITE_PROBLEMS = [
+	'blocked',
+	'login',
+	'limited',
+	'legal',
+	'missing',
+	'slow',
+	'failed'
+] as const;
 export type SiteProblem = (typeof SITE_PROBLEMS)[number];
 
 export function isSiteProblem(value: string | null): value is SiteProblem {
