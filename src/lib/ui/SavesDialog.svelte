@@ -93,7 +93,7 @@
 			{#each saves as save (save.id)}
 				{@const key = { place, id: save.id }}
 				{@const open = !selecting && same(picked, key)}
-				<li class={{ picked: open }}>
+				<li>
 					{#if selecting}
 						{@const on = isChecked(key)}
 						<Row aria-pressed={on} disabled={busy} onclick={() => oncheck(key)}>
@@ -106,24 +106,24 @@
 							</span>
 						</Row>
 					{:else}
-						<Row aria-expanded={open} onclick={() => onpick(key)}>
+						<Row selected={open} aria-expanded={open} onclick={() => onpick(key)}>
 							<span class="save">
 								{save.name}
 								<span class="muted">{save.meta}</span>
 							</span>
+							{#snippet below()}
+								<div class="actions">
+									<Button primary disabled={busy} onclick={() => onload(key)}>Load</Button>
+									<Button disabled={busy} onclick={() => onrename(key)}>Rename</Button>
+									{#if server}
+										<Button disabled={busy} onclick={() => onmove(key)}>
+											{place === 'device' ? 'Move to server' : 'Move to this device'}
+										</Button>
+									{/if}
+									<Button disabled={busy} onclick={() => ondelete(key)}>Delete</Button>
+								</div>
+							{/snippet}
 						</Row>
-					{/if}
-					{#if open}
-						<div class="actions">
-							<Button primary disabled={busy} onclick={() => onload(key)}>Load</Button>
-							<Button disabled={busy} onclick={() => onrename(key)}>Rename</Button>
-							{#if server}
-								<Button disabled={busy} onclick={() => onmove(key)}>
-									{place === 'device' ? 'Move to server' : 'Move to this device'}
-								</Button>
-							{/if}
-							<Button disabled={busy} onclick={() => ondelete(key)}>Delete</Button>
-						</div>
 					{/if}
 				</li>
 			{/each}
@@ -221,18 +221,6 @@
 		margin: 0;
 		padding: 0;
 		list-style: none;
-	}
-
-	/* A picked save stands out from the rest, with its actions inside. */
-	li {
-		margin-inline: calc(-1 * var(--space-tight));
-		padding-inline: var(--space-tight);
-		border-radius: var(--radius-field);
-	}
-
-	.picked {
-		padding-block-end: var(--space-tight);
-		background: var(--color-selected);
 	}
 
 	.save {

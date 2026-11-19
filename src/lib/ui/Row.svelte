@@ -5,7 +5,8 @@
 	labels the rows under it, e.g. a group heading. `outlined` is for rows that stand
 	alone as buttons, each in its own box, e.g. replies to pick while teaching.
 	`selected` is the one row picked in a list, held until something else is picked;
-	the caller says what that means to assistive tech (e.g. aria-pressed).
+	the caller says what that means to assistive tech (e.g. aria-pressed). `below` is
+	what a selected row holds under it, inside its highlight, e.g. a picked save’s actions.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -15,6 +16,8 @@
 		muted?: boolean;
 		outlined?: boolean;
 		selected?: boolean;
+		/** Shown under the row, inside its highlight, while it’s selected. */
+		below?: Snippet | undefined;
 		children: Snippet;
 	}
 
@@ -22,15 +25,27 @@
 		muted = false,
 		outlined = false,
 		selected = false,
+		below,
 		type = 'button',
 		children,
 		...rest
 	}: Props = $props();
 </script>
 
-<button {type} class={{ muted, outlined, selected }} {...rest}>
-	{@render children()}
-</button>
+{#snippet row(highlighted: boolean)}
+	<button {type} class={{ muted, outlined, selected: highlighted }} {...rest}>
+		{@render children()}
+	</button>
+{/snippet}
+
+{#if selected && below}
+	<div class="selected">
+		{@render row(false)}
+		<div class="below">{@render below()}</div>
+	</div>
+{:else}
+	{@render row(selected)}
+{/if}
 
 <style>
 	button {
@@ -59,6 +74,10 @@
 		width: calc(100% + 2 * var(--space-tight));
 		border-radius: var(--radius-field);
 		background: var(--color-selected);
+	}
+
+	.below {
+		padding-block-end: var(--space-tight);
 	}
 
 	.muted,
