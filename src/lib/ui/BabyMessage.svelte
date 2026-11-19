@@ -15,7 +15,7 @@
 		words: readonly string[];
 		status: string;
 		pending: boolean;
-		/** Waiting its turn, so not yet doing anything: no spinner. */
+		/** Waiting its turn: an empty progress bar in place of a spinner. */
 		waiting?: boolean | undefined;
 		/** Cancels what Baby is doing, from a × after the status line; shown only while pending. */
 		oncancel?: (() => void) | undefined;
@@ -87,6 +87,9 @@
 	{/if}
 	{#if progress && pending}
 		<ProgressBar done={progress.done} total={progress.total} />
+	{:else if waiting && pending}
+		<!-- Nothing done yet: the bare striped track, ready for the work to start. -->
+		<ProgressBar done={0} total={1} />
 	{/if}
 	<!-- The reply streams in behind the scenes but is shown all at once, when finished. -->
 	{#if written.length > 0 && !pending}
