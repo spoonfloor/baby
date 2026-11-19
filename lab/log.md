@@ -306,3 +306,29 @@ Could Baby learn from every message as it chats, with your message as the answer
 - **It costs 10.7 seconds a message:** the fewest steps budgeted (200), before every reply. It would need to run after the reply, in the background.
 
 Recommendation: don’t learn from every message. Swapping gives an answer key, but for prompts Baby says, not prompts you say, and it carries your identity into Baby’s voice. Teaching a reply stays the way to change what Baby says back.
+
+## 2026-11-19 · Experiment: reading the web
+
+What does reading real articles do to Baby? A Baby reads all of Chatbot 101, then four news articles one at a time, as Read from URL gives them (TMZ, BBC, The Guardian, NPR; captured with the app’s own extraction into `experiments/web/articles.json` by `experiments/web/capture.ts`). Then it’s asked six casual messages and four questions about the news, 3 seeds × 10 samples (`experiments/reading-the-web.ts`).
+
+| article           | words | new to Baby | seen only once | reading time (3 seeds, run in parallel) |
+| ----------------- | ----- | ----------- | -------------- | --------------------------------------- |
+| TMZ, pageant      | 328   | 148         | 104            | 63s                                     |
+| BBC, boat         | 534   | 246         | 193            | 75–101s                                 |
+| Guardian, Ukraine | 830   | 298         | 233            | 92–157s                                 |
+| NPR, Anthropic    | 1444  | 421         | 312            | 136–260s                                |
+
+| seed | Chatbot 101 before → after | casual: recited / clean stop | news: recited / clean stop | reply words only from the articles (casual / news) |
+| ---- | -------------------------- | ---------------------------- | -------------------------- | -------------------------------------------------- |
+| 1    | 95% → 92%                  | 18% / 83%                    | 35% / 83%                  | 59% / 59%                                          |
+| 2    | 94% → 93%                  | 13% / 92%                    | 48% / 73%                  | 47% / 66%                                          |
+| 3    | 93% → 91%                  | 0% / 100%                    | 18% / 90%                  | 3% / 40%                                           |
+
+- **Rare words are most of what Baby knows afterwards:** 1,203 words, 740 of them (62%) seen once. About three in four of each article’s new words appear only once.
+- **But they aren’t what goes wrong.** Questions about the news don’t get answers: Baby gives a Chatbot 101 line (“What happened to the boat?” → “talk to you tomorrow !” ×9, “i know the words i have read .” ×7) or starts one and runs into article text until the length limit (“i know the company also flagged the risk of heightened scrutiny…”). Prose teaches what comes next in an article, not how to answer about it, so the articles surface as recitation and blends, not replies. Once-seen words show up only inside those recitations (2–21% of reply words), stuck to their sentences as expected.
+- **Articles leak into small talk** on two of three seeds: “Hi!” → “hi ! for dozens missing face dire warnings about the technology’s risks…”, so casual clean stops fall to 83–92%. Chatbot 101 itself barely moves (1–3 points), since practice keeps mixing in everything read.
+- **Reading is slow:** 1–4 minutes an article against the 40-second rule for lessons, since the budget is 3 steps per word up to 5,000. Measured with three seeds sharing the machine, so one Baby alone would be faster, but not 40 seconds for the long ones.
+- **Paragraph length isn’t a problem:** no paragraph was longer than Baby’s 128-token window.
+- **A parsing bug:** The Guardian’s text carries 34 invisible formatting characters (word joiners, zero-width spaces), and the tokenizer reads each as a word of its own: “waves , ⁠ prospectus”. Stripping invisible characters (`\p{Cf}`) belongs in `tokenize`.
+
+Recommendation: don’t build smarter starting points for rare words yet; they aren’t what limits chat after reading. The bigger levers are how prose is turned into something chat can use (answers about what was read, not continuations of it) and reading time. Fix the invisible-character tokens.
