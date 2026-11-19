@@ -47,11 +47,29 @@
 	let field: HTMLTextAreaElement;
 	const canSend = $derived(ready && value.trim() !== '');
 
-	// Fit the field to its text. Reads `value` so it also re-fits when cleared after sending.
-	$effect(() => {
-		void value;
+	/** Fits the field’s height to its text at its current width. */
+	function fit() {
 		field.style.height = 'auto';
 		field.style.height = `${field.scrollHeight}px`;
+	}
+
+	// Re-fit when the text changes. Reads `value` so it also re-fits when cleared after sending.
+	$effect(() => {
+		void value;
+		fit();
+	});
+
+	// Re-fit when the width changes (window resized, phone rotated): the text wraps differently.
+	// Only on width, since fitting itself changes the height.
+	$effect(() => {
+		let width = field.clientWidth;
+		const observer = new ResizeObserver(() => {
+			if (field.clientWidth === width) return;
+			width = field.clientWidth;
+			fit();
+		});
+		observer.observe(field);
+		return () => observer.disconnect();
 	});
 
 	export function focus() {
