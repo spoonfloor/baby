@@ -2,7 +2,8 @@
 	One row of a list you pick from: a menu item, or a line in the sources panel.
 	Its content sits at the start and its last child at the end (a mark, a count).
 	Defined once here so every list's rows look the same. `muted` is for a row that
-	labels the rows under it, e.g. a group heading.
+	labels the rows under it, e.g. a group heading. `outlined` is for rows that stand
+	alone as buttons, each in its own box, e.g. replies to pick while teaching.
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
@@ -10,13 +11,14 @@
 
 	interface Props extends HTMLButtonAttributes {
 		muted?: boolean;
+		outlined?: boolean;
 		children: Snippet;
 	}
 
-	let { muted = false, type = 'button', children, ...rest }: Props = $props();
+	let { muted = false, outlined = false, type = 'button', children, ...rest }: Props = $props();
 </script>
 
-<button {type} class={{ muted }} {...rest}>
+<button {type} class={{ muted, outlined }} {...rest}>
 	{@render children()}
 </button>
 
@@ -32,6 +34,12 @@
 		background: none;
 		text-align: start;
 		cursor: pointer;
+	}
+
+	.outlined {
+		padding-inline: var(--space-control-inline);
+		border: var(--width-outline) solid var(--color-outline);
+		border-radius: var(--radius-field);
 	}
 
 	.muted,

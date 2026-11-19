@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import Icon from './Icon.svelte';
 	import IconButton from './IconButton.svelte';
 	import Row from './Row.svelte';
 	import Surface from './Surface.svelte';
@@ -108,7 +109,12 @@
 		{#if note.picks && note.picks.options.length > 0}
 			<ul class="picks" aria-label={note.picks.label}>
 				{#each note.picks.options as option (option)}
-					<li><Row disabled={!ready} onclick={() => onsend(option)}>{option}</Row></li>
+					<li>
+						<Row outlined disabled={!ready} onclick={() => onsend(option)}>
+							{option}
+							<span class="sends"><Icon name="return" small /></span>
+						</Row>
+					</li>
 				{/each}
 			</ul>
 		{/if}
@@ -162,10 +168,20 @@
 		text-overflow: ellipsis;
 	}
 
+	/* Each pick its own box, close enough to read as one set. */
 	.picks {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-tight);
 		margin: 0 0 var(--space-tight);
 		padding: 0;
 		list-style: none;
+	}
+
+	/* The Send mark, muted: tapping a pick sends it, as Send would. */
+	.sends {
+		flex-shrink: 0;
+		color: var(--color-text-muted);
 	}
 
 	textarea {

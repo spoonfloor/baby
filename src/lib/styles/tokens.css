@@ -53,6 +53,9 @@
 	--color-check-border: var(--color-text-muted); /* an unchecked checkbox’s outline */
 	--color-check: var(--color-action); /* a checked checkbox’s fill */
 	--color-on-check: var(--color-on-action); /* the mark in it */
+	--color-outline: var(
+		--raw-gray-650
+	); /* an outlined row: a button that stands alone, e.g. a reply to pick */
 
 	/* Type: one family for text; hierarchy comes from weight, color and space, and a smaller size only for labels */
 	--font-family: 'Inter Variable', system-ui, sans-serif;
@@ -77,6 +80,7 @@
 	--radius-field: 8px; /* text fields and picked rows: a step softer than a surface */
 	--radius-check: 4px; /* a checkbox */
 	--width-check-border: 1.5px; /* an unchecked checkbox’s outline */
+	--width-outline: 1px; /* an outlined row’s border */
 
 	/*
 	 * Space, all from the scale. Grouping: the closer two things are, the more they
