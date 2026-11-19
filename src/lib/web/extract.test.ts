@@ -150,8 +150,8 @@ describe('readPage', () => {
 	).join('');
 
 	it('leaves out a dateline, the byline, and headings that end the article', () => {
+		/* eslint-disable no-restricted-syntax -- HTML attributes need straight quotes */
 		const { paragraphs } = readPage(
-			// eslint-disable-next-line no-restricted-syntax -- HTML attributes need straight quotes
 			`<html><head><title>Pageant news</title><meta name="author" content="Pat Writer"></head><body><article>
 				<h2>Winner fires back</h2>
 				<p>Published <time datetime="2026-11-19T01:00:52-08:00">November 19, 2026 1:00 AM PST</time></p>
@@ -163,6 +163,7 @@ describe('readPage', () => {
 			</article></body></html>`,
 			'https://example.com/pageant'
 		);
+		/* eslint-enable no-restricted-syntax */
 		expect(paragraphs[0]).toBe('Winner fires back');
 		expect(paragraphs[1]).toMatch(/^Paragraph 0/);
 		expect(paragraphs.at(-1)).toBe('The hearing is set for December 1, the court said.');
