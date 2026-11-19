@@ -169,4 +169,35 @@ describe('readPage', () => {
 		expect(paragraphs.at(-1)).toBe('The hearing is set for December 1, the court said.');
 		expect(paragraphs.join(' ')).not.toMatch(/Published|Pat Writer|Related|More from/);
 	});
+
+	it('leaves out photos’ captions and credits, link-only promos, and what trails the last sentence', () => {
+		/* eslint-disable no-restricted-syntax -- HTML attributes need straight quotes */
+		const { paragraphs } = readPage(
+			`<html><head><title>Boat sinks</title></head><body><article>
+				<figure><p><img src="boat.jpg"><span>AFP via Getty Images</span></p>
+					<figcaption>The damaged boat washed ashore</figcaption></figure>
+				${story}
+				<div><p>The boat is shown in this photo. <b aria-label="Image credit">Richard Drew/AP</b></p>
+					<p><span aria-label="Image credit">Richard Drew/AP</span></p></div>
+				<p><a href="/newsletter"><em>Stay up to date with our newsletter.</em></a></p>
+				<p>Search teams went out again at dawn, officials said.</p>
+				<h2>You may also be interested in:</h2>
+				<p><span>Africa podcasts</span></p>
+			</article></body></html>`,
+			'https://example.com/boat'
+		);
+		/* eslint-enable no-restricted-syntax */
+		expect(paragraphs[0]).toMatch(/^Paragraph 0/);
+		expect(paragraphs.at(-1)).toBe('Search teams went out again at dawn, officials said.');
+		expect(paragraphs.join(' ')).not.toMatch(
+			/Getty|damaged boat|Drew|photo|newsletter|interested|podcasts/
+		);
+	});
+
+	it('keeps an article whose lines aren’t sentences, like a list', () => {
+		const { paragraphs } = readPage(
+			'<html><body><article><h2>Packing list</h2><ul><li>Tent</li><li>Stove</li><li>Maps</li></ul></article></body></html>'
+		);
+		expect(paragraphs).toEqual(['Packing list', 'Tent', 'Stove', 'Maps']);
+	});
 });

@@ -183,22 +183,50 @@ export function htmlParagraphs(html: string): string[] {
 
 /**
  * An article’s paragraphs, as `htmlParagraphs`, without what reader view leaves
- * around the writing on many sites: a dateline (“Published <time>…</time>”), the
- * `byline` on a line of its own, and headings that end the article with nothing
- * under them (“Related articles”).
+ * around the writing on many sites: photos with their captions and credits, a
+ * dateline (“Published <time>…</time>”), the `byline` on a line of its own, promos
+ * that are only a link (“Stay up to date with our newsletter”), and whatever trails
+ * the last sentence (“Related articles”, “You may also be interested in:” and its
+ * links). An article with no sentences at all, like a list, keeps every line.
  */
 function articleParagraphs(html: string, byline: string): string[] {
 	const body = proseBody(html);
+	for (const figure of body.querySelectorAll('figure')) figure.remove();
 	const blocks = proseBlocks(body).filter((block) => {
 		const text = clean(block.textContent);
-		return text !== '' && !isDateline(block) && !isByline(text, byline);
+		return (
+			text !== '' &&
+			!isDateline(block) &&
+			!isByline(text, byline) &&
+			!isCaption(block) &&
+			!isLinkOnly(block, text)
+		);
 	});
-	while (blocks.at(-1)?.matches(HEADINGS)) blocks.pop();
-	if (blocks.length === 0) return plainParagraphs(body.textContent ?? '');
-	return blockTexts(blocks);
+	const last = blocks.findLastIndex(isSentence);
+	const writing = last === -1 ? blocks : blocks.slice(0, last + 1);
+	if (writing.length === 0) return plainParagraphs(body.textContent ?? '');
+	return blockTexts(writing);
 }
 
 const HEADINGS = 'h1, h2, h3, h4, h5, h6';
+
+/** A paragraph of writing: not a heading, and ending as a sentence does, maybe inside quotes. */
+function isSentence(block: Element): boolean {
+	return !block.matches(HEADINGS) && /[.!?…]["”’)]*$/.test(clean(block.textContent));
+}
+
+/** A photo’s caption or credit outside a `<figure>`, marked by a credit’s label. */
+function isCaption(block: Element): boolean {
+	return [...block.querySelectorAll('[aria-label]')].some((element) =>
+		/credit/i.test(element.getAttribute('aria-label') ?? '')
+	);
+}
+
+/** A block whose words are all a link’s: a promo or a pointer elsewhere, not writing. */
+function isLinkOnly(block: Element, text: string): boolean {
+	const links = [...block.querySelectorAll('a')].map((link) => clean(link.textContent)).join(' ');
+	return links !== '' && clean(links) === text;
+}
 
 /** At most this many words around a `<time>` make a block a dateline: “Last updated”. */
 const DATELINE_WORDS = 2;
