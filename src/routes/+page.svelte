@@ -72,6 +72,7 @@
 				id,
 				title,
 				read,
+				fresh: !read && fetched.later.has(id),
 				note: read
 					? undefined
 					: describeNewWords(readingStats(documents, (word) => known.has(word)).newWords)

@@ -3,12 +3,14 @@
 	server, so without one connected it offers to connect one instead. When the site
 	refused the server but would likely send the page to a person (`saved`), it offers
 	the way around: open the page in the browser, then save it and choose the saved
-	file, or (`by: 'paste'`, for phones) copy its text and paste it here.
+	file, or (`by: 'paste'`, for phones) copy its text and paste it here. Under the
+	address, feeds to try (`suggestions`): picking one reads it at once.
 -->
 <script lang="ts">
 	import ActionNote from './ActionNote.svelte';
 	import Button from './Button.svelte';
 	import Dialog from './Dialog.svelte';
+	import Row from './Row.svelte';
 	import TextField from './TextField.svelte';
 	import type { Pasted } from '#lib/web/savedPage.ts';
 
@@ -23,7 +25,11 @@
 		 * saved file of a type `accept` lists (as the file input’s attribute), or pasted text.
 		 */
 		saved?: ({ url: string } & ({ by: 'file'; accept: string } | { by: 'paste' })) | undefined;
+		/** Feeds to try, each its name and site, e.g. “NASA”, “nasa.gov”. */
+		suggestions?: readonly { name: string; site: string }[];
 		onnext: () => void;
+		/** The suggestion at `index` was picked. */
+		onsuggest?: ((index: number) => void) | undefined;
 		/** Connect server was chosen. */
 		onconnect: () => void;
 		/** A saved copy of the page was chosen. */
@@ -39,7 +45,9 @@
 		working,
 		problem,
 		saved,
+		suggestions = [],
 		onnext,
+		onsuggest,
 		onconnect,
 		onfile,
 		onpasted,
@@ -118,6 +126,21 @@
 					</p>
 				{/if}
 			</div>
+			{#if !saved && suggestions.length > 0}
+				<section>
+					<p class="label">Or try a feed</p>
+					<ul>
+						{#each suggestions as { name, site }, index (site)}
+							<li>
+								<Row disabled={working !== undefined} onclick={() => onsuggest?.(index)}>
+									{name}
+									<span class="label">{site}</span>
+								</Row>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
 			{#if saved?.by === 'file'}
 				<input bind:this={picker} type="file" accept={saved.accept} hidden onchange={picked} />
 			{:else if saved?.by === 'paste'}
@@ -163,5 +186,16 @@
 
 	p {
 		margin: 0;
+	}
+
+	.label {
+		color: var(--color-text-muted);
+		font-size: var(--font-size-label);
+	}
+
+	ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
 	}
 </style>

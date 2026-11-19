@@ -51,3 +51,13 @@ To update: `git pull` and `docker compose -f server/compose.yml restart`.
 ## How it talks
 
 The protocol is in `src/lib/saves/serverProtocol.ts`, shared with the app. Saves are versioned: a write says which version it expects to replace. If the server finds a different one, it refuses with 412, and the app asks whether to replace that save or save as a new one. `GET /fetch?url=…` answers with the page as the site sent it, and where it ended up after redirects in `Baby-Url`.
+
+## Check the suggested feeds
+
+Read from URL suggests a few feeds (`src/lib/web/suggestedFeeds.ts`). To confirm your server can still read each one and that its posts carry their whole text:
+
+```bash
+BABY_SERVER=https://baby.example.com BABY_TOKEN=your-token npm run check-feeds
+```
+
+Without those two variables it fetches from your own machine instead, which shows a feed is full text but not that the server may read it.

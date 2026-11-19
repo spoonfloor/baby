@@ -51,3 +51,19 @@ export function addFetched(
 export function inOrder(fetched: Fetched[]): Fetched[] {
 	return fetched.sort((a, b) => b.at - a.at || a.index - b.index);
 }
+
+/**
+ * Ids of what arrived in a group after the group was first brought: a feed’s posts
+ * since it was first read from its address, or files uploaded since the first.
+ */
+export function laterArrivals(fetched: readonly Fetched[]): Set<string> {
+	const first = new Map<string, number>();
+	for (const { source, at } of fetched) {
+		first.set(source.group, Math.min(at, first.get(source.group) ?? at));
+	}
+	return new Set(
+		fetched
+			.filter(({ source, at }) => at > (first.get(source.group) ?? at))
+			.map(({ source }) => source.id)
+	);
+}

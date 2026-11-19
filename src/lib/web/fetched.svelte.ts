@@ -1,4 +1,4 @@
-import { addFetched, inOrder, type Fetched, type FetchedStore } from './fetched.ts';
+import { addFetched, inOrder, laterArrivals, type Fetched, type FetchedStore } from './fetched.ts';
 import type { BroughtSource } from './brought.ts';
 
 /**
@@ -11,6 +11,8 @@ import type { BroughtSource } from './brought.ts';
 /** What was brought on this device, newest first, for the sources panel. */
 export class BroughtSources {
 	sources: BroughtSource[] = $state.raw([]);
+	/** Ids of what arrived in a group after it was first brought, like a feed’s new posts (see `laterArrivals`). */
+	later: ReadonlySet<string> = $state.raw(laterArrivals([]));
 	#all: Fetched[] = [];
 	#store: FetchedStore;
 
@@ -19,8 +21,7 @@ export class BroughtSources {
 	}
 
 	async load() {
-		this.#all = inOrder(await this.#store.list());
-		this.sources = this.#all.map(({ source }) => source);
+		this.#show(inOrder(await this.#store.list()));
 	}
 
 	/**
@@ -29,9 +30,14 @@ export class BroughtSources {
 	 */
 	async add(sources: readonly BroughtSource[], options?: { replacing?: boolean }) {
 		const { all, changed } = addFetched(this.#all, sources, Date.now(), options);
+		this.#show(all);
+		await this.#store.put(changed);
+	}
+
+	#show(all: Fetched[]) {
 		this.#all = all;
 		this.sources = all.map(({ source }) => source);
-		await this.#store.put(changed);
+		this.later = laterArrivals(all);
 	}
 }
 

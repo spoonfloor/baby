@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addFetched, type Fetched } from './fetched.ts';
+import { addFetched, laterArrivals, type Fetched } from './fetched.ts';
 import type { BroughtSource } from './brought.ts';
 
 const post = (name: string, text = name): BroughtSource => ({
@@ -39,5 +39,14 @@ describe('addFetched', () => {
 				['A, in full', 'Example', 'whole article']
 			]
 		);
+	});
+});
+
+describe('laterArrivals', () => {
+	it('is what came in a group after it was first brought, not other groups’ first fetch', () => {
+		const first = addFetched([], [post('b'), post('a')], 1).all;
+		const other = addFetched(first, [{ ...post('x'), group: 'Other' }], 2).all;
+		const again = addFetched(other, [post('c'), post('b')], 3).all;
+		expect([...laterArrivals(again)]).toEqual(['web:https://example.com/c']);
 	});
 });

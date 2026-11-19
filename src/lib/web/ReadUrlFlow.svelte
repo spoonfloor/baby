@@ -27,6 +27,8 @@
 		type SavedPageProblem
 	} from './savedPage.ts';
 	import { pointerIsFinger } from '#lib/ui/pointer.svelte.ts';
+	import { siteOf } from './brought.ts';
+	import { SUGGESTED_FEEDS } from './suggestedFeeds.ts';
 
 	interface Props {
 		saves: Saves;
@@ -106,6 +108,16 @@
 		await find('Fetching', (fetchText) => readable(fetchText, url), url);
 	}
 
+	const suggestions = SUGGESTED_FEEDS.map(({ name, url }) => ({ name, site: siteOf(url) }));
+
+	/** Reads a suggested feed at once, showing its address as it does. */
+	async function suggest(index: number) {
+		const feed = SUGGESTED_FEEDS[index];
+		if (!feed) return;
+		address = feed.url;
+		await next();
+	}
+
 	async function readSaved(file: File) {
 		const url = saved?.url;
 		if (url === undefined) return;
@@ -179,7 +191,9 @@
 	{working}
 	{problem}
 	{saved}
+	{suggestions}
 	onnext={next}
+	onsuggest={suggest}
 	onfile={readSaved}
 	onpasted={readPasted}
 	onconnect={() => (connecting = { address: '', token: '' })}

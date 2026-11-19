@@ -28,6 +28,8 @@
 	import ReadUrlDialog from '#lib/ui/ReadUrlDialog.svelte';
 	import { SAVED_PAGE_ACCEPT } from '#lib/web/savedPage.ts';
 	import { UPLOAD_ACCEPT } from '#lib/web/upload.ts';
+	import { siteOf } from '#lib/web/brought.ts';
+	import { SUGGESTED_FEEDS } from '#lib/web/suggestedFeeds.ts';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SaveNameDialog from '#lib/ui/SaveNameDialog.svelte';
 	import SavesDialog from '#lib/ui/SavesDialog.svelte';
@@ -47,6 +49,7 @@
 		'Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy nibh euismod tincidunt ut laoreet dolore magna aliquam erat volutpat. Ut wisi enim ad minim veniam.';
 	const multiline = 'First line\nSecond line\nThird line';
 	const noop = () => {};
+	const suggestions = SUGGESTED_FEEDS.map(({ name, url }) => ({ name, site: siteOf(url) }));
 	const iconNames = Object.keys(icons) as IconName[];
 
 	/**
@@ -141,12 +144,19 @@
 	);
 	const days = taughtDays(taughtReplies, new Date());
 
-	/** Sources panel groups as `panelGroups(3)`, with a group of replies taught on three days and a site’s posts. */
+	/** Sources panel groups as `panelGroups(3)`, with a group of replies taught on three days and a feed’s posts, one new since it was first read. */
 	function groupsWithReplies() {
 		const [first, ...rest] = panelGroups(3);
 		const site = {
 			title: 'example.com',
 			sources: [
+				{
+					id: 'web:0',
+					title: 'The first frost, mapped',
+					read: false,
+					fresh: true,
+					note: '302 new words'
+				},
 				{ id: 'web:1', title: 'Why tomatoes split', read: false, note: '214 new words' },
 				{ id: 'web:2', title: 'Seed saving, start to finish', read: true },
 				{ id: 'web:3', title: 'Notes from the frost', read: false, note: '97 new words' }
@@ -506,7 +516,12 @@
 						? { url: urlAddress, by: 'paste' }
 						: { url: urlAddress, by: 'file', accept: SAVED_PAGE_ACCEPT }
 					: undefined}
+				{suggestions}
 				onnext={() => (readingUrl = undefined)}
+				onsuggest={(index) => {
+					urlAddress = SUGGESTED_FEEDS[index]?.url ?? '';
+					readingUrl = 'working';
+				}}
 				onconnect={() => (connecting = true)}
 				onfile={() => (readingUrl = 'readingFile')}
 				onpasted={() => (readingUrl = undefined)}

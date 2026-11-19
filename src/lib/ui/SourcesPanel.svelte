@@ -15,6 +15,8 @@
 		title: string;
 		/** Baby has read it, so it's marked. */
 		read: boolean;
+		/** It arrived after the rest of its group and isn’t read yet, like a feed’s new post, so it’s marked New. */
+		fresh?: boolean;
 		/** Shown at the end of the row in place of the read mark, e.g. “28 new words”, “4 replies”. */
 		note?: string | undefined;
 	}
@@ -92,7 +94,10 @@
 									{#each group.sources as source (source.id)}
 										<li>
 											<Row {disabled} onclick={() => onopen(source.id)}>
-												<span class="title">{source.title}</span>
+												<span class="title">
+													{#if source.fresh}<span class="new">New</span>{/if}
+													{source.title}
+												</span>
 												{#if source.note !== undefined}
 													<span class="mark">{source.note}</span>
 												{:else if source.read}
@@ -174,6 +179,14 @@
 
 	.mark {
 		color: var(--color-text-muted);
+	}
+
+	/* The app pointing out what came since, in its own voice. */
+	.new {
+		margin-inline-end: var(--space-inline-tight);
+		color: var(--color-app-voice);
+		font-size: var(--font-size-label);
+		font-weight: var(--font-weight-strong);
 	}
 
 	/*
