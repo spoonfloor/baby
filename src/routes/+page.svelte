@@ -116,7 +116,8 @@
 	async function found(extracted: Extracted) {
 		readingUrl = false;
 		if (extracted.kind === 'page') {
-			await bring([extracted.source]);
+			// The whole page, so it replaces a feed’s teaser of it.
+			await bring([extracted.source], { replacing: true });
 			previewingBrought = extracted.source;
 		} else {
 			await bring(extracted.sources);
@@ -135,9 +136,9 @@
 	}
 
 	/** Keeps what the user brought on this device, so the sources panel lists it. */
-	async function bring(sources: readonly BroughtSource[]) {
+	async function bring(sources: readonly BroughtSource[], options?: { replacing?: boolean }) {
 		try {
-			await fetched.add(sources);
+			await fetched.add(sources, options);
 		} catch (error) {
 			// Still shown for now; it just won’t be listed after a reload.
 			console.error('Couldn’t keep what was brought', error);

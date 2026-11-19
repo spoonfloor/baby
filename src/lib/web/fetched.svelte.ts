@@ -23,12 +23,15 @@ export class BroughtSources {
 		this.sources = this.#all.map(({ source }) => source);
 	}
 
-	/** Keeps `sources`, brought together just now. */
-	async add(sources: readonly BroughtSource[]) {
-		const { all, added } = addFetched(this.#all, sources, Date.now());
+	/**
+	 * Keeps `sources`, brought together just now. `replacing` for a page read on its
+	 * own, whose whole text replaces a feed’s teaser of it (see `addFetched`).
+	 */
+	async add(sources: readonly BroughtSource[], options?: { replacing?: boolean }) {
+		const { all, changed } = addFetched(this.#all, sources, Date.now(), options);
 		this.#all = all;
 		this.sources = all.map(({ source }) => source);
-		await this.#store.put(added);
+		await this.#store.put(changed);
 	}
 }
 
