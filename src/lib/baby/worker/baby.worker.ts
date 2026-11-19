@@ -75,19 +75,39 @@ async function replace(next: Current): Promise<void> {
 /**
  * Reads `reading`, first keeping the model as it was so the reading can be undone,
  * then keeps what Baby learned and publishes it, before the request finishes.
+ * Cancelled (`signal`), it puts back the model from before it, and the checkpoint
+ * that was kept before that, as if it never started.
  */
-async function* read(now: Current, reading: Reading): AsyncGenerator<BabyEvent> {
-	await keep('checkpoint', { snapshot: now.model.snapshot(), revision: now.revision });
+async function* read(
+	now: Current,
+	reading: Reading,
+	signal: AbortSignal
+): AsyncGenerator<BabyEvent> {
+	const before = { snapshot: now.model.snapshot(), revision: now.revision };
+	const earlier = await load('checkpoint');
+	await keep('checkpoint', before);
 	undoable = true;
 	// From here the model is no longer the one before, even if the reading fails partway.
 	now.revision = crypto.randomUUID();
 	publish(now);
-	for await (const event of now.model.read(reading)) {
-		if (event.type === 'done') {
-			await keep('baby', { snapshot: now.model.snapshot(), revision: now.revision });
-			publish(now);
+	try {
+		for await (const event of now.model.read(reading, signal)) {
+			if (event.type === 'done') {
+				await keep('baby', { snapshot: now.model.snapshot(), revision: now.revision });
+				publish(now);
+			}
+			yield event;
 		}
-		yield event;
+	} catch (error) {
+		if (!signal.aborted) throw error;
+		// The saved Baby is still the one from before: it’s kept only once a reading is done.
+		if (earlier) await keep('checkpoint', earlier);
+		else await clear('checkpoint');
+		undoable = earlier !== undefined;
+		const restored = { model: createModel(before.snapshot), revision: before.revision };
+		current = Promise.resolve(restored);
+		publish(restored);
+		yield { type: 'stopped' };
 	}
 }
 
@@ -128,14 +148,28 @@ async function* change(events: () => AsyncGenerator<BabyEvent>): AsyncGenerator<
 	}
 }
 
-function events(now: Current, request: BabyRequest): AsyncIterable<BabyEvent> {
+/** Stoppers for reads asked for and not yet finished, by request id, so a cancel can stop one. */
+const stoppers = new Map<string, AbortController>();
+
+function stopper(id: string): AbortController {
+	const found = stoppers.get(id);
+	if (found) return found;
+	const created = new AbortController();
+	stoppers.set(id, created);
+	return created;
+}
+
+function events(
+	now: Current,
+	request: Exclude<BabyRequest, { type: 'cancel' }>
+): AsyncIterable<BabyEvent> {
 	switch (request.type) {
 		case 'reply':
 			return now.model.reply(request.prompt, request.history);
 		case 'save':
 			return save(now);
 		case 'read':
-			return change(() => read(now, request.reading));
+			return change(() => read(now, request.reading, stopper(request.id).signal));
 		case 'reset':
 			return change(reset);
 		case 'undo':
@@ -146,11 +180,19 @@ function events(now: Current, request: BabyRequest): AsyncIterable<BabyEvent> {
 }
 
 self.addEventListener('message', async ({ data: request }: MessageEvent<BabyRequest>) => {
+	if (request.type === 'cancel') {
+		stoppers.get(request.id)?.abort();
+		return;
+	}
+	// Ready before anything is awaited, so a cancel sent right after the read finds it.
+	if (request.type === 'read') stopper(request.id);
 	try {
 		for await (const event of events(await current, request)) {
 			post({ ...event, id: request.id });
 		}
 	} catch (error) {
 		post({ type: 'error', id: request.id, message: String(error) });
+	} finally {
+		stoppers.delete(request.id);
 	}
 });

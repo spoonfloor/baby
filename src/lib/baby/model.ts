@@ -106,12 +106,21 @@ export class Model {
 		};
 	}
 
-	async *read({ source, title, documents, keep }: Reading): AsyncGenerator<BabyEvent> {
+	/**
+	 * Reads, then practices until Baby’s guesses stop improving. Aborting `signal`
+	 * makes it throw the signal’s reason between steps, leaving this model part-way
+	 * through the reading: one to throw away.
+	 */
+	async *read(
+		{ source, title, documents, keep }: Reading,
+		signal?: AbortSignal
+	): AsyncGenerator<BabyEvent> {
 		if (this.#practicing) throw new Error('Baby is already reading');
 		this.#practicing = true;
 		try {
 			yield { type: 'status', text: `Reading “${title}”` };
 			await this.#idle();
+			signal?.throwIfAborted();
 
 			const stats = readingStats(documents, (word) => this.#vocabulary.has(word));
 			this.#vocabulary.add(documents.flat());
@@ -137,6 +146,7 @@ export class Model {
 					yield { type: 'progress', done: plateau.steps, total: plateau.budget };
 				}
 				await this.#idle();
+				signal?.throwIfAborted();
 			}
 
 			if (!this.#sources.some(({ id }) => id === source)) {

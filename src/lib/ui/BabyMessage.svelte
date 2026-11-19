@@ -15,6 +15,10 @@
 		words: readonly string[];
 		status: string;
 		pending: boolean;
+		/** Waiting its turn, so not yet doing anything: no spinner. */
+		waiting?: boolean | undefined;
+		/** Cancels what Baby is doing, from a × after the status line; shown only while pending. */
+		oncancel?: (() => void) | undefined;
 		/** How far through its work Baby is, when it knows; shown only while pending. */
 		progress?: { done: number; total: number } | undefined;
 		/**
@@ -45,7 +49,17 @@
 		actions?: Snippet | undefined;
 	}
 
-	let { words, status, pending, progress, inspect, graph, actions }: Props = $props();
+	let {
+		words,
+		status,
+		pending,
+		waiting = false,
+		oncancel,
+		progress,
+		inspect,
+		graph,
+		actions
+	}: Props = $props();
 
 	const written = $derived(typesetWords(words));
 	/** The reply’s words while the Graph is open, the end among them. */
@@ -62,9 +76,14 @@
 </script>
 
 <div class="baby">
-	{#if status}
-		<!-- A progress bar shows activity itself, so the status line drops its spinner. -->
-		<StatusLine text={status} active={pending && !progress} />
+	{#if status || (oncancel && pending)}
+		<div class="status">
+			<!-- A progress bar shows activity itself, so the status line drops its spinner. -->
+			<StatusLine text={status} active={pending && !waiting && !progress} />
+			{#if oncancel && pending}
+				<IconButton icon="close" label="Cancel" onclick={oncancel} />
+			{/if}
+		</div>
 	{/if}
 	{#if progress && pending}
 		<ProgressBar done={progress.done} total={progress.total} />
@@ -116,6 +135,13 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-tight);
+	}
+
+	.status {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--space-inline);
 	}
 
 	/* A word is text that can be pointed at or tapped, not a button to look at. */

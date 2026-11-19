@@ -75,6 +75,33 @@ function fakeBaby(events: BabyEvent[], words: string[], sources: string[] = []) 
 	return { baby, release, asked };
 }
 
+/**
+ * A Baby whose readings each wait for `finish(source)`, or stop (as a cancelled
+ * reading does) when their signal aborts. `started` lists them as Baby begins each.
+ */
+function queueingBaby() {
+	const { baby } = fakeBaby([], ['a']);
+	const started: string[] = [];
+	const finishers = new Map<string, () => void>();
+	baby.read = async function* ({ source }, signal) {
+		started.push(source);
+		yield { type: 'status', text: `Reading ${source}` };
+		const finished = new Promise<'done'>((resolve) => finishers.set(source, () => resolve('done')));
+		const stopped = new Promise<'stopped'>((resolve) =>
+			signal?.addEventListener('abort', () => resolve('stopped'))
+		);
+		yield { type: await Promise.race([finished, stopped]) };
+	};
+	const finish = async (source: string) => {
+		finishers.get(source)?.();
+		await new Promise((resolve) => setTimeout(resolve));
+	};
+	return { baby, started, finish };
+}
+
+const second: Primer = { id: 'def', title: 'DEF', documents: [['d', 'e', 'f', '[EOS]']] };
+const third: Primer = { id: 'ghi', title: 'GHI', documents: [['g', 'h', 'i', '[EOS]']] };
+
 /** A Baby whose every request fails partway, after one status. */
 function failingBaby(): Baby {
 	async function* respond(): AsyncGenerator<BabyEvent> {
@@ -311,17 +338,96 @@ describe('Chat', () => {
 		expect(chat.messages).toMatchObject([{ role: 'baby', progress: { done: 50, total: 200 } }]);
 	});
 
-	it('refuses a second message while replying, and a second primer while reading', async () => {
+	it('refuses a second message while replying', async () => {
 		const { baby, release } = fakeBaby([], ['moon']);
 		const chat = new Chat(baby);
 
 		const sending = chat.send('one');
-		const reading = chat.read(primer);
 		await expect(chat.send('two')).rejects.toThrow();
-		await expect(chat.read(primer)).rejects.toThrow();
 
 		release();
-		await Promise.all([sending, reading]);
+		await sending;
+	});
+
+	it('queues readings, each waiting its turn under its own message', async () => {
+		const { baby, started, finish } = queueingBaby();
+		const chat = new Chat(baby);
+
+		const readings = [chat.read(primer), chat.read(second)];
+		await finish('none yet');
+		expect(started).toEqual([primer.id]);
+		expect(chat.messages).toMatchObject([
+			{ role: 'baby', status: 'Reading abc', pending: true },
+			{ role: 'baby', status: 'Waiting to read “DEF”', pending: true, waiting: true }
+		]);
+
+		await finish(primer.id);
+		expect(started).toEqual([primer.id, second.id]);
+		expect(chat.messages[1]).not.toHaveProperty('waiting');
+		await finish(second.id);
+		await Promise.all(readings);
+		expect(chat.reading).toBe(false);
+		expect(chat.messages).toMatchObject([{ pending: false }, { pending: false }]);
+	});
+
+	it('drops a reading cancelled before Baby starts it', async () => {
+		const { baby, started } = queueingBaby();
+		const chat = new Chat(baby);
+
+		const reading = chat.read(primer);
+		chat.cancelReading(chat.messages[0]?.id ?? '');
+		await reading;
+
+		expect(started).toEqual([]);
+		expect(chat.messages).toEqual([]);
+		expect(chat.reading).toBe(false);
+	});
+
+	it('cancels a waiting reading: it’s never read and its message goes', async () => {
+		const { baby, started, finish } = queueingBaby();
+		const chat = new Chat(baby);
+		const readings = [chat.read(primer), chat.read(second), chat.read(third)];
+		await finish('none yet');
+
+		const waiting = chat.messages[1]?.id ?? '';
+		expect(chat.cancellable).toContain(waiting);
+		chat.cancelReading(waiting);
+		expect(chat.messages.map(({ id }) => id)).not.toContain(waiting);
+		expect(chat.cancellable).not.toContain(waiting);
+
+		await finish(primer.id);
+		await finish(third.id);
+		await Promise.all(readings);
+		expect(started).toEqual([primer.id, third.id]);
+	});
+
+	it('cancels the reading under way: it stops, its message goes, and the next starts', async () => {
+		const { baby, started, finish } = queueingBaby();
+		const chat = new Chat(baby);
+		const readings = [chat.read(primer), chat.read(second)];
+		await finish('none yet');
+
+		chat.cancelReading(chat.messages[0]?.id ?? '');
+		await finish('none yet');
+		expect(started).toEqual([primer.id, second.id]);
+		expect(chat.messages).toMatchObject([{ status: 'Reading def', pending: true }]);
+
+		await finish(second.id);
+		await Promise.all(readings);
+		expect(chat.reading).toBe(false);
+	});
+
+	it('keeps a reading cancelled too late to stop, since Baby read it', async () => {
+		const { baby, release } = fakeBaby([], ['a']);
+		const chat = new Chat(baby);
+		const reading = chat.read(primer);
+		await Promise.resolve();
+
+		chat.cancelReading(chat.messages[0]?.id ?? '');
+		release();
+		await reading;
+
+		expect(chat.messages).toMatchObject([{ role: 'baby', request: 'read', pending: false }]);
 	});
 
 	it('chats while reading', async () => {

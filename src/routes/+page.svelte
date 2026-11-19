@@ -259,7 +259,6 @@
 			bind:expanded={panelExpanded}
 			summary={describeKnowledge(known.size)}
 			groups={panelGroups}
-			disabled={chat.reading}
 			onopen={preview}
 		/>
 	</header>
@@ -286,7 +285,11 @@
 								words={message.text ? message.text.split(' ') : []}
 								status={message.status}
 								pending={message.pending}
+								waiting={message.waiting}
 								progress={message.progress}
+								oncancel={chat.cancellable.includes(message.id)
+									? () => chat.cancelReading(message.id)
+									: undefined}
 								inspect={steps && {
 									open,
 									waiting: asked && !open,
@@ -338,7 +341,7 @@
 					: empty
 						? 'Say hi to Baby'
 						: 'Reply'}
-				ready={!chat.changing && (chat.teaching !== undefined ? !chat.reading : !chat.replying)}
+				ready={!chat.changing && (chat.teaching !== undefined || !chat.replying)}
 				note={chat.teaching === undefined
 					? undefined
 					: {

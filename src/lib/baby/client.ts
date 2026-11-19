@@ -4,8 +4,11 @@ import type { BabyEvent, BabyRequest, BabyResponse, BabyState, Reading, Turn } f
 export interface Baby {
 	/** Replies to `prompt`, said after `history` (the conversation so far, oldest first). */
 	reply(prompt: string, history?: readonly Turn[]): AsyncIterable<BabyEvent>;
-	/** Reads, then practices on everything read so far. */
-	read(reading: Reading): AsyncIterable<BabyEvent>;
+	/**
+	 * Reads, then practices on everything read so far. Aborting `signal` cancels it:
+	 * it ends with `stopped`, unless it was finished.
+	 */
+	read(reading: Reading, signal?: AbortSignal): AsyncIterable<BabyEvent>;
 	/** Forgets everything Baby has ever read, leaving a newborn that knows only its first word. */
 	reset(): AsyncIterable<BabyEvent>;
 	/** Brings back the model from before the latest reading, when `BabyState.undoable`. */
@@ -44,16 +47,23 @@ export function createBaby(endpoint: Endpoint): Baby {
 		streams.get(id)?.(event);
 	});
 
-	async function* stream(request: (id: string) => BabyRequest): AsyncGenerator<BabyEvent> {
+	/** The events for `request`; aborting `signal` asks the worker to cancel it. */
+	async function* stream(
+		request: (id: string) => BabyRequest,
+		signal?: AbortSignal
+	): AsyncGenerator<BabyEvent> {
 		const id = crypto.randomUUID();
 		const queue: (BabyEvent | Error)[] = [];
 		let wake = () => {};
+		const cancel = () => endpoint.postMessage({ type: 'cancel', id });
 
 		streams.set(id, (event) => {
 			queue.push(event);
 			wake();
 		});
 		endpoint.postMessage(request(id));
+		if (signal?.aborted) cancel();
+		else signal?.addEventListener('abort', cancel, { once: true });
 
 		try {
 			for (;;) {
@@ -64,9 +74,10 @@ export function createBaby(endpoint: Endpoint): Baby {
 				}
 				if (event instanceof Error) throw event;
 				yield event;
-				if (event.type === 'done') return;
+				if (event.type === 'done' || event.type === 'stopped') return;
 			}
 		} finally {
+			signal?.removeEventListener('abort', cancel);
 			streams.delete(id);
 		}
 	}
@@ -74,7 +85,7 @@ export function createBaby(endpoint: Endpoint): Baby {
 	return {
 		reply: (prompt, history = []) =>
 			stream((id) => ({ type: 'reply', id, prompt, history: [...history] })),
-		read: (reading) => stream((id) => ({ type: 'read', id, reading })),
+		read: (reading, signal) => stream((id) => ({ type: 'read', id, reading }), signal),
 		reset: () => stream((id) => ({ type: 'reset', id })),
 		undo: () => stream((id) => ({ type: 'undo', id })),
 		save: () => stream((id) => ({ type: 'save', id })),

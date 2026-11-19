@@ -10,7 +10,7 @@ import type { Speaker } from './script.ts';
 
 /**
  * One step of a request, in order: any number of `status`/`progress`/`token`, a
- * reply's one `trace`, then one `done`. A reply sends `guesses` before
+ * reply's one `trace`, then one `done` (or, for a read that was cancelled, `stopped`). A reply sends `guesses` before
  * each word it picks, the last of them for the pick that ended it (unless it ran to
  * the longest reply).
  */
@@ -21,7 +21,8 @@ export type BabyEvent =
 	| { type: 'trace'; trace: ReplyTrace } // how a reply came about, for debugging
 	| { type: 'guesses'; guesses: Guess[] } // the odds of each word Baby could say next
 	| { type: 'file'; bytes: Uint8Array<ArrayBuffer> } // the whole model as a `.baby` file (see saveFile.ts)
-	| { type: 'done' };
+	| { type: 'done' }
+	| { type: 'stopped' }; // a cancelled read ended early, leaving the model as it was before
 
 /**
  * One word Baby could pick and the chance it would. Every word Baby can say has one,
@@ -120,6 +121,11 @@ export type BabyRequest =
 	/** `history` is the conversation before `prompt`, oldest first; Baby sees what fits of it. */
 	| { type: 'reply'; id: string; prompt: string; history: Turn[] }
 	| { type: 'read'; id: string; reading: Reading }
+	/**
+	 * Stops the read whose request is `id`. It ends with `stopped`, the model as it
+	 * was before it (or with `done`, if it finished first). Gets no events of its own.
+	 */
+	| { type: 'cancel'; id: string }
 	/** Forgets everything, saved Baby included, leaving a newborn that knows only its first word. */
 	| { type: 'reset'; id: string }
 	/** Brings back the model from before the latest reading (see `BabyState.undoable`). */

@@ -32,8 +32,6 @@
 		/** One line on what Baby knows, e.g. “Baby knows 412 words”. */
 		summary: string;
 		groups: PanelGroup[];
-		/** Sources can't be opened (Baby is busy reading). */
-		disabled?: boolean;
 		/** Showing the sources, not just the title. Closed until the user opens it. */
 		open?: boolean;
 		/**
@@ -47,7 +45,6 @@
 	let {
 		summary,
 		groups,
-		disabled = false,
 		open = $bindable(false),
 		expanded = $bindable(),
 		onopen
@@ -93,7 +90,7 @@
 								<ul>
 									{#each group.sources as source (source.id)}
 										<li>
-											<Row {disabled} onclick={() => onopen(source.id)}>
+											<Row onclick={() => onopen(source.id)}>
 												<span class="title">
 													{#if source.fresh}<span class="new">New</span>{/if}
 													{source.title}

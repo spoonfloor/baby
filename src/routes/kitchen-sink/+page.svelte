@@ -302,13 +302,6 @@
 			/>
 			<SourcesPanel
 				summary={describeKnowledge(412)}
-				groups={panelGroups(3)}
-				open
-				disabled
-				onopen={noop}
-			/>
-			<SourcesPanel
-				summary={describeKnowledge(412)}
 				groups={groupsWithReplies()}
 				open
 				onopen={(id) => (previewing = id.startsWith('taught-day:') ? 'taught' : 'unread')}
@@ -695,6 +688,14 @@
 			pending
 			progress={{ done: 300, total: 800 }}
 		/>
+		<BabyMessage
+			status="Practicing “Greetings” · step 300 of 800 · about 25 seconds left"
+			words={[]}
+			pending
+			progress={{ done: 300, total: 800 }}
+			oncancel={noop}
+		/>
+		<BabyMessage status="Waiting to read “Thanks”" words={[]} pending waiting oncancel={noop} />
 		<BabyMessage
 			status="Read “Greetings”: 256 words · 28 new · loss 1.24 → 0.29 in 450 of 800 steps"
 			words={[]}

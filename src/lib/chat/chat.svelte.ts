@@ -32,6 +32,8 @@ export type BabyMessage = {
 	/** Baby's latest status, kept after it finishes as a record of what happened. */
 	status: string;
 	pending: boolean;
+	/** A reading waiting its turn behind others: Baby hasn’t started it. */
+	waiting?: boolean;
 	/** How far through its work Baby is, when it knows how much there is (practice). */
 	progress?: { done: number; total: number };
 	/** How a finished reply came about; only replies have one. */
@@ -50,13 +52,29 @@ const PICKS = 3;
 /** Replies Baby is asked for to find them, so a Baby that keeps saying the same thing stops soon. */
 const PICK_ATTEMPTS = 8;
 
+/** A reading asked for: Baby reads them one at a time, in the order asked. */
+interface QueuedReading {
+	reading: Reading;
+	message: BabyMessage;
+	stop: AbortController;
+	/** Baby has been asked to read it, so cancelling it has to wait for Baby to stop. */
+	started: boolean;
+}
+
 /** The conversation: what's been said and read, and what Baby is busy with. */
 export class Chat {
 	messages: Message[] = $state([]);
 	/** Baby answers one message at a time. */
 	replying = $state(false);
-	/** Baby reads (and practices) one source at a time, and can still chat meanwhile. */
-	reading = $state(false);
+	/**
+	 * Readings asked for and not yet finished, the one Baby is reading first. Raw:
+	 * their documents go to Baby’s worker, which can only be sent plain data.
+	 */
+	#readings: QueuedReading[] = $state.raw([]);
+	/** Baby reads (and practices) one source at a time, the rest waiting, and can still chat meanwhile. */
+	reading: boolean = $derived(this.#readings.length > 0);
+	/** Ids of the messages for readings that can still be cancelled. */
+	cancellable: string[] = $derived(this.#readings.map(({ message }) => message.id));
 	/** The model is being saved, loaded, or undone. */
 	changing = $state(false);
 	/** Baby is doing something, so the model can’t be reset, saved, loaded, or undone. */
@@ -71,12 +89,11 @@ export class Chat {
 	);
 	/**
 	 * The message Baby’s latest reply answered, while the user can teach a better
-	 * reply: the reply is finished, nothing has been said since, and Baby isn’t
-	 * reading (it reads one thing at a time). `after` is the message that ends the
-	 * turn, where the offer goes: the reply, or the last notice the app added after it.
+	 * reply: the reply is finished and nothing has been said or read since. `after`
+	 * is the message that ends the turn, where the offer goes: the reply, or the last
+	 * notice the app added after it.
 	 */
 	teachable: { prompt: string; after: string } | undefined = $derived.by(() => {
-		if (this.reading) return undefined;
 		const index = this.messages.findLastIndex(
 			(message) => message.role === 'user' || message.role === 'baby'
 		);
@@ -111,17 +128,18 @@ export class Chat {
 		const history = this.#history();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text });
 
-		const reply = await this.#follow('reply', this.#baby.reply(text, history));
+		const reply = await this.#follow(this.#babyMessage('reply'), this.#baby.reply(text, history));
 		this.replying = false;
 
-		if (!reply) return;
+		if (reply === undefined || reply === 'stopped') return;
 		const notice = this.#noticeAfterReply(reply);
 		if (notice) this.messages.push({ id: crypto.randomUUID(), role: 'app', notice });
 	}
 
 	/**
-	 * Baby reads `source`: a primer, or a page from the web. `keep` has Baby keep its
-	 * text and title, for text that exists nowhere else (see `Reading.keep`).
+	 * Baby reads `source`: a primer, or a page from the web, after any readings
+	 * already asked for. `keep` has Baby keep its text and title, for text that exists
+	 * nowhere else (see `Reading.keep`). Settles once it’s read or cancelled.
 	 */
 	async read(
 		{ id: source, title, documents }: Pick<Primer, 'id' | 'title' | 'documents'>,
@@ -156,7 +174,6 @@ export class Chat {
 	async teach(reply: string) {
 		const prompt = this.teaching;
 		if (prompt === undefined) throw new Error('Not teaching a reply');
-		if (this.reading) throw new Error('Baby is already reading');
 		this.#endTeaching();
 		this.messages.push({ id: crypto.randomUUID(), role: 'user', text: reply, replyTo: prompt });
 		await this.#read({
@@ -165,6 +182,18 @@ export class Chat {
 			documents: [[...turnTokens('you', prompt), ...turnTokens('baby', reply)]],
 			keep: true
 		});
+	}
+
+	/**
+	 * Cancels the reading shown in message `id`. One still waiting is dropped; the one
+	 * Baby is reading stops, the model going back to how it was before it. Either way
+	 * its message goes, and the next reading starts.
+	 */
+	cancelReading(id: string) {
+		const queued = this.#readings.find(({ message }) => message.id === id);
+		if (!queued) return;
+		queued.stop.abort();
+		if (!queued.started) this.#dropReading(queued, { stopped: true });
 	}
 
 	/**
@@ -305,32 +334,76 @@ export class Chat {
 		return undefined;
 	}
 
+	/** Asks Baby to read `reading` once the readings ahead of it are done or cancelled. */
 	async #read(reading: Reading) {
-		if (this.reading) throw new Error('Baby is already reading');
 		if (this.changing) throw new Error('Baby is changing');
-		this.reading = true;
-		await this.#follow('read', this.#baby.read(reading));
-		this.reading = false;
+		const waiting = this.reading;
+		const queued: QueuedReading = {
+			reading,
+			message: this.#babyMessage('read', {
+				...(waiting && { status: `Waiting to read “${reading.title}”`, waiting })
+			}),
+			stop: new AbortController(),
+			started: false
+		};
+		const ahead = this.#readingsDone;
+		this.#readings = [...this.#readings, queued];
+		const done = ahead.then(async () => {
+			if (queued.stop.signal.aborted) return;
+			queued.started = true;
+			delete queued.message.waiting;
+			const ended = await this.#follow(
+				queued.message,
+				this.#baby.read(reading, queued.stop.signal)
+			);
+			this.#dropReading(queued, { stopped: ended === 'stopped' });
+		});
+		this.#readingsDone = done;
+		await done;
 	}
 
+	/** Settles once every reading asked for so far is done or cancelled. */
+	#readingsDone = Promise.resolve();
+
 	/**
-	 * Adds a Baby message and keeps it in step with `events` until done. If the
-	 * request fails, the message ends where it got to, the app says so, and this
-	 * returns undefined; it never throws, so Baby is never left busy.
+	 * Takes `queued` off the readings, and its message off the conversation if it
+	 * `stopped` before Baby read it. (Cancelled too late, Baby read it all the same.)
 	 */
-	async #follow(
+	#dropReading(queued: QueuedReading, { stopped }: { stopped: boolean }) {
+		this.#readings = this.#readings.filter((other) => other !== queued);
+		if (stopped) {
+			this.messages = this.messages.filter((message) => message.id !== queued.message.id);
+		}
+	}
+
+	/** Adds a Baby message, pending, for `request`. */
+	#babyMessage(
 		request: BabyMessage['request'],
-		events: AsyncIterable<BabyEvent>
-	): Promise<BabyMessage | undefined> {
+		{ status = '', waiting }: { status?: string; waiting?: boolean } = {}
+	): BabyMessage {
 		const message: BabyMessage = $state({
 			id: crypto.randomUUID(),
 			role: 'baby',
 			request,
 			text: '',
-			status: '',
-			pending: true
+			status,
+			pending: true,
+			...(waiting && { waiting })
 		});
 		this.messages.push(message);
+		return message;
+	}
+
+	/**
+	 * Keeps `message` in step with `events` until done, then returns it; or until
+	 * stopped (a cancelled read), returning `'stopped'`. If the request fails, the
+	 * message ends where it got to, the app says so, and this returns undefined; it
+	 * never throws, so Baby is never left busy.
+	 */
+	async #follow(
+		message: BabyMessage,
+		events: AsyncIterable<BabyEvent>
+	): Promise<BabyMessage | 'stopped' | undefined> {
 		// Kept off the message until the reply is finished: no one looks at them sooner.
 		let steps: ReplyStep[] = [];
 
@@ -357,6 +430,9 @@ export class Chat {
 						if (steps.length > 0) message.steps = kept(steps);
 						message.pending = false;
 						break;
+					case 'stopped':
+						message.pending = false;
+						return 'stopped';
 				}
 			}
 			return message;

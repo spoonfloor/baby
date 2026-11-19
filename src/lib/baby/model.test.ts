@@ -230,6 +230,17 @@ describe('Model', () => {
 		await collect(first);
 	});
 
+	it('stops a reading when its signal aborts, between steps', async () => {
+		const model = newModel();
+		const stop = new AbortController();
+		const reading = model.read(words('a b c'), stop.signal);
+		await reading.next();
+		stop.abort();
+
+		await expect(collect(reading)).rejects.toThrow();
+		expect(model.state.sources).toEqual([]);
+	});
+
 	it('keeps what it read only when asked, and each source once', async () => {
 		const model = newModel();
 		await collect(model.read({ ...hi, keep: true }));

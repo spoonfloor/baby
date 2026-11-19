@@ -85,6 +85,29 @@ describe('createBaby', () => {
 		expect(late).toEqual([state]);
 	});
 
+	it('cancels a read when its signal aborts, ending at stopped', async () => {
+		const requests: BabyRequest[] = [];
+		const baby = createBaby(
+			fakeWorker((request) => {
+				requests.push(request);
+				return request.type === 'cancel'
+					? [{ id: request.id, type: 'stopped' }]
+					: [{ id: request.id, type: 'status', text: 'Reading' }];
+			})
+		);
+		const stop = new AbortController();
+		const events: BabyEvent[] = [];
+
+		for await (const event of baby.read({ source: 'x', title: 'x', documents: [] }, stop.signal)) {
+			events.push(event);
+			stop.abort();
+		}
+
+		const [read, cancel] = requests;
+		expect(cancel).toEqual({ type: 'cancel', id: read?.id });
+		expect(events).toEqual([{ type: 'status', text: 'Reading' }, { type: 'stopped' }]);
+	});
+
 	it('fails the stream when Baby reports an error', async () => {
 		const baby = createBaby(
 			fakeWorker((request) => [
