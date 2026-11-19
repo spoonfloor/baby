@@ -10,9 +10,17 @@ import { siteOf, webSourceId, type WebSource } from './webSource.ts';
  */
 
 export type Extracted =
-	{ kind: 'page'; source: WebSource } | { kind: 'feed'; title: string; sources: WebSource[] };
+	| {
+			kind: 'page';
+			source: WebSource;
+			/** The feed this page offers in its place, if it’s a site’s or section’s front page. */
+			feed?: string;
+	  }
+	| { kind: 'feed'; title: string; sources: WebSource[] };
 
 const CONTENT_NS = 'http://purl.org/rss/1.0/modules/content/';
+
+const FEED_TYPES = new Set(['application/rss+xml', 'application/atom+xml']);
 
 /** Elements that each hold a paragraph’s worth of text. */
 const BLOCKS = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, pre, figcaption, dt, dd';
@@ -32,24 +40,51 @@ export function extract({ url, contentType, text }: FetchedText): Extracted {
 		const feed = parseFeed(text, url);
 		if (feed) return { kind: 'feed', ...feed };
 	}
-	return { kind: 'page', source: parsePage(text, url) };
+	return { kind: 'page', ...parsePage(text, url) };
 }
 
 function looksLikeXml(text: string): boolean {
 	return /^\s*(<\?xml|<rss|<feed|<rdf:RDF)/i.test(text);
 }
 
-function parsePage(html: string, url: string): WebSource {
+function parsePage(html: string, url: string): { source: WebSource; feed?: string } {
 	const page = new DOMParser().parseFromString(html, 'text/html');
 	const base = page.createElement('base');
 	base.href = url;
 	page.head.prepend(base);
 	const fallbackTitle = clean(page.title) || url;
+	const feed = offeredFeed(page);
 	const article = new Readability(page).parse();
 	const paragraphs = article?.content
 		? htmlParagraphs(article.content)
 		: htmlParagraphs(page.body.innerHTML);
-	return webSource(url, clean(article?.title ?? '') || fallbackTitle, siteOf(url), paragraphs);
+	const source = webSource(
+		url,
+		clean(article?.title ?? '') || fallbackTitle,
+		siteOf(url),
+		paragraphs
+	);
+	return feed === undefined ? { source } : { source, feed };
+}
+
+/**
+ * The RSS or Atom feed a page links as its alternate, unless the page is a single
+ * post: a post’s page links its whole site’s feed too, and reading that instead
+ * would drop the post that was asked for. A page is a post when its Open Graph type
+ * is anything but “website”, which sites set for their front and section pages.
+ */
+function offeredFeed(page: Document): string | undefined {
+	const type = [...page.querySelectorAll('meta[property]')]
+		.find((meta) => meta.getAttribute('property') === 'og:type')
+		?.getAttribute('content')
+		?.trim()
+		.toLowerCase();
+	if (type !== undefined && type !== 'website') return undefined;
+	const link = [...page.querySelectorAll<HTMLLinkElement>('link[rel~=alternate][href]')].find(
+		(element) => FEED_TYPES.has(element.type.trim().toLowerCase())
+	);
+	// Resolved against the page’s address by the <base> above.
+	return link?.href || undefined;
 }
 
 /** An RSS or Atom feed’s posts, newest first as feeds list them; undefined if it isn’t a feed. */

@@ -9,7 +9,8 @@ import type { Expected, SaveInfo } from './store.ts';
  *   PATCH  /saves/:id    → { name } → { save: StoredSave }
  *   DELETE /saves/:id    → 204
  *   GET    /fetch?url=…  → a public page or feed, as the site sent it; where it ended
- *                          up (after redirects) in `Baby-Url`
+ *                          up (after redirects) in `Baby-Url`. If the site wouldn’t
+ *                          send it: 424, with why in `Baby-Problem` (see SiteProblem)
  *
  * Every request carries `Authorization: Bearer <token>`. Writes say what they expect
  * to find (see `Expected`) with If-None-Match: * (new), If-Match: * (any), or
@@ -20,6 +21,22 @@ export const INFO_HEADER = 'Baby-Info';
 export const VERSION_HEADER = 'Baby-Version';
 export const URL_HEADER = 'Baby-Url';
 export const FETCH_PATH = '/fetch';
+export const PROBLEM_HEADER = 'Baby-Problem';
+
+/**
+ * The status the server answers with when the site, not the server, failed. Never a
+ * 5xx: proxies in front of a server (like Cloudflare) swap a 502 or 504 for a page of
+ * their own without its CORS headers, which the app could only see as no connection.
+ */
+export const SITE_PROBLEM_STATUS = 424;
+
+/** Why the site wouldn’t send a page: it refused, had nothing there, took too long, or failed. */
+export const SITE_PROBLEMS = ['refused', 'missing', 'slow', 'failed'] as const;
+export type SiteProblem = (typeof SITE_PROBLEMS)[number];
+
+export function isSiteProblem(value: string | null): value is SiteProblem {
+	return (SITE_PROBLEMS as readonly (string | null)[]).includes(value);
+}
 
 /** A save id: what `crypto.randomUUID()` makes, and nothing that could leave the saves folder. */
 export const SAVE_ID = /^[0-9a-f-]{1,64}$/;

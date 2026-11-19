@@ -47,6 +47,14 @@ beforeEach(async () => {
 					response.writeHead(200, { 'Content-Type': 'image/png' });
 					response.end(Buffer.alloc(10));
 					return;
+				case '/private-club':
+					response.writeHead(403);
+					response.end();
+					return;
+				case '/broken':
+					response.writeHead(503);
+					response.end();
+					return;
 				case '/big':
 					response.writeHead(200, { 'Content-Type': 'text/plain' });
 					response.end('x'.repeat(2000));
@@ -84,7 +92,9 @@ describe('fetching pages through the save server', () => {
 			fetchThroughServer({ address, token }, url).catch((error: unknown) => error);
 
 		expect(await problem(`${site}/photo`)).toMatchObject({ problem: 'type' });
-		expect(await problem(`${site}/missing`)).toMatchObject({ problem: 'site' });
+		expect(await problem(`${site}/missing`)).toMatchObject({ problem: 'missing' });
+		expect(await problem(`${site}/private-club`)).toMatchObject({ problem: 'refused' });
+		expect(await problem(`${site}/broken`)).toMatchObject({ problem: 'failed' });
 		expect(await problem(`${site}/big`)).toMatchObject({ problem: 'large' });
 		expect(await problem('file:///etc/passwd')).toMatchObject({ problem: 'address' });
 		expect(await problem(`${site}/post`, 'not-the-right-token-at-all')).toMatchObject({

@@ -7,6 +7,7 @@ import {
 	expectedFrom,
 	FETCH_PATH,
 	INFO_HEADER,
+	PROBLEM_HEADER,
 	SAVE_ID,
 	URL_HEADER,
 	VERSION_HEADER
@@ -213,7 +214,10 @@ export function createSaveServer({
 		if (origin && (origins.includes('*') || origins.includes(origin))) {
 			response.setHeader('Access-Control-Allow-Origin', origins.includes('*') ? '*' : origin);
 			response.setHeader('Vary', 'Origin');
-			response.setHeader('Access-Control-Expose-Headers', `${VERSION_HEADER}, ${URL_HEADER}`);
+			response.setHeader(
+				'Access-Control-Expose-Headers',
+				`${VERSION_HEADER}, ${URL_HEADER}, ${PROBLEM_HEADER}`
+			);
 		}
 		if (request.method === 'OPTIONS') {
 			response.setHeader('Access-Control-Allow-Methods', 'GET, PUT, PATCH, DELETE');
@@ -229,7 +233,12 @@ export function createSaveServer({
 			const known = error instanceof HttpError || error instanceof FetchError;
 			const status = known ? error.status : 500;
 			if (status === 500) console.error(error);
-			if (!response.headersSent) response.writeHead(status, { 'Content-Type': 'text/plain' });
+			if (!response.headersSent) {
+				response.writeHead(status, {
+					'Content-Type': 'text/plain',
+					...(error instanceof FetchError && error.problem && { [PROBLEM_HEADER]: error.problem })
+				});
+			}
 			response.end(known ? error.message : 'Server error');
 		});
 	});

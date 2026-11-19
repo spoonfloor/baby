@@ -1,4 +1,11 @@
-import { FETCH_PATH, URL_HEADER } from '#lib/saves/serverProtocol.ts';
+import {
+	FETCH_PATH,
+	isSiteProblem,
+	PROBLEM_HEADER,
+	SITE_PROBLEM_STATUS,
+	URL_HEADER,
+	type SiteProblem
+} from '#lib/saves/serverProtocol.ts';
 import type { Connection } from '#lib/saves/serverStore.ts';
 
 /** Why a page couldn’t be fetched, for the app to explain. */
@@ -9,11 +16,12 @@ export type FetchProblem =
 	| 'unauthorized'
 	/** The server is from before it could fetch pages. */
 	| 'outdated'
-	| 'site'
-	| 'slow'
+	/** The site wouldn’t send it, and why. */
+	| SiteProblem
 	| 'type'
 	| 'large'
-	| 'failed';
+	/** Anything else. */
+	| 'error';
 
 export class FetchProblemError extends Error {
 	readonly problem: FetchProblem;
@@ -38,9 +46,7 @@ const BY_STATUS: Record<number, FetchProblem> = {
 	403: 'private',
 	404: 'outdated',
 	413: 'large',
-	415: 'type',
-	502: 'site',
-	504: 'slow'
+	415: 'type'
 };
 
 /** Fetches the public page at `url` through the save server (see serverProtocol.ts). */
@@ -57,8 +63,11 @@ export async function fetchThroughServer(
 		throw new FetchProblemError('unreachable', 'Couldn’t reach the server');
 	}
 	if (!response.ok) {
+		const siteProblem = response.headers.get(PROBLEM_HEADER);
 		throw new FetchProblemError(
-			BY_STATUS[response.status] ?? 'failed',
+			response.status === SITE_PROBLEM_STATUS && isSiteProblem(siteProblem)
+				? siteProblem
+				: (BY_STATUS[response.status] ?? 'error'),
 			`The server answered ${response.status}`
 		);
 	}

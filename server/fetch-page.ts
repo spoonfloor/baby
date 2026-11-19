@@ -5,6 +5,7 @@ import { request as httpsRequest } from 'node:https';
 import { BlockList, isIP } from 'node:net';
 import type { Readable } from 'node:stream';
 import { createBrotliDecompress, createGunzip, createInflate } from 'node:zlib';
+import { SITE_PROBLEM_STATUS, type SiteProblem } from '../src/lib/saves/serverProtocol.ts';
 
 /**
  * Fetches a public web page or feed for the app, which browsers won’t let it fetch
@@ -32,10 +33,33 @@ export interface Fetched {
 /** Why a fetch failed, as the status the save server answers with. */
 export class FetchError extends Error {
 	readonly status: number;
+	/** Set when the site failed, not the request: the status is then SITE_PROBLEM_STATUS. */
+	readonly problem: SiteProblem | undefined;
 
-	constructor(status: number, message: string) {
+	constructor(status: number, message: string, problem?: SiteProblem) {
 		super(message);
 		this.status = status;
+		this.problem = problem;
+	}
+}
+
+function siteError(problem: SiteProblem, message: string): FetchError {
+	return new FetchError(SITE_PROBLEM_STATUS, message, problem);
+}
+
+/** What a site’s answer other than 200 means for the app. */
+function problemFor(status: number | undefined): SiteProblem {
+	switch (status) {
+		case 401:
+		case 403:
+		case 429:
+		case 451:
+			return 'refused';
+		case 404:
+		case 410:
+			return 'missing';
+		default:
+			return 'failed';
 	}
 }
 
@@ -114,13 +138,13 @@ export async function fetchPage(
 			location
 		) {
 			response.resume();
-			if (redirects === MAX_REDIRECTS) throw new FetchError(502, 'Too many redirects');
+			if (redirects === MAX_REDIRECTS) throw siteError('failed', 'Too many redirects');
 			url = parseTarget(new URL(location, url).href);
 			continue;
 		}
 		if (response.statusCode !== 200) {
 			response.resume();
-			throw new FetchError(502, `The site answered ${response.statusCode}`);
+			throw siteError(problemFor(response.statusCode), `The site answered ${response.statusCode}`);
 		}
 		const contentType = response.headers['content-type'] ?? 'text/html';
 		const mediaType = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
@@ -210,6 +234,6 @@ async function collect(stream: Readable, maxBytes: number, signal: AbortSignal):
 
 function asFetchError(error: unknown, signal: AbortSignal): FetchError {
 	if (error instanceof FetchError) return error;
-	if (signal.aborted) return new FetchError(504, 'The site took too long');
-	return new FetchError(502, 'Couldn’t reach the site');
+	if (signal.aborted) return siteError('slow', 'The site took too long');
+	return siteError('failed', 'Couldn’t reach the site');
 }

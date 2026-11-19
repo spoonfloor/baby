@@ -84,6 +84,32 @@ describe('extract', () => {
 		]);
 	});
 
+	it('notices the feed a front page offers, but not one a post’s page links', () => {
+		const page = (head: string) =>
+			extract({
+				url: 'https://example.com/garden/',
+				contentType: 'text/html',
+				text: `<html><head>${head}</head><body><p>Latest from the garden.</p></body></html>`
+			});
+		// eslint-disable-next-line no-restricted-syntax -- HTML attributes need straight quotes
+		const link = '<link rel="alternate" type="application/rss+xml" href="feed.xml">';
+		const feed = (head: string) => {
+			const extracted = page(head);
+			return extracted.kind === 'page' ? extracted.feed : 'not a page';
+		};
+
+		expect(feed(link)).toBe('https://example.com/garden/feed.xml');
+		// eslint-disable-next-line no-restricted-syntax -- HTML attributes need straight quotes
+		expect(feed(`<meta property="og:type" content="website">${link}`)).toBe(
+			'https://example.com/garden/feed.xml'
+		);
+		// eslint-disable-next-line no-restricted-syntax -- HTML attributes need straight quotes
+		expect(feed(`<meta property="og:type" content="article">${link}`)).toBeUndefined();
+		// eslint-disable-next-line no-restricted-syntax -- HTML attributes need straight quotes
+		expect(feed('<link rel="alternate" hreflang="fr" href="/fr/">')).toBeUndefined();
+		expect(feed('')).toBeUndefined();
+	});
+
 	it('reads plain text a paragraph at a time', () => {
 		const extracted = extract({
 			url: 'https://example.com/notes.txt',
