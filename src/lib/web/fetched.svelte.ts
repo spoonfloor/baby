@@ -1,16 +1,16 @@
 import { addFetched, inOrder, type Fetched, type FetchedStore } from './fetched.ts';
-import type { WebSource } from './webSource.ts';
+import type { BroughtSource } from './brought.ts';
 
 /**
- * Pages and posts fetched on this device, kept as they were when fetched so reading
- * one again reads the same text. Baby keeps its own copy of whatever it reads (so
- * that travels with saves); this is what was fetched and not necessarily read, like
+ * Pages and posts fetched and files uploaded on this device, kept as they were then so
+ * reading one again reads the same text. Baby keeps its own copy of whatever it reads (so
+ * that travels with saves); this is what was brought and not necessarily read, like
  * the rest of a feed.
  */
 
-/** What was fetched on this device, newest first, for the sources panel. */
-export class FetchedSources {
-	sources: WebSource[] = $state.raw([]);
+/** What was brought on this device, newest first, for the sources panel. */
+export class BroughtSources {
+	sources: BroughtSource[] = $state.raw([]);
 	#all: Fetched[] = [];
 	#store: FetchedStore;
 
@@ -23,8 +23,8 @@ export class FetchedSources {
 		this.sources = this.#all.map(({ source }) => source);
 	}
 
-	/** Keeps `sources`, fetched together just now. */
-	async add(sources: readonly WebSource[]) {
+	/** Keeps `sources`, brought together just now. */
+	async add(sources: readonly BroughtSource[]) {
 		const { all, added } = addFetched(this.#all, sources, Date.now());
 		this.#all = all;
 		this.sources = all.map(({ source }) => source);

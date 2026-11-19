@@ -3,7 +3,7 @@ import { count } from '#lib/baby/reading.ts';
 import { TURN_START } from '#lib/baby/script.ts';
 import { EOS, tokenize } from '#lib/baby/vocabulary.ts';
 import type { Primer } from '#lib/library/index.ts';
-import { WEB_SOURCE } from '#lib/web/webSource.ts';
+import { isBrought } from '#lib/web/brought.ts';
 import type { Message } from './chat.svelte.ts';
 import type { Notice } from './notices.ts';
 
@@ -31,11 +31,11 @@ export function transcript(
 ): string {
 	const sources = knowledge?.sources ?? [];
 	const read = sources.flatMap((source) => primers.find((primer) => primer.id === source.id) ?? []);
-	// Primers and pages from the web, by name; taught replies show in the conversation itself.
+	// Primers and what the user brought (pages, files), by name; taught replies show in the conversation itself.
 	const readTitles = sources.flatMap(
 		(source) =>
 			primers.find((primer) => primer.id === source.id)?.title ??
-			(source.id.startsWith(WEB_SOURCE) && source.title !== undefined ? source.title : [])
+			(isBrought(source.id) && source.title !== undefined ? source.title : [])
 	);
 	const lines = [
 		`Baby transcript · ${at.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}`,

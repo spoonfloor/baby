@@ -3,7 +3,8 @@
  * are stored by name and turned into copy at render time, so copy that depends on
  * the device (Click vs Tap) stays current.
  */
-export type Notice = 'oneWord' | 'guess' | 'repertoire' | 'unrecognized' | 'undone' | 'failed';
+export type Notice =
+	'oneWord' | 'guess' | 'repertoire' | 'unrecognized' | 'undone' | 'unreadableFiles' | 'failed';
 
 export function noticeText(notice: Notice, pointerVerb: 'Click' | 'Tap'): string {
 	switch (notice) {
@@ -17,6 +18,8 @@ export function noticeText(notice: Notice, pointerVerb: 'Click' | 'Tap'): string
 			return 'Baby didn’t know most of those words. Teach Baby a reply to show it how to respond.';
 		case 'undone':
 			return 'Undid the last training. Baby is back to how it was before.';
+		case 'unreadableFiles':
+			return 'Some of those files had no text to read. Upload text files (.txt) or pages saved from a browser (.html).';
 		case 'failed':
 			return 'Something went wrong in the app, so Baby couldn’t finish. Try again.';
 	}

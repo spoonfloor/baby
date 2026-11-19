@@ -36,13 +36,20 @@
 	import { stickToBottom } from '#lib/ui/stickToBottom.ts';
 	import UserMessage from '#lib/ui/UserMessage.svelte';
 	import type { Extracted } from '#lib/web/extract.ts';
-	import { deviceFetchedStore, FetchedSources } from '#lib/web/fetched.svelte.ts';
+	import { deviceFetchedStore, BroughtSources } from '#lib/web/fetched.svelte.ts';
 	import ReadUrlFlow from '#lib/web/ReadUrlFlow.svelte';
-	import { byGroup, readWebSources, siteOf, type WebSource } from '#lib/web/webSource.ts';
+	import {
+		byGroup,
+		creditOf,
+		FILES_GROUP,
+		readBroughtSources,
+		type BroughtSource
+	} from '#lib/web/brought.ts';
+	import { upload, UPLOAD_ACCEPT } from '#lib/web/upload.ts';
 
 	const chat = new Chat(spawnBaby());
 	const saves = new Saves(chat);
-	const fetched = new FetchedSources(deviceFetchedStore);
+	const fetched = new BroughtSources(deviceFetchedStore);
 	const empty = $derived(chat.messages.length === 0);
 
 	const primers = new Map(
@@ -51,12 +58,12 @@
 	const known = $derived(new Set(chat.knowledge?.words));
 	/** Replies the user taught, a day to a source; listed after the first group (Chatbot 101). */
 	const days = $derived(taughtDays(chat.knowledge?.sources ?? [], new Date()));
-	/** Pages and posts from the web: fetched on this device, then any Baby read elsewhere (a loaded save). */
-	const web = $derived(
-		byGroup([...fetched.sources, ...readWebSources(chat.knowledge?.sources ?? [])])
+	/** What the user brought (pages, posts, files): from this device, then any Baby read elsewhere (a loaded save). */
+	const brought = $derived(
+		byGroup([...fetched.sources, ...readBroughtSources(chat.knowledge?.sources ?? [])])
 	);
-	const webSources = $derived(
-		new Map(web.flatMap((site) => site.sources.map((source) => [source.id, source])))
+	const broughtSources = $derived(
+		new Map(brought.flatMap((group) => group.sources.map((source) => [source.id, source])))
 	);
 	const panelGroups = $derived.by(() => {
 		const row = ({ id, title, documents }: Pick<Primer, 'id' | 'title' | 'documents'>) => {
@@ -73,7 +80,7 @@
 		const library = groups.map(({ title, primers }) => ({ title, sources: primers.map(row) }));
 		const yours = [
 			...(days.length > 0 ? [repliesGroup(days)] : []),
-			...web.map(({ title, sources }) => ({ title, sources: sources.map(row) }))
+			...brought.map(({ title, sources }) => ({ title, sources: sources.map(row) }))
 		];
 		// What you brought comes right after Chatbot 101, before the subjects.
 		return [...library.slice(0, 1), ...yours, ...library.slice(1)];
@@ -88,17 +95,17 @@
 	let previewing: Primer | undefined = $state.raw();
 	/** The day of taught replies being previewed. */
 	let previewingDay: TaughtDay | undefined = $state.raw();
-	/** The page or post from the web being previewed. */
-	let previewingWeb: WebSource | undefined = $state.raw();
+	/** The page, post, or file the user brought being previewed. */
+	let previewingBrought: BroughtSource | undefined = $state.raw();
 
 	function preview(id: string) {
 		previewing = primers.get(id);
 		previewingDay = days.find((day) => day.id === id);
-		previewingWeb = webSources.get(id);
+		previewingBrought = broughtSources.get(id);
 	}
 
-	function readWeb(source: WebSource) {
-		previewingWeb = undefined;
+	function readBrought(source: BroughtSource) {
+		previewingBrought = undefined;
 		chat.read(source, { keep: true });
 	}
 
@@ -108,19 +115,39 @@
 	/** Keeps what Read from URL found, then shows it: a page in its preview, a feed’s posts in the sources panel. */
 	async function found(extracted: Extracted) {
 		readingUrl = false;
-		const sources = extracted.kind === 'page' ? [extracted.source] : extracted.sources;
+		if (extracted.kind === 'page') {
+			await bring([extracted.source]);
+			previewingBrought = extracted.source;
+		} else {
+			await bring(extracted.sources);
+			showGroup(extracted.title);
+		}
+	}
+
+	/** Reads files the user picked to upload, then shows them: one in its preview, several in the sources panel. */
+	async function uploadFiles(files: File[]) {
+		const { sources, unreadable } = await upload(files);
+		await bring(sources);
+		if (unreadable > 0) chat.notify('unreadableFiles');
+		const [only] = sources;
+		if (sources.length === 1 && only) previewingBrought = only;
+		else if (sources.length > 1) showGroup(FILES_GROUP);
+	}
+
+	/** Keeps what the user brought on this device, so the sources panel lists it. */
+	async function bring(sources: readonly BroughtSource[]) {
 		try {
 			await fetched.add(sources);
 		} catch (error) {
 			// Still shown for now; it just won’t be listed after a reload.
-			console.error('Couldn’t keep fetched pages', error);
+			console.error('Couldn’t keep what was brought', error);
 		}
-		if (extracted.kind === 'page') {
-			previewingWeb = extracted.source;
-		} else {
-			panelExpanded = [extracted.title];
-			panelOpen = true;
-		}
+	}
+
+	/** Opens the sources panel at `group`. */
+	function showGroup(group: string) {
+		panelExpanded = [group];
+		panelOpen = true;
 	}
 
 	/** The Reset model confirmation is open. */
@@ -135,7 +162,7 @@
 		if (latest === undefined) return 'Untitled';
 		return (
 			primers.get(latest)?.title ??
-			webSources.get(latest)?.title ??
+			broughtSources.get(latest)?.title ??
 			(latest.startsWith(TAUGHT_SOURCE) ? 'Taught reply' : 'Untitled')
 		);
 	});
@@ -328,7 +355,7 @@
 				}}
 			>
 				{#snippet start()}
-					<AddMenu onurl={() => (readingUrl = true)} />
+					<AddMenu accept={UPLOAD_ACCEPT} onfiles={uploadFiles} onurl={() => (readingUrl = true)} />
 				{/snippet}
 				{#snippet end()}
 					<SettingsMenu
@@ -366,16 +393,16 @@
 	/>
 {/if}
 
-{#if previewingWeb}
-	{@const source = previewingWeb}
+{#if previewingBrought}
+	{@const source = previewingBrought}
 	<SourceDialog
 		title={source.title}
-		credit={siteOf(source.url)}
+		credit={creditOf(source)}
 		summary={describeReading(readingStats(source.documents, (word) => known.has(word)))}
 		documents={source.documents}
 		read={chat.readSources.includes(source.id)}
-		onread={() => readWeb(source)}
-		onclose={() => (previewingWeb = undefined)}
+		onread={() => readBrought(source)}
+		onclose={() => (previewingBrought = undefined)}
 	/>
 {/if}
 

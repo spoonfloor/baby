@@ -1,7 +1,7 @@
 import { Readability } from '@mozilla/readability';
 import { proseDocuments } from '#lib/baby/reading.ts';
 import type { FetchedText } from './fetchThroughServer.ts';
-import { siteOf, webSourceId, type WebSource } from './webSource.ts';
+import { siteOf, webSourceId, type WebSource } from './brought.ts';
 
 /**
  * Turns what a site sent into what Baby reads: a page becomes its article text, the
@@ -48,23 +48,34 @@ function looksLikeXml(text: string): boolean {
 }
 
 function parsePage(html: string, url: string): { source: WebSource; feed?: string } {
+	const { title, paragraphs, feed } = readPage(html, url);
+	const source = webSource(url, title || url, siteOf(url), paragraphs);
+	return feed === undefined ? { source } : { source, feed };
+}
+
+/**
+ * A page’s article, the way a browser’s reader view finds it: its title (empty if it
+ * has none), its paragraphs, and the feed it offers. Links resolve against `url`, the
+ * page’s address, when it has one; an uploaded page has none.
+ */
+export function readPage(
+	html: string,
+	url?: string
+): { title: string; paragraphs: string[]; feed?: string } {
 	const page = new DOMParser().parseFromString(html, 'text/html');
-	const base = page.createElement('base');
-	base.href = url;
-	page.head.prepend(base);
-	const fallbackTitle = clean(page.title) || url;
-	const feed = offeredFeed(page);
+	if (url !== undefined) {
+		const base = page.createElement('base');
+		base.href = url;
+		page.head.prepend(base);
+	}
+	const fallbackTitle = clean(page.title);
+	const feed = url === undefined ? undefined : offeredFeed(page);
 	const article = new Readability(page).parse();
 	const paragraphs = article?.content
 		? htmlParagraphs(article.content)
 		: htmlParagraphs(page.body.innerHTML);
-	const source = webSource(
-		url,
-		clean(article?.title ?? '') || fallbackTitle,
-		siteOf(url),
-		paragraphs
-	);
-	return feed === undefined ? { source } : { source, feed };
+	const title = clean(article?.title ?? '') || fallbackTitle;
+	return feed === undefined ? { title, paragraphs } : { title, paragraphs, feed };
 }
 
 /**
@@ -171,7 +182,7 @@ export function htmlParagraphs(html: string): string[] {
 }
 
 /** Plain text, a paragraph between blank lines. */
-function plainParagraphs(text: string): string[] {
+export function plainParagraphs(text: string): string[] {
 	return text
 		.split(/\n\s*\n/)
 		.map(clean)

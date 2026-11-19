@@ -27,6 +27,7 @@
 	import ProgressBar from '#lib/ui/ProgressBar.svelte';
 	import ReadUrlDialog from '#lib/ui/ReadUrlDialog.svelte';
 	import { SAVED_PAGE_ACCEPT } from '#lib/web/savedPage.ts';
+	import { UPLOAD_ACCEPT } from '#lib/web/upload.ts';
 	import ResetDialog from '#lib/ui/ResetDialog.svelte';
 	import SaveNameDialog from '#lib/ui/SaveNameDialog.svelte';
 	import SavesDialog from '#lib/ui/SavesDialog.svelte';
@@ -220,7 +221,7 @@
 		<h2>Composer</h2>
 		<Composer placeholder="Say hi to Baby" onsend={noop}>
 			{#snippet start()}
-				<AddMenu onurl={() => (readingUrl = 'empty')} />
+				<AddMenu accept={UPLOAD_ACCEPT} onfiles={noop} onurl={() => (readingUrl = 'empty')} />
 			{/snippet}
 			{#snippet end()}
 				<SettingsMenu
@@ -692,6 +693,7 @@
 		<AppMessage text={noticeText('guess', pointerVerb())} />
 		<AppMessage text={noticeText('repertoire', pointerVerb())} />
 		<AppMessage text={noticeText('unrecognized', pointerVerb())} actions={teachLink} />
+		<AppMessage text={noticeText('unreadableFiles', pointerVerb())} />
 		<AppMessage text={noticeText('failed', pointerVerb())} />
 	</section>
 

@@ -33,7 +33,7 @@ src/lib/baby/     the model, behind the Baby protocol
   worker/         worker entry, its own TS project (WebWorker globals, not DOM)
 src/lib/library/  primers (texts we supply) in groups for the sources panel: Chatbot 101, then subjects A–Z
 src/lib/saves/    saved models on this device (IndexedDB) and on a save server, behind one SaveStore interface
-src/lib/web/      Read from URL: fetched through the save server, turned into text in the browser, kept on this device
+src/lib/web/      sources you bring: Read from URL (through the save server, or a copy saved or pasted from the browser when a site refuses it) and Upload text files; turned into text in the browser, kept on this device
 src/routes/       / (chat), /kitchen-sink (every component in every state)
 lab/              lesson lab: trains Baby headless on Chatbot 101 and scores replies against probes
 server/           save server: keeps `.baby` files for anyone with its token (`npm run save-server`, see server/README.md)

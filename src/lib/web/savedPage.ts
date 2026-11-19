@@ -36,13 +36,18 @@ const BY_EXTENSION: Record<string, string> = {
 const CHARSET_SCAN = 1024;
 
 export async function savedPage(file: File, url: string): Promise<FetchedText> {
+	return { url, ...(await savedFile(file)) };
+}
+
+/** A saved page’s or a text file’s text and type, or a SavedPageError if it’s neither. */
+export async function savedFile(file: File): Promise<{ contentType: string; text: string }> {
 	const extension = /\.([^.]+)$/.exec(file.name)?.[1]?.toLowerCase() ?? '';
 	if (extension === 'webarchive') throw new SavedPageError('webarchive', 'A Safari web archive');
 	const mediaType = file.type === 'text/html' || file.type === 'text/plain' ? file.type : undefined;
 	const type = mediaType ?? BY_EXTENSION[extension];
 	if (type === undefined) throw new SavedPageError('type', `Not a page: ${file.name}`);
 	const bytes = await file.arrayBuffer();
-	return { url, contentType: type, text: decode(bytes, `${type}; charset=${charsetOf(bytes)}`) };
+	return { contentType: type, text: decode(bytes, `${type}; charset=${charsetOf(bytes)}`) };
 }
 
 /** The charset a saved page names in its `<meta>`, or UTF-8, which browsers save most pages in. */

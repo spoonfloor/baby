@@ -1,8 +1,8 @@
-import type { WebSource } from './webSource.ts';
+import type { BroughtSource } from './brought.ts';
 
 /** A fetched source and where it goes in the list. */
 export interface Fetched {
-	source: WebSource;
+	source: BroughtSource;
 	/** When it was fetched, in milliseconds since 1970. */
 	at: number;
 	/** Its place among what was fetched with it, e.g. a post’s place in its feed. */
@@ -21,7 +21,7 @@ export interface FetchedStore {
  */
 export function addFetched(
 	existing: readonly Fetched[],
-	added: readonly WebSource[],
+	added: readonly BroughtSource[],
 	at: number
 ): { all: Fetched[]; added: Fetched[] } {
 	const known = new Set(existing.map(({ source }) => source.id));

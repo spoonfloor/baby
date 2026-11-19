@@ -184,6 +184,11 @@ export class Chat {
 		});
 	}
 
+	/** Says `notice` in the app’s voice, about something done outside the conversation. */
+	notify(notice: Notice) {
+		this.messages.push({ id: crypto.randomUUID(), role: 'app', notice });
+	}
+
 	/**
 	 * Brings back the model from before the latest reading, keeping the conversation,
 	 * and says so. Refused while Baby is busy.

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { addFetched, type Fetched } from './fetched.ts';
-import type { WebSource } from './webSource.ts';
+import type { BroughtSource } from './brought.ts';
 
-const post = (name: string, text = name): WebSource => ({
+const post = (name: string, text = name): BroughtSource => ({
 	id: `web:https://example.com/${name}`,
 	url: `https://example.com/${name}`,
 	title: name,
