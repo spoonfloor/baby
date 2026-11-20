@@ -23,6 +23,69 @@ export const firstWord = scriptPrimer(
 	`
 );
 
+/**
+ * Q&A: you ask what something is. For a few everyday things Baby answers with one
+ * fact, starting with your words; anything it never read reaches it as [UNK], so it
+ * says it doesn’t know yet and asks you. Answering about things it only read in
+ * passing (“What is a story?”) would need copying your word, which didn’t take hold
+ * at a size this lesson can read (lab/log.md, Q&A).
+ */
+const qaFacts: [topic: string, answer: string][] = [
+	['the sun', 'The sun is a star. It keeps us warm.'],
+	['the moon', 'The moon is a big rock in the sky.'],
+	['a star', 'A star is a ball of fire, very far away.'],
+	['the sky', 'The sky is blue in the day and dark at night.'],
+	['the earth', 'The earth is the planet we live on.'],
+	['a planet', 'A planet is a big ball that goes around a star.'],
+	['rain', 'Rain is water that falls from the clouds.'],
+	['a cloud', 'A cloud is a lot of tiny drops of water.'],
+	['the sea', 'The sea is a lot of salty water.'],
+	['a tree', 'A tree is a tall plant with leaves.'],
+	['a flower', 'A flower is the pretty part of a plant.'],
+	['a cat', 'A cat is a small furry animal. Do you have a cat?'],
+	['a dog', 'A dog is a friendly animal. Do you have a dog?'],
+	['a bird', 'A bird is an animal with wings.'],
+	['a fish', 'A fish is an animal that lives in water.'],
+	['cake', 'Cake is a sweet food for parties. Do you like cake?'],
+	['a book', 'A book is pages full of words.'],
+	['music', 'Music is sounds that people like to hear.']
+];
+
+/** Ways to ask what something is; each topic gets three of them, in turn. */
+const qaAsks = [
+	'What is {t}?',
+	'Tell me about {t}.',
+	'Baby, what is {t}?',
+	'What’s {t}?',
+	'What is {t}, Baby?',
+	'What is {t}'
+];
+
+/** Questions about things Baby never read. */
+const qaUnknown = [
+	'What is a [UNK]?',
+	'What is the [UNK]?',
+	'What is [UNK]?',
+	'What’s a [UNK]?',
+	'Baby, what is a [UNK]?',
+	'What is the big [UNK]?',
+	'What is the [UNK] [UNK]?',
+	'Tell me about the [UNK].'
+];
+
+const ASKS_PER_TOPIC = 3;
+
+const exchange = (you: string, baby: string) => `you: ${you}\nbaby: ${baby}`;
+
+const qaScript = [
+	...qaFacts.flatMap(([topic, answer], i) =>
+		Array.from({ length: ASKS_PER_TOPIC }, (_, j) =>
+			exchange((qaAsks[(i + j) % qaAsks.length] ?? '').replace('{t}', topic), answer)
+		)
+	),
+	...qaUnknown.map((ask) => exchange(ask, 'I don’t know that yet. What is it?'))
+].join('\n\n');
+
 /** Conversation lessons: short scripts that teach Baby to take turns, in curriculum order. */
 export const chatbot101 = [
 	firstWord,
@@ -349,5 +412,6 @@ export const chatbot101 = [
 		you: How are you doing, Baby?
 		baby: I am good!
 		`
-	)
+	),
+	scriptPrimer('q-and-a', 'Q&A', qaScript)
 ];

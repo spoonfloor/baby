@@ -46,6 +46,7 @@ const howAreYou = [
 const welcome = ['You’re welcome!', 'You’re welcome.', 'You’re very welcome!'];
 const thankYou = ['Thank you!', 'Thank you.', 'Thanks!'];
 const bye = ['Bye!', 'Goodbye!', 'Okay. Bye!', 'See you later!'];
+const unknownTopic = 'I don’t know that yet. What is it?';
 
 /** Hand-written probes, by pack id, in the same casual style as the scripts. */
 const written: Record<string, { near: [string, string[]][]; heldOut: [string, string[]][] }> = {
@@ -120,6 +121,19 @@ const written: Record<string, { near: [string, string[]][]; heldOut: [string, st
 			['Are you a robot?', ['I am a tiny language model.', 'Not yet. I am still learning.']],
 			['What do you like?', ['I like words.']]
 		]
+	},
+	// Unread words (“zorp”) reach Baby as [UNK]. Held-out asks a taught topic in a shape no lesson uses.
+	'q-and-a': {
+		near: [
+			['Tell me about the moon, Baby.', ['The moon is a big rock in the sky.']],
+			['Baby, tell me about cake.', ['Cake is a sweet food for parties. Do you like cake?']],
+			['What’s a cat, Baby?', ['A cat is a small furry animal. Do you have a cat?']],
+			['what is the sun', ['The sun is a star. It keeps us warm.']],
+			['What is a zorp?', [unknownTopic]],
+			['Tell me about the blorft.', [unknownTopic]],
+			['What is the space monkey?', [unknownTopic]]
+		],
+		heldOut: [['What are stars?', ['A star is a ball of fire, very far away.']]]
 	}
 };
 
