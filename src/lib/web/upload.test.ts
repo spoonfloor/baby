@@ -11,7 +11,7 @@ const file = (text: string, name: string, type?: string) =>
 const words = (documents: string[][]) => documents.map((document) => document.join(' '));
 
 describe('upload', () => {
-	it('reads a text file a paragraph between blank lines, titled by its name', async () => {
+	it('reads a text file a sentence at a time, titled by its name', async () => {
 		const notes = file(
 			'Frost came early.\nCover the beds.\n\nThen wait.',
 			'Notes.txt',
@@ -26,7 +26,8 @@ describe('upload', () => {
 		expect(source?.group).toBe(FILES_GROUP);
 		expect(source?.id).toMatch(/^file:[0-9a-f]{32}$/);
 		expect(words(source?.documents ?? [])).toEqual([
-			'frost came early . cover the beds . [EOS]',
+			'frost came early . [EOS]',
+			'cover the beds . [EOS]',
 			'then wait . [EOS]'
 		]);
 	});

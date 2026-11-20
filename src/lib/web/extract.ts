@@ -1,7 +1,7 @@
 import { Readability } from '@mozilla/readability';
-import { proseDocuments } from '#lib/baby/reading.ts';
 import type { FetchedText } from './fetchThroughServer.ts';
 import { siteOf, webSourceId, type WebSource } from './brought.ts';
+import { broughtDocuments } from './sentences.ts';
 
 /**
  * Turns what a site sent into what Baby reads: a page becomes its article text, the
@@ -263,18 +263,42 @@ function blockTexts(blocks: readonly Element[]): string[] {
 	return blocks.map((block) => clean(block.textContent)).filter((text) => text !== '');
 }
 
-/** Plain text, a paragraph between blank lines. */
+/**
+ * Plain text, a paragraph between blank lines, with lines that hard-wrap a paragraph
+ * joined back up. Leaves out what a printed page puts between them: page numbers
+ * (“12”, “Page 3 of 10”) and running heads, a short line repeated page after page.
+ */
 export function plainParagraphs(text: string): string[] {
-	return text
+	const lines = text.split('\n');
+	const counts = new Map<string, number>();
+	for (const line of lines) {
+		const key = clean(line);
+		if (key !== '') counts.set(key, (counts.get(key) ?? 0) + 1);
+	}
+	const isRunningHead = (line: string) =>
+		(counts.get(line) ?? 0) >= RUNNING_HEAD_REPEATS && line.split(' ').length <= RUNNING_HEAD_WORDS;
+	return lines
+		.map((line) => {
+			const text = clean(line);
+			return PAGE_NUMBER.test(text) || isRunningHead(text) ? '' : line;
+		})
+		.join('\n')
 		.split(/\n\s*\n/)
 		.map(clean)
 		.filter((paragraph) => paragraph !== '');
 }
+
+/** A line that’s only a page number: “12”, “- 12 -”, “Page 3”, “Page 3 of 10”, “3/10”. */
+const PAGE_NUMBER = /^(page\s+)?[-–—\s]*\d+[-–—\s]*((of|\/)\s*\d+)?$/i;
+
+/** A line this short, seen this many times, is a running head, not writing. */
+const RUNNING_HEAD_REPEATS = 3;
+const RUNNING_HEAD_WORDS = 8;
 
 function clean(text: string | null | undefined): string {
 	return (text ?? '').replace(/\s+/g, ' ').trim();
 }
 
 function webSource(url: string, title: string, group: string, paragraphs: string[]): WebSource {
-	return { id: webSourceId(url), url, title, group, documents: proseDocuments(paragraphs) };
+	return { id: webSourceId(url), url, title, group, documents: broughtDocuments(paragraphs) };
 }

@@ -1,7 +1,7 @@
-import { proseDocuments } from '#lib/baby/reading.ts';
 import { fileSourceId, FILES_GROUP, type FileSource } from './brought.ts';
 import { plainParagraphs, readPage } from './extract.ts';
 import { savedFile, SavedPageError } from './savedPage.ts';
+import { broughtDocuments } from './sentences.ts';
 
 /**
  * Upload text files: files from the user’s device, each read the way Read from URL
@@ -36,7 +36,7 @@ async function fileSource(file: File): Promise<FileSource | undefined> {
 	const page = contentType === 'text/html' ? readPage(text) : undefined;
 	const paragraphs = page?.paragraphs ?? plainParagraphs(text);
 	if (paragraphs.length === 0) return undefined;
-	const documents = proseDocuments(paragraphs);
+	const documents = broughtDocuments(paragraphs);
 	return {
 		id: await fileSourceId(paragraphs.join('\n\n')),
 		file: file.name,
