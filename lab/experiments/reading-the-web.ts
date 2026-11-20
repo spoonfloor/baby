@@ -4,9 +4,11 @@ import type { Document, Reading } from '#lib/baby/index.ts';
 import { Model } from '#lib/baby/model.ts';
 import { seededRandom } from '#lib/baby/random.ts';
 import { proseDocuments } from '#lib/baby/reading.ts';
+import { parseScripts } from '#lib/baby/script.ts';
 import { BABY_CONFIG } from '#lib/baby/transformer.ts';
 import { isSpecial, tokenize } from '#lib/baby/vocabulary.ts';
 import { chatbot101 } from '#lib/library/chatbot-101.ts';
+import { readableSentences } from '#lib/web/sentences.ts';
 import { probesFor } from '../probes.ts';
 import type { Article } from './web/capture.ts';
 
@@ -22,7 +24,14 @@ import type { Article } from './web/capture.ts';
  *   recite an article (five words in a row from one), how many of their words come
  *   only from the articles or were seen only once, and how they end.
  *
- *   node --experimental-strip-types lab/experiments/reading-the-web.ts --seed 1
+ *   node --experimental-strip-types lab/experiments/reading-the-web.ts --seed 1 --shape sentences
+ *
+ * `--shape` is how an article becomes documents:
+ *
+ * - paragraphs: a document per paragraph, as Read from URL did before sentences;
+ * - sentences: a document per readable sentence (`readableSentences`), as it does now;
+ * - chat: those sentences, plus each sentence that names something the article keeps
+ *   coming back to as Baby’s answer to being asked about it: “Tell me about Anthropic.”
  */
 
 /** What a person might say after giving Baby some news: small talk, then the news itself. */
@@ -45,6 +54,43 @@ const PROMPTS = {
 
 /** Words in a row an article and a reply must share for the reply to count as recited. */
 const RECITED_RUN = 5;
+
+function articleDocuments(paragraphs: string[]): Document[] {
+	if (shape === 'paragraphs') return proseDocuments(paragraphs);
+	const sentences = readableSentences(paragraphs);
+	if (shape === 'sentences') return proseDocuments(sentences);
+	return [...proseDocuments(sentences), ...topicExchanges(sentences)];
+}
+
+/** How many times a name must come up for the article to be about it. */
+const TOPIC_MENTIONS = 2;
+
+/** Ways to ask about a topic, taken in turn. */
+const TOPIC_ASKS = ['Tell me about {t}.', 'What about {t}?', 'What do you know about {t}?'];
+
+/**
+ * The article’s topics, names it keeps coming back to (runs of capitalized words, not
+ * counting a sentence’s first word), each sentence naming one as the answer to being
+ * asked about it.
+ */
+function topicExchanges(sentences: readonly string[]): Document[] {
+	const named = sentences.map((sentence) => {
+		const words = sentence.split(/\s+/).slice(1).join(' ');
+		const runs = words.match(/\p{Lu}[\p{L}'’-]*(?: \p{Lu}[\p{L}'’-]*)*/gu) ?? [];
+		return runs.map((run) => run.replace(/['’]s$/, ''));
+	});
+	const mentions = new Map<string, number>();
+	for (const names of named)
+		for (const name of new Set(names)) mentions.set(name, (mentions.get(name) ?? 0) + 1);
+	const script: string[] = [];
+	sentences.forEach((sentence, i) => {
+		const topic = named[i]?.find((name) => (mentions.get(name) ?? 0) >= TOPIC_MENTIONS);
+		if (topic === undefined) return;
+		const ask = (TOPIC_ASKS[script.length % TOPIC_ASKS.length] ?? '').replace('{t}', topic);
+		script.push(`you: ${ask}\nbaby: ${sentence}`);
+	});
+	return parseScripts(script.join('\n\n'));
+}
 
 async function read(model: Model, reading: Reading): Promise<string> {
 	let status = '';
@@ -83,9 +129,11 @@ const percent = (n: number) => `${Math.round(n * 100)}%`;
 const { values: options } = parseArgs({
 	options: {
 		seed: { type: 'string', default: '1' },
-		samples: { type: 'string', default: '10' }
+		samples: { type: 'string', default: '10' },
+		shape: { type: 'string', default: 'sentences' }
 	}
 });
+const shape = options.shape as 'paragraphs' | 'sentences' | 'chat';
 const seed = Number(options.seed);
 const samples = Number(options.samples);
 
@@ -95,7 +143,7 @@ const articles = JSON.parse(
 const readings = articles.map(({ url, title, paragraphs }) => ({
 	source: `web:${url}`,
 	title,
-	documents: proseDocuments(paragraphs)
+	documents: articleDocuments(paragraphs)
 }));
 
 const model = new Model({ random: seededRandom(seed), idle: async () => {} });
@@ -112,7 +160,11 @@ const count = (documents: readonly Document[]) => {
 for (const pack of chatbot101) count(pack.documents);
 const chatbotWords = new Set(seen.keys());
 
-const out = [`## seed ${seed}`, '', 'reading | words | new | seen once | over context | time'];
+const out = [
+	`## seed ${seed} · ${shape}`,
+	'',
+	'reading | words | new | seen once | over context | time'
+];
 for (const reading of readings) {
 	const known = new Set(seen.keys());
 	const readWords = words(reading.documents);

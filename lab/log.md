@@ -334,3 +334,46 @@ What does reading real articles do to Baby? A Baby reads all of Chatbot 101, the
 Recommendation: don’t build smarter starting points for rare words yet; they aren’t what limits chat after reading. The bigger levers are how prose is turned into something chat can use (answers about what was read, not continuations of it) and reading time. Fix the invisible-character tokens.
 
 Fixed since: `tokenize` drops invisible formatting characters (a zero-width space reads as a space), so the Guardian article reads as 806 tokens with none of them invisible.
+
+## 2026-11-19 · Q&A: what things are, and honest about what Baby never read
+
+A chat after reading articles got “Baby!” for every question (“what is the space monkey” → “baby !”): the only lesson about words Baby never read was Name. Q&A is a sixth Chatbot 101 pack: “What is the moon?” → “The moon is a big rock in the sky.”, 18 everyday things × 3 ways to ask, and a question about something never read (“What is a [UNK]?”, “Tell me about the [UNK].”) → “I don’t know that yet. What is it?”.
+
+The first aim was copying your word (“What is a story?” → “A story is…”), so that what Baby read could finish the answer. Three rounds, 5 seeds × 20 samples:
+
+| script                                        | words | reading | trained | near | copies a known word |
+| --------------------------------------------- | ----- | ------- | ------- | ---- | ------------------- |
+| 25 facts × 3 asks, 11 unknown                 | 1311  | 64s     | ~90%    | 83%  | –                   |
+| 11 facts × 2, 40 echoes (“A hat? Tell me…”) ✗ | 996   | 85s     | 88%     | 49%  | 0%                  |
+| 18 facts × 3 asks, 8 unknown (kept)           | 969   | 60s     | 87%     | 74%  | –                   |
+
+- **Copying didn’t take hold.** With 40 things sharing one echo reply, “What is a story?” got “thank you !” (Thanks owns “story”) or a trained echo (“a shirt ? tell me about it !”): Baby learned the reply’s shape, not to fill it with your word. Therapy Bot needed about 5,000 words for copying, about two minutes of reading; not worth it for an echo that adds nothing Baby read.
+- **The honest fallback works:** “What is a zorp?”, “Tell me about the blorft.”, “What is the space monkey?” → “i don’t know that yet . what is it ?” 94–97%.
+- **Over 40 seconds, by the relaxed rule (rubric):** 60s buys answers to the most common question shape and an honest reply in place of “Baby!”.
+- **Name pays for it.** Its trained lines (all unread words) still get “Baby!” 77–90%, but 3–10% now get the Q&A fallback, and “Is anyone there?” gets it every time, since Baby now knows “is”. Like About Baby before it, a lesson that teaches the words takes those probes from Name. Expected, not chased.
+- The other packs are where they were, within the swing between runs.
+
+## 2026-11-19 · Reading the web 2: a sentence at a time, and articles as answers
+
+Read from URL and uploads now read whole sentences, one to a document (`src/lib/web/sentences.ts`): headings and titles, one-word labels, lines mostly of numbers, links, capitals or Title Case, and repeated sentences are left out; text with no sentences keeps every line. Uploaded plain text also joins hard-wrapped lines and drops page numbers and running heads. On the four saved articles it drops only the headlines and subheads (“Opportunities and risks”).
+
+Then the same experiment three ways (`experiments/reading-the-web.ts --shape`), after all of Chatbot 101 with Q&A, 2 seeds × 10 samples:
+
+- **paragraphs:** a document per paragraph, as before.
+- **sentences:** a document per readable sentence (shipped).
+- **chat:** those sentences, plus each sentence naming something the article keeps coming back to as Baby’s answer to being asked about it (“Tell me about Anthropic.” → a sentence about Anthropic).
+
+| shape      | reading (4 articles) | Chatbot 101 after | casual recited / clean | news recited / clean |
+| ---------- | -------------------- | ----------------- | ---------------------- | -------------------- |
+| paragraphs | 6.7 / 6.7 min        | 87 / 85%          | 3 / 0% · 98 / 100%     | 3 / 18% · 100 / 93%  |
+| sentences  | 7.3 / 6.1 min        | 93 / 85%          | 7 / 7% · 98 / 98%      | 33 / 28% · 98 / 100% |
+| chat       | 8.3 / 9.9 min        | 88 / 87%          | 17 / 15% · 98 / 95%    | 98 / 88% · 90 / 93%  |
+
+Reading times ran six at once on one machine, so they compare only with each other.
+
+- **Sentences: cleaner, not different.** Fewer replies run to the length limit with article text, the rest is within the swing between seeds. Kept because the text Baby reads is cleaner (no headlines as their own documents), not for a measured gain.
+- **Chat makes Baby answer from what it read, but mostly the wrong article.** “What is Anthropic?” → “altimeter capital ceo brad gerstner , an early anthropic investor , told a semafor conference on monday the ipo is one of the best ways to invest in ai applications .” 7/10 on both seeds; “Tell me about Ukraine.” → “for ukraine , the bridge is a hated symbol of russian arrogance and colonial thinking .” 10/10 on one seed. But “Who is Brittany Boltinhouse?” gets a sentence about Russian drones, and “What happened to the boat?” one about Claude. Baby learned “a question gets an article sentence”, not which one. A confident answer about the wrong thing is confusing (rubric).
+- **It doubles what Baby reads** (2,741 words for the Anthropic article, up to 5 minutes), and its answers are in the article’s voice, not Baby’s.
+- **Q&A shows up after reading:** with sentences, “What is Anthropic?” and “Who is Brittany Boltinhouse?” often get “i don’t know that yet . what is it ?”: honest, though Baby did read them, since the names reach it as words it read but has no answer for.
+
+Recommendation: keep sentences. Don’t ship chat-shaped reading yet: the matching of question to sentence is the gap, and it’s capacity-shaped (as Therapy Bot 4’s follow-ups were). Worth retrying with a bigger model or with only the topic’s own sentences asked about in more ways.
