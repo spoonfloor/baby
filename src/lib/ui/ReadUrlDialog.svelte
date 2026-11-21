@@ -23,9 +23,15 @@
 		problem?: string | undefined;
 		/**
 		 * The site refused the server; offer to read a copy of `url` from the browser: a
-		 * saved file of a type `accept` lists (as the file input’s attribute), or pasted text.
+		 * saved file of a type `accept` lists (as the file input’s attribute), saved with
+		 * `keys` (“⌘S”), as Page Source where the browser needs telling (`pageSource`);
+		 * or pasted text.
 		 */
-		saved?: ({ url: string } & ({ by: 'file'; accept: string } | { by: 'paste' })) | undefined;
+		saved?:
+			| ({ url: string } & (
+					{ by: 'file'; accept: string; keys: string; pageSource: boolean } | { by: 'paste' }
+			  ))
+			| undefined;
 		/** Feeds to try, each its name, site and address, e.g. “NASA”, “nasa.gov”. */
 		suggestions?: readonly { name: string; site: string; url: string }[];
 		onnext: () => void;
@@ -115,8 +121,9 @@
 				{#if saved && working === undefined}
 					<p>
 						{#if saved.by === 'file'}
-							Your browser can likely still open it. Save the page from there, then choose the saved
-							file.
+							Your browser can likely still open it. Open the page, press {saved.keys}{saved.pageSource
+								? ' and set Format to Page Source'
+								: ''}, then choose the saved file.
 						{:else}
 							Your browser can likely still open it. Copy the page’s text from there, then paste it
 							here.

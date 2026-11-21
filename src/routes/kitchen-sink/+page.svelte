@@ -199,20 +199,26 @@
 		| 'disconnected'
 		| 'blocked'
 		| 'login'
+		| 'safari'
 		| 'readingFile'
 		| 'badFile'
+		| 'otherSite'
 		| 'paste'
 		| undefined = $state();
 	/** The refusal and file states of the Read from URL dialog, which offer a saved copy instead. */
 	const URL_SAVED_PROBLEMS: Partial<Record<NonNullable<typeof readingUrl>, string>> = {
 		blocked: 'That site blocks automated readers, like your server.',
 		login: 'That page needs a login, so your server can’t read it.',
+		safari: 'That site blocks automated readers, like your server.',
 		readingFile: 'That site blocks automated readers, like your server.',
 		badFile: 'Safari saved that as a web archive. Save it again as Page Source, then choose that.',
+		otherSite: 'That file is a saved copy of other.org, not example.com.',
 		paste: 'That site blocks automated readers, like your server.'
 	};
 	/** Opens one of those states, at the address the site refused. */
-	function openSaved(state: 'blocked' | 'login' | 'readingFile' | 'badFile' | 'paste') {
+	function openSaved(
+		state: 'blocked' | 'login' | 'safari' | 'readingFile' | 'badFile' | 'otherSite' | 'paste'
+	) {
 		urlAddress = 'https://example.com/post';
 		readingUrl = state;
 	}
@@ -488,8 +494,10 @@
 		<div class="row wrap">
 			<Button onclick={() => openSaved('blocked')}>Site blocks the server</Button>
 			<Button onclick={() => openSaved('login')}>Needs a login</Button>
+			<Button onclick={() => openSaved('safari')}>In Safari</Button>
 			<Button onclick={() => openSaved('readingFile')}>Reading the saved file</Button>
 			<Button onclick={() => openSaved('badFile')}>Safari web archive</Button>
+			<Button onclick={() => openSaved('otherSite')}>Saved from another site</Button>
 			<Button onclick={() => openSaved('paste')}>On a phone: paste the text</Button>
 		</div>
 		{#if readingUrl}
@@ -507,7 +515,13 @@
 				saved={readingUrl in URL_SAVED_PROBLEMS
 					? readingUrl === 'paste'
 						? { url: urlAddress, by: 'paste' }
-						: { url: urlAddress, by: 'file', accept: SAVED_PAGE_ACCEPT }
+						: {
+								url: urlAddress,
+								by: 'file',
+								accept: SAVED_PAGE_ACCEPT,
+								keys: '⌘S',
+								pageSource: readingUrl === 'safari'
+							}
 					: undefined}
 				{suggestions}
 				onnext={() => (readingUrl = undefined)}

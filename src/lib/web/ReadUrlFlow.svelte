@@ -23,9 +23,9 @@
 		SAVED_PAGE_ACCEPT,
 		savedPage,
 		SavedPageError,
-		type Pasted,
-		type SavedPageProblem
+		type Pasted
 	} from './savedPage.ts';
+	import { isSafari, saveKeys } from '#lib/ui/browser.ts';
 	import { pointerIsFinger } from '#lib/ui/pointer.svelte.ts';
 	import { siteOf } from './brought.ts';
 	import { named, SUGGESTED_FEEDS } from './suggestedFeeds.ts';
@@ -61,12 +61,19 @@
 	/**
 	 * Offered only while the address is still the one refused: as a saved file, or as
 	 * pasted text where the pointer is a finger, since phones make saving pages awkward.
+	 * Saving says the keys to press, and in Safari the format to pick.
 	 */
 	const saved = $derived.by(() => {
 		if (refused === undefined || normalizeUrl(address) !== refused) return undefined;
 		return pointerIsFinger()
 			? { url: refused, by: 'paste' as const }
-			: { url: refused, by: 'file' as const, accept: SAVED_PAGE_ACCEPT };
+			: {
+					url: refused,
+					by: 'file' as const,
+					accept: SAVED_PAGE_ACCEPT,
+					keys: saveKeys(),
+					pageSource: isSafari()
+				};
 	});
 	/** The Connect server dialog, over this one. */
 	let connecting: { address: string; token: string } | undefined = $state();
@@ -91,11 +98,19 @@
 		error: 'Something went wrong. Try again.'
 	};
 
-	const SAVED_PAGE_PROBLEMS: Record<SavedPageProblem, string> = {
-		webarchive:
-			'Safari saved that as a web archive. Save it again as Page Source, then choose that.',
-		type: 'That file isn’t a saved page or text.'
-	};
+	/** Why a saved copy of the refused page couldn’t be read. */
+	function savedPageProblem({ problem, sites }: SavedPageError): string {
+		switch (problem) {
+			case 'webarchive':
+				return 'Safari saved that as a web archive. Save it again as Page Source, then choose that.';
+			case 'type':
+				return 'That file isn’t a saved page or text.';
+			case 'elsewhere':
+				return sites
+					? `That file is a saved copy of ${sites.file}, not ${sites.page}.`
+					: 'That file is a saved copy of another site’s page.';
+		}
+	}
 
 	async function next() {
 		const connection = saves.connection;
@@ -150,7 +165,7 @@
 			}
 		} catch (error) {
 			if (error instanceof SavedPageError) {
-				problem = SAVED_PAGE_PROBLEMS[error.problem];
+				problem = savedPageProblem(error);
 			} else {
 				if (!(error instanceof FetchProblemError)) console.error(error);
 				const why = error instanceof FetchProblemError ? error.problem : 'error';
